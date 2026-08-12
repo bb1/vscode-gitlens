@@ -278,6 +278,7 @@ mergedBy {
 reviewDecision
 latestReviews(first: 25) {
 	nodes {
+		id
 		author {
 			login
 			avatarUrl(size: $avatarSize)
@@ -287,6 +288,18 @@ latestReviews(first: 25) {
 		commit {
 			oid
 		}
+	}
+}
+viewerLatestReview {
+	id
+	author {
+		login
+		avatarUrl(size: $avatarSize)
+		url
+	}
+	state
+	commit {
+		oid
 	}
 }
 reviewRequests(first: 25) {

@@ -186,6 +186,22 @@ suite('IntegrationManager.getSupportedFilters', () => {
 		}
 	});
 
+	test('advertises Reviewed for GitHub account-wide reads but not repo-scoped reads', () => {
+		const manager = createIntegrationManager(createFakeRuntime());
+		try {
+			for (const id of [
+				GitCloudHostIntegrationId.GitHub,
+				GitSelfManagedHostIntegrationId.CloudGitHubEnterprise,
+			]) {
+				const supported = manager.getSupportedFilters(id);
+				assert.equal(supported.pullRequests.includes(PullRequestFilter.Reviewed), false);
+				assert.equal(supported.pullRequestsAccountWide.includes(PullRequestFilter.Reviewed), true);
+			}
+		} finally {
+			manager.dispose();
+		}
+	});
+
 	suite('pullRequestSearch', () => {
 		test('is always present and only GitHub/GHE declare support today', () => {
 			const manager = createIntegrationManager(createFakeRuntime());

@@ -327,6 +327,7 @@ suite('GitHubApi.searchMyPullRequestsPage summaries', () => {
 		assert.match(query, /\bbody\b/);
 		assert.match(query, /\bheadRefName\b/);
 		assert.doesNotMatch(query, /\blatestReviews\b/);
+		assert.doesNotMatch(query, /\bviewerLatestReview\b/);
 		assert.doesNotMatch(query, /\bstatusCheckRollup\b/);
 		assert.equal(result.values[0].body, 'Summary body');
 		assert.equal(result.values[0].refs?.head.branch, 'feature');
@@ -382,7 +383,7 @@ suite('GitHubApi.searchMyPullRequestsPage summaries', () => {
 	});
 });
 
-suite('GitHubApi direct pull request lookups', () => {
+suite('GitHubApi pull request projections and direct lookups', () => {
 	const provider = {
 		id: 'github',
 		name: 'GitHub',
@@ -442,6 +443,7 @@ suite('GitHubApi direct pull request lookups', () => {
 			mergeable: 'MERGEABLE',
 			reviewDecision: 'APPROVED',
 			latestReviews: { nodes: [] },
+			viewerLatestReview: null,
 			reviewRequests: { nodes: [] },
 			assignees: { nodes: [] },
 			commits: { nodes: [] },
@@ -475,6 +477,44 @@ suite('GitHubApi direct pull request lookups', () => {
 
 		assert.match(getQuery(), /\bbody\b/);
 		assert.strictEqual(pr?.body, 'Body 1');
+	});
+
+	test('searchMyPullRequestsPage preserves the viewer review beyond the latestReviews window', async () => {
+		const node = {
+			...prNode(1),
+			latestReviews: {
+				nodes: Array.from({ length: 25 }, (_, i) => ({
+					id: `review-${i}`,
+					author: { login: `reviewer-${i}`, avatarUrl: '', url: `https://github.com/reviewer-${i}` },
+					state: 'COMMENTED',
+					commit: { oid: `reviewed-${i}` },
+				})),
+			},
+			viewerLatestReview: {
+				id: 'viewer-review',
+				author: { login: 'viewer', avatarUrl: '', url: 'https://github.com/viewer' },
+				state: 'APPROVED',
+				commit: { oid: 'viewer-reviewed-head' },
+			},
+		};
+		const { config, getQuery } = captureQuery({
+			search: {
+				issueCount: 1,
+				pageInfo: { endCursor: null, hasNextPage: false },
+				nodes: [node],
+			},
+		});
+		const api = new GitHubApi(config);
+
+		const result = await api.searchMyPullRequestsPage(provider, token, { summary: false });
+		const pr = result.values[0];
+
+		assert.match(getQuery(), /\bviewerLatestReview\b/);
+		assert.equal(pr?.latestReviews?.length, 26);
+		assert.equal(
+			pr?.latestReviews?.find(review => review.reviewer.id === 'viewer')?.commitOid,
+			'viewer-reviewed-head',
+		);
 	});
 
 	test('getPullRequest normalizes a null body to undefined', async () => {

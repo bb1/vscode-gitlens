@@ -117,6 +117,7 @@ suite('GitHubApi.searchPullRequestsPage', () => {
 			mergeable: 'MERGEABLE',
 			reviewDecision: 'APPROVED',
 			latestReviews: { nodes: [] },
+			viewerLatestReview: null,
 			reviewRequests: { nodes: [] },
 			assignees: { nodes: [] },
 			commits: { nodes: [] },

@@ -194,6 +194,13 @@ export type GitHubPullRequestMergeableState = 'MERGEABLE' | 'CONFLICTING' | 'UNK
 export type GitHubPullRequestStatusCheckRollupState = 'SUCCESS' | 'FAILURE' | 'PENDING' | 'EXPECTED' | 'ERROR';
 export type GitHubPullRequestReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
 
+type GitHubPullRequestReview = {
+	id: string;
+	author: GitHubMember | null;
+	state: GitHubPullRequestReviewState;
+	commit?: { oid: string } | null;
+};
+
 export interface GitHubPullRequest extends GitHubPullRequestLite {
 	additions: number;
 	assignees: {
@@ -204,12 +211,9 @@ export interface GitHubPullRequest extends GitHubPullRequestLite {
 	mergeable: GitHubPullRequestMergeableState;
 	reviewDecision: GitHubPullRequestReviewDecision;
 	latestReviews: {
-		nodes: {
-			author: GitHubMember | null;
-			state: GitHubPullRequestReviewState;
-			commit?: { oid: string } | null;
-		}[];
+		nodes: GitHubPullRequestReview[];
 	};
+	viewerLatestReview: GitHubPullRequestReview | null;
 	reviewRequests: {
 		nodes: {
 			asCodeOwner: boolean;
@@ -402,6 +406,13 @@ export function fromGitHubPullRequestStatusCheckRollupState(
 }
 
 export function fromGitHubPullRequest(pr: GitHubPullRequest, provider: Provider): PullRequest {
+	const viewerLatestReview = pr.viewerLatestReview;
+	// `latestReviews` is capped, so keep the viewer's own review even when it falls outside that window.
+	const latestReviews =
+		viewerLatestReview != null && !pr.latestReviews.nodes.some(review => review.id === viewerLatestReview.id)
+			? [...pr.latestReviews.nodes, viewerLatestReview]
+			: pr.latestReviews.nodes;
+
 	return new PullRequest(
 		provider,
 		fromGitHubMemberOrGhost(pr.author),
@@ -468,7 +479,7 @@ export function fromGitHubPullRequest(pr: GitHubPullRequest, provider: Provider)
 					: undefined,
 			)
 			.filter(<T>(r?: T): r is T => Boolean(r)),
-		pr.latestReviews.nodes.map(r => ({
+		latestReviews.map(r => ({
 			reviewer: fromGitHubMemberOrGhost(r.author),
 			state: fromGitHubPullRequestReviewState(r.state),
 			commitOid: r.commit?.oid,

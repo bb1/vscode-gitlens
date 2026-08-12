@@ -26,6 +26,7 @@ export interface PullRequestShape extends IssueOrPullRequest {
 	readonly mergeableState?: PullRequestMergeableState;
 	readonly reviewDecision?: PullRequestReviewDecision;
 	readonly reviewRequests?: PullRequestReviewer[];
+	readonly latestReviews?: PullRequestReviewer[];
 	readonly assignees?: PullRequestMember[];
 	readonly project?: IssueProject;
 	readonly number?: number;
