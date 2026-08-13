@@ -56,6 +56,7 @@ async function buildTests(target) {
 		'@gitlens/ipc': path.resolve(__dirname, 'packages', 'ipc', 'src'),
 		'@gitlens/git': path.resolve(__dirname, 'packages', 'git', 'src'),
 		'@gitlens/git-cli': path.resolve(__dirname, 'packages', 'git-cli', 'src'),
+		'@gitlens/hosting-integrations': path.resolve(__dirname, 'packages', 'integrations', 'src'),
 		'@gitlens/git-github': path.resolve(__dirname, 'packages', 'plus', 'git-github', 'src'),
 		'@gitlens/integrations': path.resolve(__dirname, 'packages', 'plus', 'integrations', 'src'),
 		'@gitlens/ai': path.resolve(__dirname, 'packages', 'plus', 'ai', 'src'),
