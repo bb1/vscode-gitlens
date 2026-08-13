@@ -14,6 +14,7 @@ import type { GroupableTreeViewTypes, TreeViewTypes } from './constants.views.js
 import type { Environment } from './container.js';
 import type { FeatureFlagMap } from './featureFlags/featureFlagService.js';
 import type { FeaturePreviews } from './features.js';
+import type { HostingProviderId } from './hosting/models.js';
 import type { OnboardingStorage } from './onboarding/models/onboarding.js';
 import type { OrganizationSettings } from './plus/gk/models/organization.js';
 import type { PaidSubscriptionPlanIds, Subscription } from './plus/gk/models/subscription.js';
@@ -30,6 +31,7 @@ import type { OverviewRecentThreshold } from './webviews/shared/overviewBranches
 export type SecretKeys =
 	| IntegrationAuthenticationKeys
 	| `gitlens.${AIProviders}.key`
+	| `gitlens.hosting.auth:${HostingProviderId}`
 	| `gitlens.plus.auth:${Environment}`
 	| 'deepLinks:pending';
 
