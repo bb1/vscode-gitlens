@@ -8,6 +8,7 @@
 		{ "path": "./packages/ipc" },
 		{ "path": "./packages/git" },
 		{ "path": "./packages/git-cli" },
+		{ "path": "./packages/mcp-server" },
 		{ "path": "./packages/plus/git-github" },
 		{ "path": "./packages/plus/ai" },
 		{ "path": "./packages/plus/agents" },
