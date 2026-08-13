@@ -1,0 +1,34 @@
+{
+	"name": "@gitlens/mcp-server",
+	"description": "GitLens local MCP server",
+	"version": "0.0.1",
+	"license": "SEE LICENSE IN LICENSE",
+	"private": true,
+	"type": "module",
+	"sideEffects": false,
+	"bin": {
+		"gitlens-mcp-server": "./dist/server.js"
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -b",
+		"clean": "pnpx rimraf --glob dist out **/tsconfig*.tsbuildinfo",
+		"clean:all": "pnpm run clean && pnpm run clean:deps",
+		"clean:deps": "pnpx rimraf --glob **/node_modules",
+		"clean:lint": "pnpx rimraf --glob **/tsconfig*.tsbuildinfo",
+		"test": "pnpm run build && pnpm run test:mocha",
+		"test:mocha": "mocha --require tsx --ui tdd --timeout 30000 'src/**/__tests__/**/*.test.ts'"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "catalog:",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@types/mocha": "catalog:",
+		"mocha": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:"
+	}
+}

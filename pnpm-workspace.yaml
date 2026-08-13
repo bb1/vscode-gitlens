@@ -20,6 +20,7 @@ allowBuilds:
 blockExoticSubdeps: true
 
 catalog:
+    '@modelcontextprotocol/sdk': 1.30.0
     '@gitkraken/provider-apis': 0.50.0
     # The @octokit/* packages depend on each other; version them as a family so a lone bump can't
     # split them. @octokit/graphql wants `@octokit/request: ^10.0.6` — see the overrides entry.
@@ -50,6 +51,7 @@ catalog:
     typescript-6: npm:typescript@6.0.3
     vscode-uri: 3.1.0
     yaml: 2.9.0
+    zod: 4.4.3
 
 enableGlobalVirtualStore: true
 

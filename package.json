@@ -29826,7 +29826,7 @@
 		"build:webviews": "node ./scripts/build.mjs --build=webviews",
 		"build:webviews:quick": "node ./scripts/build.mjs --build=webviews --quick",
 		"build:icons": "pnpm run icons:svgo && pnpm fantasticon && pnpm run icons:apply && pnpm run icons:export",
-		"build:packages": "tsc -b packages/utils packages/ipc packages/git packages/git-cli packages/integrations packages/plus/git-github packages/plus/integrations packages/plus/ai packages/plus/agents",
+		"build:packages": "tsc -b packages/utils packages/ipc packages/git packages/git-cli packages/integrations packages/mcp-server packages/plus/git-github packages/plus/integrations packages/plus/ai packages/plus/agents",
 		"build:core": "pnpm run build:packages && pnpm --filter @gitkraken/core-gitlens run bundle",
 		"bundle": "node ./scripts/build.mjs --mode production",
 		"bundle:e2e": "node ./scripts/build.mjs --mode production --debug --quick",
@@ -29935,7 +29935,7 @@
 	"devDependencies": {
 		"@custom-elements-manifest/analyzer": "0.11.0",
 		"@e18e/eslint-plugin": "0.6.0",
-		"@modelcontextprotocol/sdk": "1.30.0",
+		"@modelcontextprotocol/sdk": "catalog:",
 		"@octokit/request-error": "catalog:",
 		"@oxlint/plugins": "1.78.0",
 		"@playwright/test": "1.62.1",
@@ -30007,7 +30007,7 @@
 		"webpack-node-externals": "3.0.0",
 		"webpack-require-from": "1.8.6",
 		"yaml": "catalog:",
-		"zod": "4.4.3"
+		"zod": "catalog:"
 	},
 	"lint-staged": {
 		"*.{ts,json,jsonc,md,scss,yaml}": "oxfmt --no-error-on-unmatched-pattern"
