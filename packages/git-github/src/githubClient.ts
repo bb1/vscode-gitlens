@@ -1,4 +1,18 @@
 import type { HostingRepositoryDescriptor } from '@gitlens/hosting-integrations/models.js';
+import type {
+	GitHubBlob,
+	GitHubBranch,
+	GitHubCommit,
+	GitHubComparison,
+	GitHubContent,
+	GitHubContentOptions,
+	GitHubContributor,
+	GitHubListCommitsOptions,
+	GitHubListOptions,
+	GitHubRef,
+	GitHubTag,
+	GitHubTree,
+} from './gitDataModels.js';
 
 export type GitHubRequest = {
 	method: 'GET' | 'POST';
@@ -43,6 +57,11 @@ export type CreateGitHubPullRequestInput = {
 const apiUrl = 'https://api.github.com';
 const apiVersion = '2022-11-28';
 const githubRequestErrorKind = 'gitlens.github-request-error';
+const githubResponseTooLargeErrorKind = 'gitlens.github-response-too-large-error';
+const maxPageSize = 100;
+const maxListResults = 1000;
+const maxTreeEntries = 100000;
+const maxContentBytes = 1024 * 1024;
 
 export class GitHubRequestError extends Error {
 	static is(error: unknown): error is GitHubRequestError {
@@ -58,6 +77,20 @@ export class GitHubRequestError extends Error {
 	constructor(readonly status: number) {
 		super('GitHub request failed');
 		Object.defineProperty(this, 'kind', { value: githubRequestErrorKind });
+	}
+}
+
+export class GitHubResponseTooLargeError extends Error {
+	static is(error: unknown): error is GitHubResponseTooLargeError {
+		return (
+			error instanceof GitHubResponseTooLargeError ||
+			(isRecord(error) && error.kind === githubResponseTooLargeErrorKind)
+		);
+	}
+
+	constructor() {
+		super('GitHub response exceeded configured limit');
+		Object.defineProperty(this, 'kind', { value: githubResponseTooLargeErrorKind });
 	}
 }
 
@@ -79,6 +112,192 @@ export class GitHubClient {
 		});
 
 		return getRepository(response.body);
+	}
+
+	async getDefaultBranch(repository: GitHubRepositoryReference): Promise<{ name: string }> {
+		const metadata = await this.getRepository(repository);
+		if (!isGitReference(metadata.defaultBranch)) {
+			throw new Error('GitHub response was invalid');
+		}
+
+		return { name: metadata.defaultBranch };
+	}
+
+	async listBranches(
+		repository: GitHubRepositoryReference,
+		options?: GitHubListOptions,
+	): Promise<readonly GitHubBranch[]> {
+		const repositoryUrl = this.repositoryUrl(repository);
+		return this.listPages(options?.limit, 'branch', async (perPage, page) => {
+			const response = await this.send({
+				method: 'GET',
+				url: `${repositoryUrl}/branches${getQuery({ per_page: perPage, page: page })}`,
+				headers: this.headers(),
+			});
+
+			return getBranches(response.body);
+		});
+	}
+
+	async getBranch(repository: GitHubRepositoryReference, name: string): Promise<GitHubBranch> {
+		if (!isGitReference(name)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/branches/${encodePathSegment(name)}`,
+			headers: this.headers(),
+		});
+
+		return getBranch(response.body);
+	}
+
+	async listCommits(
+		repository: GitHubRepositoryReference,
+		options?: GitHubListCommitsOptions,
+	): Promise<readonly GitHubCommit[]> {
+		if (options?.ref != null && !isGitReference(options.ref)) {
+			throw new Error('Invalid GitHub ref');
+		}
+		if (options?.path != null && !isGitContentPath(options.path)) {
+			throw new Error('Invalid GitHub content path');
+		}
+
+		const repositoryUrl = this.repositoryUrl(repository);
+		return this.listPages(options?.limit, 'commit', async (perPage, page) => {
+			const response = await this.send({
+				method: 'GET',
+				url: `${repositoryUrl}/commits${getQuery({
+					per_page: perPage,
+					page: page,
+					sha: options?.ref,
+					path: options?.path,
+				})}`,
+				headers: this.headers(),
+			});
+
+			return getCommits(response.body);
+		});
+	}
+
+	async getCommit(repository: GitHubRepositoryReference, ref: string): Promise<GitHubCommit> {
+		if (!isGitReference(ref)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/commits/${encodePathSegment(ref)}`,
+			headers: this.headers(),
+		});
+
+		return getCommit(response.body);
+	}
+
+	async compareCommits(repository: GitHubRepositoryReference, base: string, head: string): Promise<GitHubComparison> {
+		if (!isGitReference(base) || !isGitReference(head)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/compare/${encodePathSegment(base)}...${encodePathSegment(head)}`,
+			headers: this.headers(),
+		});
+
+		return getComparison(response.body);
+	}
+
+	async listRefs(repository: GitHubRepositoryReference, options?: GitHubListOptions): Promise<readonly GitHubRef[]> {
+		const repositoryUrl = this.repositoryUrl(repository);
+		return this.listPages(options?.limit, 'ref', async (perPage, page) => {
+			const response = await this.send({
+				method: 'GET',
+				url: `${repositoryUrl}/git/matching-refs/${getQuery({ per_page: perPage, page: page })}`,
+				headers: this.headers(),
+			});
+
+			return getRefs(response.body);
+		});
+	}
+
+	async listTags(repository: GitHubRepositoryReference, options?: GitHubListOptions): Promise<readonly GitHubTag[]> {
+		const repositoryUrl = this.repositoryUrl(repository);
+		return this.listPages(options?.limit, 'tag', async (perPage, page) => {
+			const response = await this.send({
+				method: 'GET',
+				url: `${repositoryUrl}/tags${getQuery({ per_page: perPage, page: page })}`,
+				headers: this.headers(),
+			});
+
+			return getTags(response.body);
+		});
+	}
+
+	async getTree(repository: GitHubRepositoryReference, ref: string): Promise<GitHubTree> {
+		if (!isGitReference(ref)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/git/trees/${encodePathSegment(ref)}?recursive=1`,
+			headers: this.headers(),
+		});
+
+		return getTree(response.body);
+	}
+
+	async getBlob(repository: GitHubRepositoryReference, sha: string): Promise<GitHubBlob> {
+		if (!isGitObjectId(sha)) {
+			throw new Error('Invalid GitHub object id');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/git/blobs/${encodePathSegment(sha)}`,
+			headers: this.headers(),
+		});
+
+		return getBlob(response.body);
+	}
+
+	async getContent(
+		repository: GitHubRepositoryReference,
+		path: string,
+		options?: GitHubContentOptions,
+	): Promise<GitHubContent> {
+		if (!isGitContentPath(path)) {
+			throw new Error('Invalid GitHub content path');
+		}
+		if (options?.ref != null && !isGitReference(options.ref)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/contents/${encodeGitContentPath(path)}${getQuery({ ref: options?.ref })}`,
+			headers: this.headers(),
+		});
+
+		return getContent(response.body);
+	}
+
+	async listContributors(
+		repository: GitHubRepositoryReference,
+		options?: GitHubListOptions,
+	): Promise<readonly GitHubContributor[]> {
+		const repositoryUrl = this.repositoryUrl(repository);
+		return this.listPages(options?.limit, 'contributor', async (perPage, page) => {
+			const response = await this.send({
+				method: 'GET',
+				url: `${repositoryUrl}/contributors${getQuery({ per_page: perPage, page: page })}`,
+				headers: this.headers(),
+			});
+
+			return getContributors(response.body);
+		});
 	}
 
 	async getPullRequests(repository: GitHubRepositoryReference, perPage = 100): Promise<readonly GitHubPullRequest[]> {
@@ -122,6 +341,32 @@ export class GitHubClient {
 		validateRepository(repository);
 
 		return `${getApiUrl(repository.domain)}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+	}
+
+	private async listPages<T>(
+		limit: number | undefined,
+		label: string,
+		getPage: (perPage: number, page: number) => Promise<readonly T[]>,
+	): Promise<readonly T[]> {
+		const resultLimit = getResultLimit(limit, label);
+		const values: T[] = [];
+		let page = 1;
+		while (values.length < resultLimit) {
+			const perPage = Math.min(maxPageSize, resultLimit - values.length);
+			const valuesPage = await getPage(perPage, page);
+			if (valuesPage.length > perPage) {
+				throw new Error('GitHub response was invalid');
+			}
+
+			values.push(...valuesPage);
+			if (valuesPage.length < perPage) {
+				break;
+			}
+
+			page++;
+		}
+
+		return values;
 	}
 
 	private async send(request: GitHubRequest): Promise<GitHubResponse> {
@@ -201,12 +446,12 @@ function validatePullRequestInput(input: CreateGitHubPullRequestInput): CreateGi
 	return input;
 }
 
-function isGitHubOwner(value: string): boolean {
-	return /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(value) && !value.endsWith('-');
+function isGitHubOwner(value: unknown): value is string {
+	return typeof value === 'string' && /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(value) && !value.endsWith('-');
 }
 
-function isGitHubRepositoryName(value: string): boolean {
-	return /^[A-Za-z0-9_.-]{1,100}$/.test(value) && !value.endsWith('.');
+function isGitHubRepositoryName(value: unknown): value is string {
+	return typeof value === 'string' && /^[A-Za-z0-9_.-]{1,100}$/.test(value) && !value.endsWith('.');
 }
 
 function isGitHubHead(value: string): boolean {
@@ -222,15 +467,63 @@ function isGitHubHead(value: string): boolean {
 	);
 }
 
-function isGitReference(value: string): boolean {
+function isGitReference(value: unknown): value is string {
 	return (
+		typeof value === 'string' &&
 		/^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value) &&
 		!value.endsWith('.') &&
+		!value.endsWith('.lock') &&
 		!value.endsWith('/') &&
 		!value.includes('..') &&
 		!value.includes('//') &&
 		!value.includes('/.')
 	);
+}
+
+function isGitContentPath(value: unknown): value is string {
+	return (
+		typeof value === 'string' &&
+		value.length > 0 &&
+		!value.startsWith('/') &&
+		!value.endsWith('/') &&
+		!value.includes('\\') &&
+		!hasControlCharacter(value) &&
+		value.split('/').every(segment => segment.length > 0 && segment !== '.' && segment !== '..')
+	);
+}
+
+function isGitObjectId(value: unknown): value is string {
+	return typeof value === 'string' && /^[0-9a-f]{40}(?:[0-9a-f]{24})?$/i.test(value);
+}
+
+function encodePathSegment(value: string): string {
+	return encodeURIComponent(value);
+}
+
+function encodeGitContentPath(path: string): string {
+	return path.split('/').map(encodePathSegment).join('/');
+}
+
+function getQuery(values: Readonly<Record<string, string | number | undefined>>): string {
+	const parts: string[] = [];
+	for (const [key, value] of Object.entries(values)) {
+		if (value != null) {
+			parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+		}
+	}
+
+	return parts.length === 0 ? '' : `?${parts.join('&')}`;
+}
+
+function getResultLimit(limit: number | undefined, label: string): number {
+	if (limit == null) {
+		return maxListResults;
+	}
+	if (!Number.isSafeInteger(limit) || limit < 1) {
+		throw new Error(`Invalid GitHub ${label} result limit`);
+	}
+
+	return Math.min(limit, maxListResults);
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -242,6 +535,372 @@ function hasControlCharacter(value: string): boolean {
 	}
 
 	return false;
+}
+
+function getBranches(value: unknown): readonly GitHubBranch[] {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getBranch);
+}
+
+function getBranch(value: unknown): GitHubBranch {
+	if (!isRecord(value) || !isRecord(value.commit)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (typeof value.name !== 'string' || !isGitReference(value.name) || !isGitObjectId(value.commit.sha)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (typeof value.protected !== 'boolean') {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { name: value.name, sha: value.commit.sha, isProtected: value.protected };
+}
+
+function getCommits(value: unknown): readonly GitHubCommit[] {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getCommit);
+}
+
+function getCommit(value: unknown): GitHubCommit {
+	if (!isRecord(value) || !isRecord(value.commit) || !Array.isArray(value.parents)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (typeof value.sha !== 'string' || !isGitObjectId(value.sha) || typeof value.html_url !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+	if (typeof value.commit.message !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const author = getCommitSignature(value.commit.author);
+	const committer = getCommitSignature(value.commit.committer);
+	const parents = value.parents.map(getCommitParent);
+	const stats = value.stats == null ? undefined : getCommitStats(value.stats);
+	const files = value.files == null ? undefined : getCommitFiles(value.files);
+	return {
+		sha: value.sha,
+		url: value.html_url,
+		message: value.commit.message,
+		author: author,
+		committer: committer,
+		parents: parents,
+		additions: stats?.additions,
+		deletions: stats?.deletions,
+		changes: stats?.changes,
+		files: files,
+	};
+}
+
+function getCommitSignature(value: unknown): { name: string; email: string; date: string } {
+	if (
+		!isRecord(value) ||
+		typeof value.name !== 'string' ||
+		typeof value.email !== 'string' ||
+		typeof value.date !== 'string'
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { name: value.name, email: value.email, date: value.date };
+}
+
+function getCommitParent(value: unknown): string {
+	if (!isRecord(value) || !isGitObjectId(value.sha)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.sha;
+}
+
+function getCommitStats(value: unknown): { additions: number; deletions: number; changes: number } {
+	if (!isRecord(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (!isCount(value.additions) || !isCount(value.deletions) || !isCount(value.total)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { additions: value.additions, deletions: value.deletions, changes: value.total };
+}
+
+function getCommitFiles(value: unknown): NonNullable<GitHubCommit['files']> {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getCommitFile);
+}
+
+function getCommitFile(value: unknown): NonNullable<GitHubCommit['files']>[number] {
+	if (!isRecord(value) || typeof value.filename !== 'string' || !isGitContentPath(value.filename)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		!isCommitFileStatus(value.status) ||
+		!isCount(value.additions) ||
+		!isCount(value.deletions) ||
+		!isCount(value.changes)
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		value.previous_filename != null &&
+		(typeof value.previous_filename !== 'string' || !isGitContentPath(value.previous_filename))
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (value.patch != null && typeof value.patch !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return {
+		path: value.filename,
+		...(value.previous_filename == null ? undefined : { previousPath: value.previous_filename }),
+		status: value.status,
+		additions: value.additions,
+		deletions: value.deletions,
+		changes: value.changes,
+		...(value.patch == null ? undefined : { patch: value.patch }),
+	};
+}
+
+function isCommitFileStatus(value: unknown): value is NonNullable<GitHubCommit['files']>[number]['status'] {
+	return (
+		value === 'added' ||
+		value === 'changed' ||
+		value === 'copied' ||
+		value === 'modified' ||
+		value === 'removed' ||
+		value === 'renamed' ||
+		value === 'unchanged'
+	);
+}
+
+function isCount(value: unknown): value is number {
+	return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function getComparison(value: unknown): GitHubComparison {
+	if (!isRecord(value) || !isComparisonStatus(value.status)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		!isCount(value.ahead_by) ||
+		!isCount(value.behind_by) ||
+		!isCount(value.total_commits) ||
+		!Array.isArray(value.commits)
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		value.merge_base_commit != null &&
+		(!isRecord(value.merge_base_commit) || !isGitObjectId(value.merge_base_commit.sha))
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const mergeBaseSha =
+		value.merge_base_commit != null &&
+		isRecord(value.merge_base_commit) &&
+		isGitObjectId(value.merge_base_commit.sha)
+			? value.merge_base_commit.sha
+			: undefined;
+
+	return {
+		status: value.status,
+		aheadBy: value.ahead_by,
+		behindBy: value.behind_by,
+		totalCommits: value.total_commits,
+		...(mergeBaseSha == null ? undefined : { mergeBaseSha: mergeBaseSha }),
+		commits: value.commits.map(getCommit),
+		files: value.files == null ? [] : getCommitFiles(value.files),
+	};
+}
+
+function isComparisonStatus(value: unknown): value is GitHubComparison['status'] {
+	return value === 'ahead' || value === 'behind' || value === 'diverged' || value === 'identical';
+}
+
+function getRefs(value: unknown): readonly GitHubRef[] {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getRef);
+}
+
+function getRef(value: unknown): GitHubRef {
+	if (
+		!isRecord(value) ||
+		!isRecord(value.object) ||
+		typeof value.ref !== 'string' ||
+		!value.ref.startsWith('refs/')
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const name = value.ref.slice('refs/'.length);
+	if (!isGitReference(name) || !isGitObjectId(value.object.sha) || !isGitObjectType(value.object.type)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { name: name, sha: value.object.sha, type: value.object.type };
+}
+
+function isGitObjectType(value: unknown): value is GitHubRef['type'] {
+	return value === 'blob' || value === 'commit' || value === 'tag' || value === 'tree';
+}
+
+function getTags(value: unknown): readonly GitHubTag[] {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getTag);
+}
+
+function getTag(value: unknown): GitHubTag {
+	if (!isRecord(value) || !isRecord(value.commit) || typeof value.name !== 'string' || !isGitReference(value.name)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (!isGitObjectId(value.commit.sha)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { name: value.name, sha: value.commit.sha };
+}
+
+function getTree(value: unknown): GitHubTree {
+	if (
+		!isRecord(value) ||
+		!isGitObjectId(value.sha) ||
+		typeof value.truncated !== 'boolean' ||
+		!Array.isArray(value.tree)
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	if (value.truncated || value.tree.length > maxTreeEntries) {
+		throw new GitHubResponseTooLargeError();
+	}
+
+	return { sha: value.sha, entries: value.tree.map(getTreeEntry) };
+}
+
+function getTreeEntry(value: unknown): GitHubTree['entries'][number] {
+	if (!isRecord(value) || typeof value.path !== 'string' || !isGitContentPath(value.path)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		typeof value.mode !== 'string' ||
+		!/^[0-7]{6}$/.test(value.mode) ||
+		!isGitTreeEntryType(value.type) ||
+		!isGitObjectId(value.sha)
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const size = value.size ?? undefined;
+	if (size != null && !isCount(size)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return {
+		path: value.path,
+		mode: value.mode,
+		type: value.type,
+		sha: value.sha,
+		...(size == null ? undefined : { size: size }),
+	};
+}
+
+function isGitTreeEntryType(value: unknown): value is GitHubTree['entries'][number]['type'] {
+	return value === 'blob' || value === 'commit' || value === 'tree';
+}
+
+function getBlob(value: unknown): GitHubBlob {
+	if (!isRecord(value) || !isGitObjectId(value.sha)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { sha: value.sha, bytes: getEncodedContent(value) };
+}
+
+function getContent(value: unknown): GitHubContent {
+	if (!isRecord(value) || value.type !== 'file' || typeof value.path !== 'string' || !isGitContentPath(value.path)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (!isGitObjectId(value.sha)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { path: value.path, sha: value.sha, bytes: getEncodedContent(value) };
+}
+
+function getEncodedContent(value: Record<string, unknown>): Uint8Array {
+	if (!isCount(value.size) || value.size > maxContentBytes) {
+		throw new GitHubResponseTooLargeError();
+	}
+	if (value.encoding !== 'base64' || typeof value.content !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const content = value.content.replace(/[\r\n]/g, '');
+	if (!isBase64(content)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	try {
+		const decoded = atob(content);
+		const bytes = Uint8Array.from(decoded, character => character.charCodeAt(0));
+		if (bytes.byteLength !== value.size || bytes.byteLength > maxContentBytes) {
+			throw new Error('GitHub response was invalid');
+		}
+
+		return bytes;
+	} catch {
+		throw new Error('GitHub response was invalid');
+	}
+}
+
+function isBase64(value: string): boolean {
+	return /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(value);
+}
+
+function getContributors(value: unknown): readonly GitHubContributor[] {
+	if (!Array.isArray(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return value.map(getContributor);
+}
+
+function getContributor(value: unknown): GitHubContributor {
+	if (!isRecord(value) || !isCount(value.contributions)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (value.login != null && typeof value.login !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+	if (value.avatar_url != null && typeof value.avatar_url !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+	if (value.html_url != null && typeof value.html_url !== 'string') {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return {
+		login: value.login ?? undefined,
+		avatarUrl: value.avatar_url ?? undefined,
+		url: value.html_url ?? undefined,
+		contributions: value.contributions,
+	};
 }
 
 function getRepository(value: unknown): GitHubRepository {
