@@ -195,6 +195,17 @@ assertIncludes(readText('docs/links.md'), `vscode://${extensionId}/link`, 'deep-
 assertIncludes(readText('tests/e2e/baseTest.ts'), `'${extensionId}'`, 'E2E extension selector');
 assertIncludes(readText('tests/e2e/pageObjects/gitLensPage.ts'), `extensionId=${extensionId}`, 'E2E webview selector');
 assertIncludes(readText('tests/e2e/helpers/mcpHelper.ts'), `'${extensionId}'`, 'E2E global storage fixture');
+assertIncludes(
+	readText('src/constants.ts'),
+	'https://github.com/bb1/vscode-gitlens/issues/new/choose',
+	'GitHub issue URL',
+);
+assertIncludes(
+	readText('src/constants.ts'),
+	'https://github.com/bb1/vscode-gitlens/discussions/',
+	'GitHub discussion URL',
+);
+assertExcludes(readText('src/constants.ts'), 'https://github.com/gitkraken/vscode-gitlens', 'GitHub support URLs');
 
 if (errors.length) {
 	console.error(`Identity verification failed:\n\n${errors.map(error => `- ${error}`).join('\n')}`);

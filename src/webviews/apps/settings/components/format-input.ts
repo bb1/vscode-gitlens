@@ -47,7 +47,7 @@ type TokenMode = 'commit' | 'hover' | 'file' | 'date';
 /** The mutually-exclusive width modifier flag — the grammar accepts ONE flag after the width, never both. */
 type WidthFlag = '' | '?' | '-';
 
-const commitDocsUrl = 'https://github.com/gitkraken/vscode-gitlens/wiki/Custom-Formatting';
+const commitDocsUrl = 'https://github.com/bb1/vscode-gitlens/wiki/Custom-Formatting';
 const dateDocsUrl = 'https://momentjs.com/docs/#/displaying/format/';
 
 /** Matches an unclosed `${` immediately before the caret, capturing the partial token being typed. */

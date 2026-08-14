@@ -269,7 +269,7 @@ export class GlSettingsApp extends SignalWatcherWebviewApp {
 							s.version.get()
 								? html`<a
 										class="header__version"
-										href="https://github.com/gitkraken/vscode-gitlens/blob/main/CHANGELOG.md"
+										href="https://github.com/bb1/vscode-gitlens/blob/main/CHANGELOG.md"
 										aria-label="GitLens ${s.version.get()} — open the CHANGELOG"
 										title="Open the CHANGELOG"
 										>v${s.version.get()}</a

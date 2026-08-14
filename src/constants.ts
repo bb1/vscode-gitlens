@@ -138,8 +138,8 @@ export const urls = Object.freeze({
 	browserExtension: `https://gitkraken.com/browser-extension?${utm}`,
 	desktop: `https://gitkraken.com/git-client?${utm}`,
 
-	githubNewIssue: `https://github.com/gitkraken/vscode-gitlens/issues/new/choose?${utm}`,
-	githubDiscussions: `https://github.com/gitkraken/vscode-gitlens/discussions/?${utm}`,
+	githubNewIssue: `https://github.com/bb1/vscode-gitlens/issues/new/choose?${utm}`,
+	githubDiscussions: `https://github.com/bb1/vscode-gitlens/discussions/?${utm}`,
 	helpCenter: `https://help.gitkraken.com/gitlens/gitlens-start-here/?${utm}`,
 	helpCenterHome: `https://help.gitkraken.com/gitlens/home-view/?${utm}`,
 	helpCenterMCP: `https://help.gitkraken.com/mcp/mcp-getting-started/?${utm}`,

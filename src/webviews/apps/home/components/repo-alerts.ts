@@ -97,7 +97,7 @@ export class GlRepoAlerts extends SignalWatcher(LitElement) {
 							</p>
 							<p class="mb-0">
 								If you have opened a folder with a repository, please let us know by
-								<a class="one-line" href="https://github.com/gitkraken/vscode-gitlens/issues/new/choose"
+								<a class="one-line" href="https://github.com/bb1/vscode-gitlens/issues/new/choose"
 									>creating an Issue</a
 								>.
 							</p>

@@ -9,7 +9,7 @@
 	},
 	"homepage": "https://github.com/gitkraken/vscode-gitlens/tree/main/packages/core",
 	"bugs": {
-		"url": "https://github.com/gitkraken/vscode-gitlens/issues"
+		"url": "https://github.com/bb1/vscode-gitlens/issues"
 	},
 	"repository": {
 		"type": "git",
