@@ -38,10 +38,13 @@ import { Storage } from './system/-webview/storage.js';
 import { deviceCohortGroup, getExtensionModeLabel } from './system/-webview/vscode.js';
 import { isTextDocument } from './system/-webview/vscode/documents.js';
 import { isTextEditor } from './system/-webview/vscode/editors.js';
+import { setUrlOpeningExtensionMode } from './system/-webview/vscode/uris.js';
 import { isWorkspaceFolder } from './system/-webview/vscode/workspaces.js';
 import './commands.js';
 
 export async function activate(context: ExtensionContext): Promise<GitLensApi | undefined> {
+	setUrlOpeningExtensionMode(context.extensionMode);
+
 	const gitlensVersion: string = context.extension.packageJSON.version;
 	const prerelease = satisfies(gitlensVersion, '> 2020.0.0');
 

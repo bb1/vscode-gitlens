@@ -59,6 +59,21 @@ export class BitbucketHostingProvider implements HostingProvider {
 		});
 	}
 
+	async getPullRequestForCommit(
+		repository: HostingRepositoryDescriptor,
+		commit: string,
+	): Promise<HostingResult<HostingPullRequest | undefined>> {
+		return this.withAuthentication(async () => {
+			const response = await sendRequest(providerName, this.request, {
+				method: 'GET',
+				url: `${this.repositoryUrl(repository)}/commit/${encodeURIComponent(validateCommit(commit))}/pullrequests`,
+				headers: this.headers(),
+			});
+
+			return getPullRequests(response.body)[0];
+		});
+	}
+
 	async createPullRequest(
 		repository: HostingRepositoryDescriptor,
 		input: CreatePullRequestInput,
@@ -113,6 +128,14 @@ export class BitbucketHostingProvider implements HostingProvider {
 
 function isBitbucketName(value: unknown): value is string {
 	return typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,61}$/.test(value);
+}
+
+function validateCommit(value: string): string {
+	if (!/^[0-9a-f]{7,64}$/i.test(value)) {
+		throw new Error('Invalid Bitbucket commit');
+	}
+
+	return value;
 }
 
 function getPullRequests(value: unknown): readonly HostingPullRequest[] {

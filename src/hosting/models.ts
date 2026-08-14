@@ -9,8 +9,10 @@ export type HostingSession = {
 export type HostingAuthenticationMode = { silent: true } | { interactive: true };
 
 export type HostingAuthenticationService = {
+	deleteSession(provider: HostingProviderId, domain: string): Promise<void>;
 	getSession(
 		provider: HostingProviderId,
+		domain: string,
 		scopes: readonly string[],
 		mode: HostingAuthenticationMode,
 	): Promise<HostingSession | undefined>;

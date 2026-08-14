@@ -31,7 +31,7 @@ import type { OverviewRecentThreshold } from './webviews/shared/overviewBranches
 export type SecretKeys =
 	| IntegrationAuthenticationKeys
 	| `gitlens.${AIProviders}.key`
-	| `gitlens.hosting.auth:${HostingProviderId}`
+	| `gitlens.hosting.auth:${HostingProviderId}:${string}`
 	| `gitlens.plus.auth:${Environment}`
 	| 'deepLinks:pending';
 

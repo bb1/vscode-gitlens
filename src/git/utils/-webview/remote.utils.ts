@@ -20,6 +20,39 @@ import { openUrl } from '../../../system/-webview/vscode/uris.js';
 import type { GlRepository } from '../../models/repository.js';
 import { describePullRequestWithAI } from './pullRequest.utils.js';
 
+export function getHostingProviderDescriptor(provider: RemoteProvider):
+	| {
+			id: 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps';
+			repository: { domain: string; owner: string; name: string; project?: string };
+	  }
+	| undefined {
+	const owner = provider.owner;
+	const name = provider.repoName;
+	if (owner == null || name == null) return undefined;
+
+	switch (provider.id) {
+		case 'github':
+			return { id: 'github', repository: { domain: provider.domain, owner: owner, name: name } };
+		case 'gitlab':
+			return { id: 'gitlab', repository: { domain: provider.domain, owner: owner, name: name } };
+		case 'bitbucket':
+			return { id: 'bitbucket', repository: { domain: provider.domain, owner: owner, name: name } };
+		case 'azure-devops': {
+			const segments = provider.path.split('/');
+			const project = segments.at(-3);
+			const repositoryName = segments.at(-1);
+			if (project == null || project === '_git' || repositoryName == null) return undefined;
+
+			return {
+				id: 'azureDevOps',
+				repository: { domain: provider.domain, owner: owner, project: project, name: repositoryName },
+			};
+		}
+		default:
+			return undefined;
+	}
+}
+
 export interface LocalInfoFromRemoteUriResult {
 	uri: Uri;
 

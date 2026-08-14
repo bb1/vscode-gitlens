@@ -79,6 +79,45 @@ suite('BitbucketHostingProvider', () => {
 		});
 	});
 
+	test('gets the pull request associated with a commit', async () => {
+		let request: unknown;
+		const provider = new BitbucketHostingProvider('secret-bitbucket-token', async value => {
+			request = value;
+			return {
+				status: 200,
+				body: {
+					values: [
+						{
+							id: 7,
+							title: 'Fix provider wiring',
+							state: 'OPEN',
+							links: { html: { href: 'https://bitbucket.org/team/gitlens/pull-requests/7' } },
+						},
+					],
+				},
+			};
+		});
+
+		assert.deepEqual(
+			await provider.getPullRequestForCommit(
+				{ owner: 'team', name: 'gitlens', domain: 'bitbucket.org' },
+				'abcdef1',
+			),
+			{
+				id: '7',
+				number: 7,
+				title: 'Fix provider wiring',
+				url: 'https://bitbucket.org/team/gitlens/pull-requests/7',
+				state: 'open',
+			},
+		);
+		assert.deepEqual(request, {
+			method: 'GET',
+			url: 'https://api.bitbucket.org/2.0/repositories/team/gitlens/commit/abcdef1/pullrequests',
+			headers: { Accept: 'application/json', Authorization: 'Bearer secret-bitbucket-token' },
+		});
+	});
+
 	test('gets the authenticated account and avatar URL', async () => {
 		const provider = new BitbucketHostingProvider('secret-bitbucket-token', async () => ({
 			status: 200,

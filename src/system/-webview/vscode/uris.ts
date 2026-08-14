@@ -1,6 +1,12 @@
 import type { Uri } from 'vscode';
-import { env, workspace } from 'vscode';
+import { env, ExtensionMode, workspace } from 'vscode';
 import { Schemes, trackableSchemes } from '../../../constants.js';
+
+let isExtensionTest = false;
+
+export function setUrlOpeningExtensionMode(mode: ExtensionMode): void {
+	isExtensionTest = mode === ExtensionMode.Test;
+}
 
 export async function exists(uri: Uri): Promise<boolean> {
 	try {
@@ -15,6 +21,7 @@ export async function openUrl(url: string): Promise<boolean>;
 export async function openUrl(url?: string): Promise<boolean | undefined>;
 export async function openUrl(url?: string): Promise<boolean | undefined> {
 	if (url == null) return undefined;
+	if (isExtensionTest) return false;
 
 	// Pass a string to openExternal to avoid double encoding issues: https://github.com/microsoft/vscode/issues/85930
 	// vscode.d.ts currently says it only supports a Uri, but it actually accepts a string too

@@ -89,6 +89,47 @@ suite('AzureDevOpsHostingProvider', () => {
 		});
 	});
 
+	test('gets the pull request associated with a commit using the configured Azure domain', async () => {
+		const requests: HostingRequest[] = [];
+		const provider = new AzureDevOpsHostingProvider('secret-azure-token', async value => {
+			requests.push(value);
+			return requests.length === 1
+				? { status: 200, body: { results: [{ abcdef1: [{ pullRequestId: 7 }] }] } }
+				: {
+						status: 200,
+						body: {
+							pullRequestId: 7,
+							title: 'Fix provider wiring',
+							status: 'active',
+							_links: { web: { href: 'https://dev.azure.com/team/project/_git/gitlens/pullrequest/7' } },
+						},
+					};
+		});
+
+		assert.deepEqual(
+			await provider.getPullRequestForCommit(
+				{ owner: 'team', project: 'project', name: 'gitlens', domain: 'dev.azure.com' },
+				'abcdef1',
+			),
+			{
+				id: '7',
+				number: 7,
+				title: 'Fix provider wiring',
+				url: 'https://dev.azure.com/team/project/_git/gitlens/pullrequest/7',
+				state: 'open',
+			},
+		);
+		assert.equal(
+			requests[0]?.url,
+			'https://dev.azure.com/team/project/_apis/git/repositories/gitlens/pullrequestquery?api-version=7.1',
+		);
+		assert.deepEqual(JSON.parse(requests[0]?.body ?? ''), { queries: [{ items: ['abcdef1'], type: 'commit' }] });
+		assert.equal(
+			requests[1]?.url,
+			'https://dev.azure.com/team/project/_apis/git/repositories/gitlens/pullrequests/7?api-version=7.1',
+		);
+	});
+
 	test('gets the authenticated account and avatar URL from connection data', async () => {
 		const provider = new AzureDevOpsHostingProvider('secret-azure-token', async () => ({
 			status: 200,

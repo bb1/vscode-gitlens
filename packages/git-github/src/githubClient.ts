@@ -1,4 +1,4 @@
-import type { HostingRepositoryDescriptor } from '@gitlens/hosting-integrations/models.js';
+import type { HostingAccount, HostingRepositoryDescriptor } from '@gitlens/hosting-integrations/models.js';
 
 export type GitHubRequest = {
 	method: 'GET' | 'POST';
@@ -43,6 +43,7 @@ export type CreateGitHubPullRequestInput = {
 const apiUrl = 'https://api.github.com';
 const apiVersion = '2022-11-28';
 const githubRequestErrorKind = 'gitlens.github-request-error';
+const defaultDomain = 'github.com';
 
 export class GitHubRequestError extends Error {
 	static is(error: unknown): error is GitHubRequestError {
@@ -62,13 +63,18 @@ export class GitHubRequestError extends Error {
 }
 
 export class GitHubClient {
+	private readonly domain: string | undefined;
+
 	constructor(
 		private readonly accessToken: string,
 		private readonly request: GitHubRequestTransport,
+		domain?: string,
 	) {
 		if (typeof accessToken !== 'string' || accessToken.trim().length === 0) {
 			throw new Error('Invalid GitHub access token');
 		}
+
+		this.domain = domain == null ? undefined : normalizeDomain(domain);
 	}
 
 	async getRepository(repository: GitHubRepositoryReference): Promise<GitHubRepository> {
@@ -79,6 +85,16 @@ export class GitHubClient {
 		});
 
 		return getRepository(response.body);
+	}
+
+	async getAccount(): Promise<HostingAccount> {
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.apiUrl(defaultDomain)}/user`,
+			headers: this.headers(),
+		});
+
+		return getAccount(response.body);
 	}
 
 	async getPullRequests(repository: GitHubRepositoryReference, perPage = 100): Promise<readonly GitHubPullRequest[]> {
@@ -93,6 +109,23 @@ export class GitHubClient {
 		});
 
 		return getPullRequests(response.body);
+	}
+
+	async getPullRequestForCommit(
+		repository: GitHubRepositoryReference,
+		commit: string,
+	): Promise<GitHubPullRequest | undefined> {
+		if (!isGitReference(commit)) {
+			throw new Error('Invalid GitHub commit');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/commits/${encodeURIComponent(commit)}/pulls`,
+			headers: this.headers(),
+		});
+
+		return getPullRequests(response.body)[0];
 	}
 
 	async createPullRequest(
@@ -121,7 +154,16 @@ export class GitHubClient {
 	private repositoryUrl(repository: GitHubRepositoryReference): string {
 		validateRepository(repository);
 
-		return `${getApiUrl(repository.domain)}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+		const domain = normalizeDomain(repository.domain);
+		if (this.domain != null && domain !== this.domain) {
+			throw new Error('Invalid GitHub repository domain');
+		}
+
+		return `${this.apiUrl(domain)}/repos/${encodeURIComponent(repository.owner)}/${encodeURIComponent(repository.name)}`;
+	}
+
+	private apiUrl(domain: string): string {
+		return getApiUrl(this.domain ?? domain);
 	}
 
 	private async send(request: GitHubRequest): Promise<GitHubResponse> {
@@ -270,6 +312,19 @@ function getRepository(value: unknown): GitHubRepository {
 	};
 }
 
+function getAccount(value: unknown): HostingAccount {
+	if (!isRecord(value)) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const avatarUrl = getSafeUrl(value.avatar_url);
+	if (typeof value.id !== 'number' || typeof value.login !== 'string' || value.login.length === 0) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return { id: String(value.id), label: value.login, ...(avatarUrl == null ? {} : { avatarUrl: avatarUrl }) };
+}
+
 function getPullRequests(value: unknown): readonly GitHubPullRequest[] {
 	if (!Array.isArray(value)) {
 		throw new Error('GitHub response was invalid');
@@ -305,4 +360,19 @@ function getPullRequest(value: unknown): GitHubPullRequest {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value != null;
+}
+
+function getSafeUrl(value: unknown): string | undefined {
+	if (typeof value !== 'string') return undefined;
+
+	try {
+		const url = new URL(value);
+		if (url.protocol !== 'https:' || url.username.length !== 0 || url.password.length !== 0) {
+			return undefined;
+		}
+
+		return url.toString();
+	} catch {
+		return undefined;
+	}
 }
