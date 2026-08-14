@@ -307,7 +307,154 @@ suite('GitHubClient read primitives', () => {
 			return true;
 		});
 	});
+
+	test('continues commit file pages before returning commit details', async () => {
+		const requests: GitHubRequest[] = [];
+		const client = new GitHubClient('secret-token', async request => {
+			requests.push(request);
+			if (request.url.endsWith('page=2')) {
+				return {
+					status: 200,
+					body: {
+						...commit('a'),
+						stats: { additions: 2, deletions: 0, total: 2 },
+						files: [commitFile('src/second.ts')],
+					},
+				};
+			}
+
+			return {
+				status: 200,
+				headers: {
+					link: '<https://api.github.com/repos/octo-cat/gitlens/commits/a?page=2>; rel="next"',
+				},
+				body: {
+					...commit('a'),
+					stats: { additions: 2, deletions: 0, total: 2 },
+					files: [commitFile('src/first.ts')],
+				},
+			};
+		});
+
+		const result = await client.getCommit(repository, 'a'.repeat(40));
+
+		assert.deepEqual(
+			result.files?.map(file => file.path),
+			['src/first.ts', 'src/second.ts'],
+		);
+		assert.deepEqual(
+			requests.map(request => request.url),
+			[
+				`https://api.github.com/repos/octo-cat/gitlens/commits/${'a'.repeat(40)}`,
+				'https://api.github.com/repos/octo-cat/gitlens/commits/a?page=2',
+			],
+		);
+	});
+
+	test('resolves annotated tag objects to their tagged commit', async () => {
+		const client = new GitHubClient('secret-token', async request => ({
+			status: 200,
+			body: {
+				tag: 'v1.0.0',
+				sha: 'a'.repeat(40),
+				message: 'Release v1.0.0',
+				tagger: { name: 'Octo Cat', email: 'octo@example.com', date: '2026-08-14T00:00:00Z' },
+				object: { sha: 'b'.repeat(40), type: 'commit' },
+			},
+		}));
+
+		const result = await client.getAnnotatedTag(repository, 'a'.repeat(40));
+
+		assert.equal(result.targetSha, 'b'.repeat(40));
+		assert.deepEqual(result.tagger, { name: 'Octo Cat', email: 'octo@example.com', date: '2026-08-14T00:00:00Z' });
+	});
+
+	test('rejects a comparison whose file list reaches GitHubs completeness ceiling', async () => {
+		const client = new GitHubClient('secret-token', async () => ({
+			status: 200,
+			body: {
+				status: 'ahead',
+				ahead_by: 1,
+				behind_by: 0,
+				total_commits: 1,
+				commits: [commit('a')],
+				files: Array.from({ length: 300 }, (_, index) => commitFile(`src/${index}.ts`)),
+			},
+		}));
+
+		await assert.rejects(
+			client.compareCommits(repository, 'main', 'feature/read-api'),
+			GitHubResponseTooLargeError,
+		);
+	});
+
+	test('returns a numbered continuation for a full branch page', async () => {
+		const client = new GitHubClient('secret-token', async request => ({
+			status: 200,
+			body:
+				new URL(request.url).searchParams.get('page') === '2'
+					? []
+					: [{ name: 'main', protected: false, commit: { sha: 'a'.repeat(40) } }],
+		}));
+
+		const result = await client.listBranchesPage(repository, { limit: 1, page: 1 });
+
+		assert.deepEqual(result, { values: [{ name: 'main', sha: 'a'.repeat(40), isProtected: false }], nextPage: 2 });
+	});
+
+	test('rejects incomplete commit detail and comparison file responses', async () => {
+		const client = new GitHubClient('secret-token', async request => ({
+			status: 200,
+			body: request.url.includes('/compare/')
+				? { status: 'identical', ahead_by: 0, behind_by: 0, total_commits: 0, commits: [] }
+				: commit('a'),
+		}));
+
+		await assert.rejects(client.getCommit(repository, 'a'.repeat(40)), /GitHub response was invalid/);
+		await assert.rejects(
+			client.compareCommits(repository, 'main', 'feature/read-api'),
+			/GitHub response was invalid/,
+		);
+	});
+
+	test('rejects a comparison that omits commits from the reported total', async () => {
+		const client = new GitHubClient('secret-token', async () => ({
+			status: 200,
+			body: {
+				status: 'ahead',
+				ahead_by: 2,
+				behind_by: 0,
+				total_commits: 2,
+				commits: [commit('a')],
+				files: [],
+			},
+		}));
+
+		await assert.rejects(
+			client.compareCommits(repository, 'main', 'feature/read-api'),
+			GitHubResponseTooLargeError,
+		);
+	});
+
+	test('rejects an untrusted commit-file continuation before sending the token', async () => {
+		let requests = 0;
+		const client = new GitHubClient('secret-token', async () => {
+			requests++;
+			return {
+				status: 200,
+				headers: { link: '<https://attacker.invalid/commits/a?page=2>; rel="next"' },
+				body: { ...commit('a'), files: [commitFile('src/index.ts')] },
+			};
+		});
+
+		await assert.rejects(client.getCommit(repository, 'a'.repeat(40)), /Invalid GitHub pagination link/);
+		assert.equal(requests, 1);
+	});
 });
+
+function commitFile(path: string): Record<string, unknown> {
+	return { filename: path, status: 'modified', additions: 1, deletions: 0, changes: 1 };
+}
 
 function commit(character: string): Record<string, unknown> {
 	const sha = character === 'c' ? character.repeat(40) : character.padStart(40, '0');

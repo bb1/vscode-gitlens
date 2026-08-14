@@ -4,6 +4,7 @@ import { isLinux } from '@env/platform.js';
 import { ShowError } from '@gitlens/git/errors.js';
 import { deletedOrMissing } from '@gitlens/git/models/revision.js';
 import type { GitTreeEntry, GitTreeType } from '@gitlens/git/models/tree.js';
+import { GitHubResponseTooLargeError } from '@gitlens/hosting-github/githubClient.js';
 import { trace } from '@gitlens/utils/decorators/log.js';
 import { map } from '@gitlens/utils/iterable.js';
 import { Logger } from '@gitlens/utils/logger.js';
@@ -99,6 +100,10 @@ export class GitFileSystemProvider implements FileSystemProvider, Disposable {
 		try {
 			data = await svc.revision.getRevisionContent(path, ref);
 		} catch (ex) {
+			if (GitHubResponseTooLargeError.is(ex)) {
+				throw ex;
+			}
+
 			if (ShowError.is(ex, 'invalidObject') || ShowError.is(ex, 'invalidRevision')) {
 				// Check the tree entry to determine if this is a regular file or submodule
 				// For submodules (type 'commit' in git tree), return the standard git submodule diff format
