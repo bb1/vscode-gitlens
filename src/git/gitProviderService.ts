@@ -55,14 +55,11 @@ import { areUrisEqual, coerceUri, getRepositoryKey } from '@gitlens/utils/uri.js
 import { resetAvatarCache } from '../avatars.js';
 import { Schemes } from '../constants.js';
 import type { Container } from '../container.js';
-import { AccessDeniedError, ProviderNotFoundError, ProviderNotSupportedError } from '../errors.js';
+import { ProviderNotFoundError, ProviderNotSupportedError } from '../errors.js';
 import { isUriScopedGitCacheReset } from '../eventBus.js';
 import type { FeatureAccess, PlusFeatures, RepoFeatureAccess } from '../features.js';
-import { isAdvancedFeature, isProFeatureOnAllRepos } from '../features.js';
 import { showBlameInvalidIgnoreRevsFileWarningMessage } from '../messages.js';
-import type { Subscription } from '../plus/gk/models/subscription.js';
-import type { SubscriptionChangeEvent } from '../plus/gk/subscriptionService.js';
-import { isSubscriptionPaidPlan } from '../plus/gk/utils/subscription.utils.js';
+import { getCommunitySubscription } from '../plus/gk/utils/subscription.utils.js';
 import type { RepoComparisonKey } from '../repositories.js';
 import { asRepoComparisonKey, Repositories } from '../repositories.js';
 import { registerCommand } from '../system/-webview/command.js';
@@ -343,7 +340,6 @@ export class GitProviderService implements UnifiedDisposable {
 			}),
 			this._onDidChangeProviders,
 			this._onDidChangeRepositories,
-			container.subscription.onDidChange(this.onSubscriptionChanged, this),
 			window.onDidChangeWindowState(this.onWindowStateChanged, this),
 			workspace.onDidChangeWorkspaceFolders(this.onWorkspaceFoldersChanged, this),
 			configuration.onDidChange(this.onConfigurationChanged, this),
@@ -459,12 +455,6 @@ export class GitProviderService implements UnifiedDisposable {
 
 	private registerCommands(): Disposable[] {
 		return [registerCommand('gitlens.plus.refreshRepositoryAccess', () => this.clearAllOpenRepoVisibilityCaches())];
-	}
-
-	@trace()
-	private onSubscriptionChanged(e: SubscriptionChangeEvent) {
-		this.clearAccessCache();
-		this._subscription = e.current;
 	}
 
 	@trace({ args: e => ({ e: `focused=${e.focused}` }) })
@@ -952,11 +942,6 @@ export class GitProviderService implements UnifiedDisposable {
 		return provider.discoverRepositories(uri, options);
 	}
 
-	private _subscription: Subscription | undefined;
-	private async getSubscription(): Promise<Subscription> {
-		return this._subscription ?? (this._subscription = await this.container.subscription.getSubscription());
-	}
-
 	private _accessCache = new Map<PlusFeatures | undefined, Promise<FeatureAccess>>();
 	private _accessCacheByRepo = new Map<string /* path */, Promise<RepoFeatureAccess>>();
 	private clearAccessCache(): void {
@@ -966,7 +951,7 @@ export class GitProviderService implements UnifiedDisposable {
 
 	async access(feature: PlusFeatures | undefined, repoPath: string | Uri): Promise<RepoFeatureAccess>;
 	async access(feature?: PlusFeatures, repoPath?: string | Uri): Promise<FeatureAccess | RepoFeatureAccess>;
-	@trace({ exit: r => `returned allowed=${r.allowed}, plan=${r.subscription.current.plan.effective.id}` })
+	@trace({ exit: r => `returned allowed=${r.allowed}` })
 	async access(feature?: PlusFeatures, repoPath?: string | Uri): Promise<FeatureAccess | RepoFeatureAccess> {
 		if (repoPath == null) {
 			let access = this._accessCache.get(feature);
@@ -991,27 +976,18 @@ export class GitProviderService implements UnifiedDisposable {
 
 	private async accessCore(feature: PlusFeatures | undefined, repoPath: string | Uri): Promise<RepoFeatureAccess>;
 	private async accessCore(
-		feature?: PlusFeatures,
+		_feature?: PlusFeatures,
 		repoPath?: string | Uri,
 	): Promise<FeatureAccess | RepoFeatureAccess>;
-	@trace({ exit: r => `returned allowed=${r.allowed}, plan=${r.subscription.current.plan.effective.id}` })
+	@trace({ exit: r => `returned allowed=${r.allowed}` })
 	private async accessCore(
-		feature?: PlusFeatures,
+		_feature?: PlusFeatures,
 		repoPath?: string | Uri,
 	): Promise<FeatureAccess | RepoFeatureAccess> {
-		const subscription = await this.getSubscription();
+		const subscription = getCommunitySubscription();
 
 		if (this.container.telemetry.enabled) {
 			queueMicrotask(() => void this.visibility());
-		}
-
-		const plan = subscription.plan.effective.id;
-		if (isSubscriptionPaidPlan(plan)) {
-			return { allowed: subscription.account?.verified !== false, subscription: { current: subscription } };
-		}
-
-		if (feature != null && (isProFeatureOnAllRepos(feature) || isAdvancedFeature(feature))) {
-			return { allowed: false, subscription: { current: subscription, required: 'pro' } };
 		}
 
 		function getRepoAccess(
@@ -1025,14 +1001,6 @@ export class GitProviderService implements UnifiedDisposable {
 			if (access == null) {
 				access = this.visibility(repoPath).then(
 					visibility => {
-						if (visibility === 'private') {
-							return {
-								allowed: false,
-								subscription: { current: subscription, required: 'pro' },
-								visibility: visibility,
-							};
-						}
-
 						return {
 							allowed: true,
 							subscription: { current: subscription },
@@ -1059,36 +1027,14 @@ export class GitProviderService implements UnifiedDisposable {
 				return getRepoAccess.call(this, repositories[0].path);
 			}
 
-			const visibility = await this.visibility();
-			switch (visibility) {
-				case 'private':
-					return {
-						allowed: false,
-						subscription: { current: subscription, required: 'pro' },
-						visibility: 'private',
-					};
-				case 'mixed':
-					return {
-						allowed: 'mixed',
-						subscription: { current: subscription, required: 'pro' },
-					};
-				default:
-					return {
-						allowed: true,
-						subscription: { current: subscription },
-						visibility: 'public',
-					};
-			}
+			return { allowed: true, subscription: { current: subscription } };
 		}
 
 		// Pass force = true to bypass the cache and avoid a promise loop (where we used the cached promise we just created to try to resolve itself 🤦)
 		return getRepoAccess.call(this, repoPath, true);
 	}
 
-	async ensureAccess(feature: PlusFeatures, repoPath?: string): Promise<void> {
-		const { allowed, subscription } = await this.access(feature, repoPath);
-		if (allowed === false) throw new AccessDeniedError(subscription.current, subscription.required);
-	}
+	async ensureAccess(_feature: PlusFeatures, _repoPath?: string): Promise<void> {}
 
 	/** Single-value cache for the aggregate `visibility()` result. Handles coalescing, soft-
 	 * invalidation (in-flight callers ride the same promise; entry self-evicts on settle), and

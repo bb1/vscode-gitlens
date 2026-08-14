@@ -29,7 +29,6 @@
 	"ignorePatterns": [
 		"custom-elements.json",
 		"dist",
-		"docs/telemetry-events.md",
 		"out",
 		"node_modules",
 		"git.d.ts",

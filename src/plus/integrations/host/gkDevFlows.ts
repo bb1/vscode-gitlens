@@ -10,7 +10,6 @@ import type { Source } from '@gitlens/integrations/telemetry.js';
 import { detailToContext, sourceToContext } from '@gitlens/integrations/telemetry.js';
 import { Emitter, promisifyDeferred } from '@gitlens/utils/event.js';
 import { Logger } from '@gitlens/utils/logger.js';
-import type { Source as TelemetrySource } from '../../../constants.telemetry.js';
 import type { Container } from '../../../container.js';
 import { openUrl } from '../../../system/-webview/vscode/uris.js';
 import type { ServerConnection } from '../../gk/serverConnection.js';
@@ -42,9 +41,7 @@ export function createAccountAdapter(
 		getAccount: async options => {
 			let sub = await container.subscription.getSubscription();
 			if (sub.account == null && options?.createIfNeeded) {
-				if (
-					!(await container.subscription.loginOrSignUp(true, options.source as TelemetrySource | undefined))
-				) {
+				if (!(await container.subscription.loginOrSignUp(true, options.source))) {
 					return undefined;
 				}
 
@@ -153,7 +150,7 @@ async function connectViaGkDev(
 	if (account == null) {
 		if (code == null) return false;
 
-		await container.subscription.loginWithCode({ code: code }, source as TelemetrySource | undefined);
+		await container.subscription.loginWithCode({ code: code }, source);
 		if ((await container.subscription.getSubscription()).account == null) return false;
 	}
 	return true;
@@ -161,7 +158,7 @@ async function connectViaGkDev(
 
 async function openManagementViaGkDev(container: Container, source: Source | undefined): Promise<boolean> {
 	if ((await container.subscription.getSubscription()).account == null) {
-		if (!(await container.subscription.loginOrSignUp(true, source as TelemetrySource | undefined))) return false;
+		if (!(await container.subscription.loginOrSignUp(true, source))) return false;
 	}
 
 	try {

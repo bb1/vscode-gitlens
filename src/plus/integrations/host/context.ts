@@ -3,6 +3,8 @@ import { env, version, window } from 'vscode';
 import { fetch as envFetch, wrapForForcedInsecureSSL } from '@env/fetch.js';
 import { getPlatform, isWeb } from '@env/platform.js';
 import type {
+	AccountProvider,
+	AuthenticationSessionsChangeEvent,
 	ConfigChangeEvent,
 	ConfigProvider,
 	HttpProvider,
@@ -22,8 +24,6 @@ import {
 	showIntegrationRequestTimedOutWarningMessage,
 } from '../../../messages.js';
 import { configuration } from '../../../system/-webview/configuration.js';
-import type { ServerConnection } from '../../gk/serverConnection.js';
-import { createAccountAdapter } from './gkDevFlows.js';
 
 /**
  * Builds an {@link IntegrationServiceContext} from the host's `Container`.
@@ -38,14 +38,11 @@ import { createAccountAdapter } from './gkDevFlows.js';
  * VS Code event subscription and `Emitter` the adapters wired up. The host
  * MUST dispose this when tearing down the integration service.
  */
-export function createIntegrationServiceContext(
-	container: Container,
-	connection: ServerConnection,
-): IntegrationServiceContext & VsCodeDisposable {
+export function createIntegrationServiceContext(container: Container): IntegrationServiceContext & VsCodeDisposable {
 	const disposables: VsCodeDisposable[] = [];
 	const ctx: IntegrationServiceContext = {
 		storage: createStorageAdapter(container),
-		account: createAccountAdapter(container, connection, disposables),
+		account: createLocalAccountAdapter(disposables),
 		config: createConfigAdapter(disposables),
 		http: createHttpAdapter(container),
 		cache: container.cache,
@@ -67,6 +64,24 @@ export function createIntegrationServiceContext(
 			}
 		},
 	});
+}
+
+function createLocalAccountAdapter(disposables: VsCodeDisposable[]): AccountProvider {
+	const onDidChange = new Emitter<void>();
+	const onDidCheckIn = new Emitter<{ force?: boolean }>();
+	const onDidChangeSessions = new Emitter<AuthenticationSessionsChangeEvent>();
+	disposables.push(onDidChange, onDidCheckIn, onDidChangeSessions);
+
+	return {
+		getAccount: () => Promise.resolve(undefined),
+		onDidChange: onDidChange.event,
+		onDidCheckIn: onDidCheckIn.event,
+		onDidChangeSessions: onDidChangeSessions.event,
+		isTrialOrPaid: () => Promise.resolve(true),
+		fetchGkApi: () => Promise.reject(new Error('GitKraken account services are unavailable offline')),
+		connect: () => Promise.resolve(false),
+		openManagement: () => Promise.resolve(false),
+	};
 }
 
 function createHttpAdapter(container: Container): HttpProvider {

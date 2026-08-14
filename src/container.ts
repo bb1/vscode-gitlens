@@ -2,22 +2,15 @@ import type { ConfigurationChangeEvent, Disposable, Event, ExtensionContext } fr
 import { authentication, EventEmitter, ExtensionMode, window } from 'vscode';
 import { fetch } from '@env/fetch.js';
 import { IpcService } from '@env/ipc/ipcService.js';
-import type { GkCliService, GkMcpService, LocalMcpService } from '@env/providers.js';
-import {
-	getAgentSessionProviders,
-	getMcpService,
-	getSharedGKStorageLocationProvider,
-	getSupportedRepositoryLocationProvider,
-	getSupportedWorkspacesStorageProvider,
-	setTelemetryService,
-} from '@env/providers.js';
+import type { LocalMcpService } from '@env/providers.js';
+import { getMcpService } from '@env/providers.js';
 import type { IntegrationManager } from '@gitlens/integrations/index.js';
 import { createIntegrationManager } from '@gitlens/integrations/index.js';
 import { debug } from '@gitlens/utils/decorators/log.js';
 import { memoize } from '@gitlens/utils/decorators/memoize.js';
 import { Logger } from '@gitlens/utils/logger.js';
-import { AgentService } from './agents/agentService.js';
-import { AgentStatusService } from './agents/agentStatusService.js';
+import type { AgentService } from './agents/agentService.js';
+import type { AgentStatusService } from './agents/agentStatusService.js';
 import { FileAnnotationController } from './annotations/fileAnnotationController.js';
 import { LineAnnotationController } from './annotations/lineAnnotationController.js';
 import { ActionRunners } from './api/actionRunners.js';
@@ -32,7 +25,7 @@ import { extensionPrefix } from './constants.js';
 import { MarkdownContentProvider } from './documents/markdown.js';
 import { EventBus } from './eventBus.js';
 import type { FeatureFlagService } from './featureFlags/featureFlagService.js';
-import { ConfigCatFeatureFlagService } from './featureFlags/featureFlagService.js';
+import { LocalFeatureFlagService } from './featureFlags/featureFlagService.js';
 import { GitFileSystemProvider } from './git/fsProvider.js';
 import { GitOperationOriginTracker } from './git/gitOperationOriginTracker.js';
 import { GitProviderService } from './git/gitProviderService.js';
@@ -42,34 +35,28 @@ import { HostingAuthenticationService } from './hosting/authenticationService.js
 import { HostingIntegrationService } from './hosting/hostingIntegrationService.js';
 import { createHostingRequestTransport, registerHostingProviders } from './hosting/registerHostingProviders.js';
 import { LineHoverController } from './hovers/lineHoverController.js';
+import { LocalSubscriptionService } from './localSubscriptionService.js';
 import { OnboardingService } from './onboarding/onboardingService.js';
 import { UsageTracker } from './onboarding/usageTracker.js';
 import { WalkthroughStateProvider } from './onboarding/walkthroughStateProvider.js';
-import { AIProviderService } from './plus/ai/aiProviderService.js';
-import { AutoRebaseService } from './plus/coretools/conflict/autoRebaseService.js';
-import { DraftService } from './plus/drafts/draftsService.js';
-import { AccountAuthenticationProvider } from './plus/gk/authenticationProvider.js';
-import { OrganizationService } from './plus/gk/organizationService.js';
-import { ProductConfigProvider } from './plus/gk/productConfigProvider.js';
-import { ServerConnection } from './plus/gk/serverConnection.js';
-import { SubscriptionService } from './plus/gk/subscriptionService.js';
-import { UrlsProvider } from './plus/gk/urlsProvider.js';
-import { GraphStatusBarController } from './plus/graph/statusbar.js';
+import type { AIProviderService } from './plus/ai/aiProviderService.js';
+import type { AutoRebaseService } from './plus/coretools/conflict/autoRebaseService.js';
+import type { DraftService } from './plus/drafts/draftsService.js';
+import type { AccountAuthenticationProvider } from './plus/gk/authenticationProvider.js';
+import type { OrganizationService } from './plus/gk/organizationService.js';
+import type { ProductConfigProvider } from './plus/gk/productConfigProvider.js';
+import type { UrlsProvider } from './plus/gk/urlsProvider.js';
 import { createIntegrationServiceContext } from './plus/integrations/host/context.js';
-import { EnrichmentService } from './plus/launchpad/enrichmentService.js';
-import { LaunchpadIndicator } from './plus/launchpad/launchpadIndicator.js';
-import { LaunchpadProvider } from './plus/launchpad/launchpadProvider.js';
-import { RepositoryIdentityService } from './plus/repos/repositoryIdentityService.js';
-import type { SharedGkStorageLocationProvider } from './plus/repos/sharedGkStorageLocationProvider.js';
-import { WorkspacesApi } from './plus/workspaces/workspacesApi.js';
-import { scheduleAddMissingCurrentWorkspaceRepos, WorkspacesService } from './plus/workspaces/workspacesService.js';
+import type { EnrichmentService } from './plus/launchpad/enrichmentService.js';
+import type { LaunchpadProvider } from './plus/launchpad/launchpadProvider.js';
+import type { RepositoryIdentityService } from './plus/repos/repositoryIdentityService.js';
+import type { WorkspacesService } from './plus/workspaces/workspacesService.js';
 import { StatusBarController } from './statusbar/statusBarController.js';
 import { executeCommand } from './system/-webview/command.js';
 import { configuration } from './system/-webview/configuration.js';
-import { getContext, onDidChangeContext, setContext } from './system/-webview/context.js';
 import { Keyboard } from './system/-webview/keyboard.js';
 import type { Storage } from './system/-webview/storage.js';
-import { AIFeedbackProvider } from './telemetry/aiFeedbackProvider.js';
+import type { AIFeedbackProvider } from './telemetry/aiFeedbackProvider.js';
 import { TelemetryService } from './telemetry/telemetry.js';
 import { GitTerminalLinkProvider } from './terminal/linkProvider.js';
 import { GitDocumentTracker } from './trackers/documentTracker.js';
@@ -83,11 +70,6 @@ import { VirtualFileSystemService } from './virtual/virtualFileSystemService.js'
 import { VslsController } from './vsls/vsls.js';
 import { registerAllowedSignersWebviewPanel } from './webviews/allowedSigners/registration.js';
 import { registerGraphWebviewCommands, registerGraphWebviewPanel } from './webviews/graph/registration.js';
-import { registerPatchDetailsWebviewPanel } from './webviews/plus/patchDetails/registration.js';
-import {
-	registerTimelineWebviewCommands,
-	registerTimelineWebviewPanel,
-} from './webviews/plus/timeline/registration.js';
 import { RebaseEditorProvider } from './webviews/rebase/rebaseEditor.js';
 import { registerSettingsWebviewCommands, registerSettingsWebviewPanel } from './webviews/settings/registration.js';
 import { WebviewCommandRegistrar } from './webviews/webviewCommandRegistrar.js';
@@ -194,28 +176,6 @@ export class Container {
 		},
 	};
 
-	private _agentService: AgentService | undefined;
-
-	get agents(): AgentService {
-		return (this._agentService ??= new AgentService());
-	}
-
-	private readonly _gkCliService: GkCliService | undefined;
-
-	/** The GitKraken CLI service — owns binary install/update/version, IPC publish, authentication.
-	 *  Returns `undefined` on browser builds (CLI is Node-only). */
-	get gkCli(): GkCliService | undefined {
-		return this._gkCliService;
-	}
-
-	private readonly _gkMcpService: GkMcpService | undefined;
-
-	/** The GitKraken MCP service — owns MCP host registration + user-facing setup flows.
-	 *  Returns `undefined` on browser builds (MCP is Node-only). */
-	get gkMcp(): GkMcpService | undefined {
-		return this._gkMcpService;
-	}
-
 	private readonly _mcpService: LocalMcpService | undefined;
 
 	/** The local read-only MCP service. Returns `undefined` on browser builds. */
@@ -223,20 +183,40 @@ export class Container {
 		return this._mcpService;
 	}
 
-	private _agentStatusService: AgentStatusService | undefined;
+	// Compatibility-only declarations keep deferred Plus source type-checkable; none are constructed or registered.
+	declare readonly agents: AgentService;
+	declare readonly agentStatus: AgentStatusService | undefined;
+	declare readonly onDidChangeAgentStatus: Event<void>;
+	declare readonly ai: AIProviderService;
+	declare readonly aiFeedback: AIFeedbackProvider;
+	declare readonly accountAuthentication: AccountAuthenticationProvider;
+	declare readonly organizations: OrganizationService;
+	declare readonly productConfig: ProductConfigProvider;
+	declare readonly urls: UrlsProvider;
+	declare readonly drafts: DraftService;
+	declare readonly enrichments: EnrichmentService;
+	declare readonly launchpad: LaunchpadProvider;
+	declare readonly repositoryIdentity: RepositoryIdentityService;
+	declare readonly workspaces: WorkspacesService;
+	declare readonly autoRebase: AutoRebaseService;
+	declare readonly repositoryLocator: RepositoryLocationProvider | undefined;
+	declare readonly userAgent: string;
+	declare readonly gkCli: { reset(): Promise<void> } | undefined;
+	declare readonly gkMcp:
+		| { isRegistrationAllowed: boolean; isRegistrationCapable: boolean; isRegistrationEnabled: boolean }
+		| undefined;
 
-	get agentStatus(): AgentStatusService | undefined {
-		return this._agentStatusService;
+	private _integrations: IntegrationManager | undefined;
+	get integrations(): IntegrationManager {
+		if (this._integrations == null) {
+			this._disposables.push((this._integrations = createIntegrationManager(this.integrationContext)));
+		}
+
+		return this._integrations;
 	}
 
-	private readonly _onDidChangeAgentStatus = new EventEmitter<void>();
-	get onDidChangeAgentStatus(): Event<void> {
-		return this._onDidChangeAgentStatus.event;
-	}
-	private readonly _connection: ServerConnection;
 	private _disposables: Disposable[];
 	private _terminalLinks: GitTerminalLinkProvider | undefined;
-	private _launchpadIndicator: LaunchpadIndicator | undefined;
 
 	private constructor(
 		context: ExtensionContext,
@@ -259,18 +239,9 @@ export class Container {
 			(this._usage = new UsageTracker(this, storage)),
 			configuration.onDidChangeAny(this.onAnyConfigurationChanged, this),
 		];
-		setTelemetryService(this._telemetry);
-
-		this._urls = new UrlsProvider(this.env);
-		this._disposables.push((this._connection = new ServerConnection(this, this._urls)));
-
-		this._disposables.push(
-			(this._accountAuthentication = new AccountAuthenticationProvider(this, this._connection)),
-		);
 		this._disposables.push((this._uri = new UriService(this)));
-		this._disposables.push((this._subscription = new SubscriptionService(this, this._connection, previousVersion)));
+		this._subscription = new LocalSubscriptionService();
 		this._disposables.push((this._walkthrough = new WalkthroughStateProvider(this)));
-		this._disposables.push((this._organizations = new OrganizationService(this, this._connection)));
 
 		this._disposables.push((this._eventBus = new EventBus()));
 		this._disposables.push((this._ipc = new IpcService(this)));
@@ -296,7 +267,6 @@ export class Container {
 		this._disposables.push((this._lineTracker = new LineTracker(this, this._documentTracker)));
 		this._disposables.push((this._keyboard = new Keyboard()));
 		this._disposables.push((this._vsls = new VslsController(this)));
-		this._disposables.push((this._launchpadProvider = new LaunchpadProvider(this)));
 		this._disposables.push((this._markdownProvider = new MarkdownContentProvider(this)));
 
 		this._disposables.push((this._fileAnnotationController = new FileAnnotationController(this)));
@@ -315,12 +285,6 @@ export class Container {
 		const graphPanels = registerGraphWebviewPanel(webviews);
 		this._disposables.push(graphPanels);
 		this._disposables.push(registerGraphWebviewCommands(this, graphPanels));
-		this._disposables.push(new GraphStatusBarController(this));
-
-		const timelinePanels = registerTimelineWebviewPanel(webviews);
-		this._disposables.push(timelinePanels);
-		this._disposables.push(registerTimelineWebviewCommands(this, timelinePanels));
-
 		this._disposables.push((this._rebaseEditor = new RebaseEditorProvider(this, webviewCommandRegistrar)));
 
 		const settingsPanels = registerSettingsWebviewPanel(webviews);
@@ -330,18 +294,6 @@ export class Container {
 		this._disposables.push(registerAllowedSignersWebviewPanel(webviews));
 
 		this._disposables.push(new ViewFileDecorationProvider());
-
-		const patchDetailsPanels = registerPatchDetailsWebviewPanel(webviews);
-		this._disposables.push(patchDetailsPanels);
-
-		if (configuration.get('launchpad.indicator.enabled')) {
-			this._disposables.push((this._launchpadIndicator = new LaunchpadIndicator(this, this._launchpadProvider)));
-		}
-
-		this._disposables.push(this._onDidChangeAgentStatus, {
-			dispose: () => this._agentStatusService?.dispose(),
-		});
-		this.updateAiStatus();
 
 		if (configuration.get('terminalLinks.enabled')) {
 			this._disposables.push((this._terminalLinks = new GitTerminalLinkProvider(this)));
@@ -361,36 +313,12 @@ export class Container {
 						this._disposables.push((this._terminalLinks = new GitTerminalLinkProvider(this)));
 					}
 				}
-
-				if (configuration.changed(e, 'launchpad.indicator.enabled')) {
-					this._launchpadIndicator?.dispose();
-					this._launchpadIndicator = undefined;
-
-					this.telemetry.sendEvent('launchpad/indicator/hidden');
-
-					if (configuration.get('launchpad.indicator.enabled')) {
-						this._disposables.push(
-							(this._launchpadIndicator = new LaunchpadIndicator(this, this._launchpadProvider)),
-						);
-					}
-				}
-
-				if (configuration.changed(e, 'ai.enabled')) {
-					this.updateAiStatus();
-				}
-			}),
-			onDidChangeContext(key => {
-				if (key === 'gitlens:gk:organization:ai:enabled') {
-					this.updateAiStatus();
-				}
 			}),
 		);
 
 		context.subscriptions.push({
 			dispose: () => this._disposables.reverse().forEach(d => void d?.dispose()),
 		});
-
-		scheduleAddMissingCurrentWorkspaceRepos(this);
 	}
 
 	deactivate(): void {
@@ -428,27 +356,6 @@ export class Container {
 		await this._git.registerProviders();
 	}
 
-	private updateAiStatus(): void {
-		// Visibility gate: require a CONFIRMED org state so AI/agent commands don't flash on before org
-		// settings load. `ai.orgEnabled` stays fail-open (defaults true) for runtime feature-access checks.
-		const allowed = this.ai.enabled && getContext('gitlens:gk:organization:ai:enabled') === true;
-		void setContext('gitlens:ai:allowed', allowed);
-
-		const providers = allowed ? getAgentSessionProviders(this) : [];
-		const canEnable = allowed && providers.length > 0;
-
-		void setContext('gitlens:agents:enabled', canEnable);
-
-		if (canEnable && this._agentStatusService == null) {
-			this._agentStatusService = new AgentStatusService(this, providers);
-			this._onDidChangeAgentStatus.fire();
-		} else if (!canEnable && this._agentStatusService != null) {
-			this._agentStatusService.dispose();
-			this._agentStatusService = undefined;
-			this._onDidChangeAgentStatus.fire();
-		}
-	}
-
 	private onAnyConfigurationChanged(e: ConfigurationChangeEvent) {
 		if (!configuration.changedAny(e, extensionPrefix)) return;
 
@@ -463,30 +370,9 @@ export class Container {
 		}
 	}
 
-	private _accountAuthentication: AccountAuthenticationProvider;
-	get accountAuthentication(): AccountAuthenticationProvider {
-		return this._accountAuthentication;
-	}
-
 	private readonly _actionRunners: ActionRunners;
 	get actionRunners(): ActionRunners {
 		return this._actionRunners;
-	}
-
-	private _ai: AIProviderService | undefined;
-	get ai(): AIProviderService {
-		if (this._ai == null) {
-			this._disposables.push((this._ai = new AIProviderService(this, this._connection)));
-		}
-		return this._ai;
-	}
-
-	private _aiFeedback: AIFeedbackProvider | undefined;
-	get aiFeedback(): AIFeedbackProvider {
-		if (this._aiFeedback == null) {
-			this._disposables.push((this._aiFeedback = new AIFeedbackProvider()));
-		}
-		return this._aiFeedback;
 	}
 
 	private _autolinks: AutolinksProvider | undefined;
@@ -510,26 +396,10 @@ export class Container {
 	private _featureFlags: FeatureFlagService | undefined;
 	get featureFlags(): FeatureFlagService {
 		if (this._featureFlags == null) {
-			this._disposables.push((this._featureFlags = new ConfigCatFeatureFlagService(this)));
+			this._disposables.push((this._featureFlags = new LocalFeatureFlagService()));
 		}
 		return this._featureFlags;
 	}
-	private _drafts: DraftService | undefined;
-	get drafts(): DraftService {
-		if (this._drafts == null) {
-			this._disposables.push((this._drafts = new DraftService(this, this._connection)));
-		}
-		return this._drafts;
-	}
-
-	private _autoRebase: AutoRebaseService | undefined;
-	get autoRebase(): AutoRebaseService {
-		if (this._autoRebase == null) {
-			this._disposables.push((this._autoRebase = new AutoRebaseService(this)));
-		}
-		return this._autoRebase;
-	}
-
 	private _operationOrigins: GitOperationOriginTracker | undefined;
 	get operationOrigins(): GitOperationOriginTracker {
 		if (this._operationOrigins == null) {
@@ -548,6 +418,15 @@ export class Container {
 		return this._context;
 	}
 
+	private _integrationContext: ReturnType<typeof createIntegrationServiceContext> | undefined;
+	private get integrationContext(): ReturnType<typeof createIntegrationServiceContext> {
+		if (this._integrationContext == null) {
+			this._disposables.push((this._integrationContext = createIntegrationServiceContext(this)));
+		}
+
+		return this._integrationContext;
+	}
+
 	@memoize()
 	get debugging(): boolean {
 		return this._context.extensionMode === ExtensionMode.Development;
@@ -561,15 +440,6 @@ export class Container {
 	private readonly _documentTracker: GitDocumentTracker;
 	get documentTracker(): GitDocumentTracker {
 		return this._documentTracker;
-	}
-
-	private _enrichments: EnrichmentService | undefined;
-	get enrichments(): EnrichmentService {
-		if (this._enrichments == null) {
-			this._disposables.push((this._enrichments = new EnrichmentService(this, this._connection)));
-		}
-
-		return this._enrichments;
 	}
 
 	@memoize()
@@ -612,11 +482,6 @@ export class Container {
 		return this._fileAnnotationController;
 	}
 
-	private readonly _launchpadProvider: LaunchpadProvider;
-	get launchpad(): LaunchpadProvider {
-		return this._launchpadProvider;
-	}
-
 	private readonly _markdownProvider: MarkdownContentProvider;
 	get markdown(): MarkdownContentProvider {
 		return this._markdownProvider;
@@ -635,27 +500,6 @@ export class Container {
 	@memoize()
 	get id(): string {
 		return this._context.extension.id;
-	}
-
-	// Single host context shared by every integrations consumer (the manager, the cloud service, and
-	// the provider-API getters). Unlike git's stateless context, this one eagerly registers VS Code
-	// listeners + emitters, so building one per getter (6×) leaked redundant subscriptions.
-	private _integrationContext: ReturnType<typeof createIntegrationServiceContext> | undefined;
-	private get integrationContext(): ReturnType<typeof createIntegrationServiceContext> {
-		if (this._integrationContext == null) {
-			this._disposables.push(
-				(this._integrationContext = createIntegrationServiceContext(this, this._connection)),
-			);
-		}
-		return this._integrationContext;
-	}
-
-	private _integrations: IntegrationManager | undefined;
-	get integrations(): IntegrationManager {
-		if (this._integrations == null) {
-			this._disposables.push((this._integrations = createIntegrationManager(this.integrationContext)));
-		}
-		return this._integrations;
 	}
 
 	private readonly _keyboard: Keyboard;
@@ -684,11 +528,6 @@ export class Container {
 		return this._mode;
 	}
 
-	private _organizations: OrganizationService;
-	get organizations(): OrganizationService {
-		return this._organizations;
-	}
-
 	private readonly _prerelease;
 	get prerelease(): boolean {
 		return this._prerelease;
@@ -699,44 +538,9 @@ export class Container {
 		return this._prerelease || this.debugging;
 	}
 
-	private _productConfig: ProductConfigProvider | undefined;
-	get productConfig(): ProductConfigProvider {
-		this._productConfig ??= new ProductConfigProvider(this, this._connection);
-		return this._productConfig;
-	}
-
 	private readonly _rebaseEditor: RebaseEditorProvider;
 	get rebaseEditor(): RebaseEditorProvider {
 		return this._rebaseEditor;
-	}
-
-	private _repositoryIdentity: RepositoryIdentityService | undefined;
-	get repositoryIdentity(): RepositoryIdentityService {
-		if (this._repositoryIdentity == null) {
-			this._disposables.push(
-				(this._repositoryIdentity = new RepositoryIdentityService(this, this.repositoryLocator)),
-			);
-		}
-		return this._repositoryIdentity;
-	}
-
-	private _repositoryLocator: RepositoryLocationProvider | null | undefined;
-	get repositoryLocator(): RepositoryLocationProvider | undefined {
-		if (this._repositoryLocator === undefined) {
-			this._repositoryLocator = getSupportedRepositoryLocationProvider(this, this.sharedGkStorage!) ?? null;
-			if (this._repositoryLocator != null) {
-				this._disposables.push(this._repositoryLocator);
-			}
-		}
-		return this._repositoryLocator ?? undefined;
-	}
-
-	private _sharedGkStorage: SharedGkStorageLocationProvider | null | undefined;
-	private get sharedGkStorage(): SharedGkStorageLocationProvider | undefined {
-		if (this._sharedGkStorage === undefined) {
-			this._sharedGkStorage = getSharedGKStorageLocationProvider(this) ?? null;
-		}
-		return this._sharedGkStorage ?? undefined;
 	}
 
 	private readonly _statusBarController: StatusBarController;
@@ -754,8 +558,8 @@ export class Container {
 		return this._onboarding;
 	}
 
-	private _subscription: SubscriptionService;
-	get subscription(): SubscriptionService {
+	private readonly _subscription: LocalSubscriptionService;
+	get subscription(): LocalSubscriptionService {
 		return this._subscription;
 	}
 
@@ -777,19 +581,9 @@ export class Container {
 		return this._uri;
 	}
 
-	private readonly _urls: UrlsProvider;
-	get urls(): UrlsProvider {
-		return this._urls;
-	}
-
 	private readonly _usage: UsageTracker;
 	get usage(): UsageTracker {
 		return this._usage;
-	}
-
-	/** Shared `GitLens/<version> (...)` User-Agent for outbound HTTP, sourced from the GK server connection. */
-	get userAgent(): string {
-		return this._connection.userAgent;
 	}
 
 	private readonly _walkthrough: WalkthroughStateProvider;
@@ -816,22 +610,6 @@ export class Container {
 	get vsls(): VslsController {
 		return this._vsls;
 	}
-
-	private _workspaces: WorkspacesService | undefined;
-	get workspaces(): WorkspacesService {
-		if (this._workspaces == null) {
-			this._disposables.push(
-				(this._workspaces = new WorkspacesService(
-					this,
-					new WorkspacesApi(this, this._connection),
-					getSupportedWorkspacesStorageProvider(this, this.sharedGkStorage!),
-					this.repositoryLocator,
-				)),
-			);
-		}
-		return this._workspaces;
-	}
-
 	private ensureModeApplied() {
 		const mode = this.mode;
 		if (mode == null) {

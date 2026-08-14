@@ -41,4 +41,15 @@ suite('registerHostingProviders', () => {
 			'https://dev.azure.com/octocat/gitlens/_apis/git/repositories/gitlens/pullrequests?searchCriteria.status=active&%24top=100&api-version=7.1',
 		]);
 	});
+
+	test('registers provider hosting without a product account', () => {
+		const service = new HostingIntegrationService({
+			deleteSession: async () => {},
+			getSession: async () => undefined,
+		});
+
+		registerHostingProviders(service, async () => ({ status: 200, body: [] }));
+
+		assert.ok(service.get('github', 'github.com'));
+	});
 });

@@ -30,8 +30,6 @@ export enum DeepLinkCommandType {
 	Inspect = 'inspect',
 	InstallMCP = 'install-mcp',
 	Launchpad = 'launchpad',
-	Login = 'login',
-	SignUp = 'signup',
 	StartReview = 'start-review',
 	StartWork = 'start-work',
 	Walkthrough = 'walkthrough',
@@ -48,8 +46,6 @@ export const DeepLinkCommandTypeToCommand = new Map<DeepLinkCommandType, GlComma
 	[DeepLinkCommandType.Home, 'gitlens.showHomeView'],
 	[DeepLinkCommandType.Inspect, 'gitlens.showCommitDetailsView'],
 	[DeepLinkCommandType.Launchpad, 'gitlens.showLaunchpad'],
-	[DeepLinkCommandType.Login, 'gitlens.plus.login'],
-	[DeepLinkCommandType.SignUp, 'gitlens.plus.signUp'],
 	// StartReview and StartWork are handled specially in DeepLinkService
 	[DeepLinkCommandType.Walkthrough, 'gitlens.getStarted'],
 	[DeepLinkCommandType.Worktrees, 'gitlens.showWorktreesView'],

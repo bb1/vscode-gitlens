@@ -20,5 +20,5 @@
 		"tsBuildInfoFile": "tsconfig.browser.tsbuildinfo"
 	},
 	"include": ["src/**/*", "packages/plus/integrations/src/**/*"],
-	"exclude": ["src/webviews/apps/**/*", "src/env/node/**/*"]
+	"exclude": ["src/webviews/apps/**/*", "src/env/node/**/*", "src/plus/integrations/host/gkDevFlows.ts"]
 }

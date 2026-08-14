@@ -1370,13 +1370,6 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			const branch = await repo.git.branches.getBranch();
 			if (!branch?.detached) return;
 
-			if (
-				options?.skipAccessCheck !== true &&
-				isAccountAccessRequired(await this.container.subscription.getSubscription())
-			) {
-				return;
-			}
-
 			const switchToBranch = 'Switch to Branch...';
 			const pick = await window.showWarningMessage(
 				'Unable to focus the Commit Graph on the current branch because HEAD is detached. Switch to a branch and the graph will focus on it.',
