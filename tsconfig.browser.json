@@ -11,6 +11,7 @@
 			"@gitlens/ipc/*": ["./packages/ipc/src/*"],
 			"@gitlens/git/*": ["./packages/git/src/*"],
 			"@gitlens/hosting-integrations/*": ["./packages/integrations/src/*"],
+			"@gitlens/hosting-github/*": ["./packages/git-github/src/*"],
 			"@gitlens/git-github/*": ["./packages/plus/git-github/src/*"],
 			"@gitlens/integrations/*": ["./packages/plus/integrations/src/*"],
 			"@gitlens/ai/*": ["./packages/plus/ai/src/*"],
