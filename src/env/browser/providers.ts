@@ -2,7 +2,6 @@ import type { Cache } from '@gitlens/git/cache.js';
 import type { GitProvider } from '@gitlens/git/providers/provider.js';
 import type { GitResult, GitRunOptions } from '@gitlens/git/run.types.js';
 import type { UnifiedDisposable } from '@gitlens/utils/disposable.js';
-import type { AgentSessionProvider } from '../../agents/provider.js';
 import type { Container } from '../../container.js';
 import type { GlGitProvider } from '../../git/gitProvider.js';
 import { getGitHubVirtualGitProvider } from '../../hosting/githubVirtualGitProviderRegistration.js';
@@ -47,29 +46,10 @@ export function getSupportedWorkspacesStorageProvider(_container: Container, _sh
 	return undefined;
 }
 
-// Type stubs keep cross-environment consumers from loading Node-only services in browser builds.
-export type GkCliService = never;
-export type GkMcpService = {
-	isRegistrationAllowed: boolean;
-	isRegistrationCapable: boolean;
-	isRegistrationEnabled: boolean;
-};
 export type LocalMcpService = never;
-
-export function getGkCliService(_container: Container): undefined {
-	return undefined;
-}
-
-export function getGkMcpService(_container: Container, _gkCli: GkCliService): undefined {
-	return undefined;
-}
 
 export function getMcpService(_container: Container | undefined): undefined {
 	return undefined;
-}
-
-export function getAgentSessionProviders(_container: Container): AgentSessionProvider[] {
-	return [];
 }
 
 let _telemetryService: TelemetryService | undefined;

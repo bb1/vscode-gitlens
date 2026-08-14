@@ -1,4 +1,3 @@
-import type { TimeInput } from '@opentelemetry/api';
 import type { Config } from '../config.js';
 import type { GlCommands } from '../constants.commands.js';
 import type { Source, WebviewTelemetryEvents } from '../constants.telemetry.js';
@@ -6,6 +5,8 @@ import type { WebviewIds } from '../constants.views.js';
 import type { Promo, PromoLocation, PromoPlans } from '../plus/gk/models/promo.js';
 import type { ConfigPath, ConfigPathValue, Path, PathValue } from '../system/-webview/configuration.js';
 import { IpcCommand, IpcNotification, IpcRequest } from './ipc/models/ipc.js';
+
+type TimeInput = number | Date | [number, number];
 
 // COMMANDS & REQUESTS
 

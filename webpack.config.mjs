@@ -171,10 +171,6 @@ function getCommonConfig(mode, env) {
 	 * @type WebpackConfig['plugins'] | any
 	 */
 	const plugins = [];
-	if (!env.quick && mode !== 'production') {
-		plugins.push(new DocsPlugin());
-	}
-
 	if (!env.quick || mode === 'production') {
 		plugins.push(
 			new LicensesPlugin(),
@@ -442,8 +438,6 @@ function getExtensionConfig(target, mode, env) {
 		ignoreWarnings: [
 			// Ignore dynamic require warning for platform-agnostic async_hooks detection
 			{ module: /packages[\\/]utils[\\/]src[\\/]logScope\.ts/, message: /Critical dependency/ },
-			// Ignore dynamic require warning from protobufjs's optional-peer resolver (used by @opentelemetry/otlp-transformer)
-			{ module: /[\\/]@protobufjs[\\/]inquire[\\/]/, message: /Critical dependency/ },
 		],
 		plugins: plugins,
 		infrastructureLogging: mode === 'production' ? undefined : { level: 'log' }, // enables logging required for problem matchers
@@ -1090,21 +1084,6 @@ class ExtractContributionsPlugin extends FileGeneratorPlugin {
 			strings: {
 				starting: 'Extracting',
 				completed: 'Extracted',
-			},
-		});
-	}
-}
-
-class DocsPlugin extends FileGeneratorPlugin {
-	constructor() {
-		super({
-			pluginName: 'docs',
-			pathsToWatch: [path.join(__dirname, 'src', 'constants.telemetry.ts')],
-			outputs: [path.join(__dirname, 'docs', 'telemetry-events.md')],
-			command: {
-				name: 'docs',
-				command: pkgMgr,
-				args: ['run', 'generate:docs:telemetry'],
 			},
 		});
 	}

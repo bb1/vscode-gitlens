@@ -9,7 +9,6 @@ import type { Source } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
 import { showGitErrorMessage } from '../../messages.js';
 import { arePlusFeaturesEnabled } from '../../plus/gk/utils/-webview/plus.utils.js';
-import { isAccountAccessRequired } from '../../plus/gk/utils/subscription.utils.js';
 import { executeCommand } from '../../system/-webview/command.js';
 import { isDescendant } from '../../system/-webview/path.js';
 import type { GitRepositoryService } from '../gitRepositoryService.js';
@@ -262,10 +261,6 @@ export async function showPausedOperationStatus(
 
 async function isGraphAccessible(container: Container, repoPath: string): Promise<boolean> {
 	if (!arePlusFeaturesEnabled()) return false;
-
-	// Signed out or unverified, the Graph replaces its whole content with the account screen, so it can't
-	// surface a conflict at all — regardless of plan or repo visibility. Keep the rebase editor instead.
-	if (isAccountAccessRequired(await container.subscription.getSubscription())) return false;
 
 	return (await container.git.access('graph', repoPath)).allowed !== false;
 }

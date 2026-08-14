@@ -4,7 +4,6 @@ import { urls } from '../constants.js';
 import type { Source, Sources, TelemetryEvents } from '../constants.telemetry.js';
 import type { Container } from '../container.js';
 import { isWalkthroughSupported } from '../onboarding/walkthroughStateProvider.js';
-import type { SubscriptionUpgradeCommandArgs } from '../plus/gk/models/subscription.js';
 import type { LaunchpadCommandArgs } from '../plus/launchpad/launchpad.js';
 import { command, executeCommand, executeCoreCommand } from '../system/-webview/command.js';
 import { openWalkthrough as openWalkthroughCore } from '../system/-webview/vscode.js';
@@ -91,24 +90,6 @@ export class WalkthroughOpenWalkthroughCommand extends GlCommandBase {
 	}
 }
 
-// gitlens.plus.upgrade
-@command()
-export class WalkthroughPlusUpgradeCommand extends GlCommandBase {
-	constructor(private readonly container: Container) {
-		super('gitlens.walkthrough.plus.upgrade');
-	}
-
-	execute(): void {
-		const command: GlCommands = 'gitlens.plus.upgrade';
-		this.container.telemetry.sendEvent('walkthrough/action', {
-			type: 'command',
-			name: 'plus/upgrade',
-			command: command,
-		});
-		executeCommand<SubscriptionUpgradeCommandArgs>(command, { source: 'walkthrough' });
-	}
-}
-
 // https://help.gitkraken.com/gitlens/gitlens-home/
 @command()
 export class WalkthroughOpenHelpCenterCommand extends GlCommandBase {
@@ -124,59 +105,6 @@ export class WalkthroughOpenHelpCenterCommand extends GlCommandBase {
 			url: url,
 		});
 		void openUrl(url);
-	}
-}
-
-// gitlens.plus.signUp
-@command()
-export class WalkthroughPlusSignUpCommand extends GlCommandBase {
-	constructor(private readonly container: Container) {
-		super('gitlens.walkthrough.plus.signUp');
-	}
-
-	execute(): void {
-		const command: GlCommands = 'gitlens.plus.signUp';
-		this.container.telemetry.sendEvent('walkthrough/action', {
-			type: 'command',
-			name: 'plus/sign-up',
-			command: command,
-		});
-		executeCommand<Source>(command, { source: 'walkthrough' });
-	}
-}
-
-// gitlens.plus.login
-@command()
-export class WalkthroughPlusLoginCommand extends GlCommandBase {
-	constructor(private readonly container: Container) {
-		super('gitlens.walkthrough.plus.login');
-	}
-
-	execute(): void {
-		const command: GlCommands = 'gitlens.plus.login';
-		this.container.telemetry.sendEvent('walkthrough/action', {
-			type: 'command',
-			name: 'plus/login',
-			command: command,
-		});
-		executeCommand<Source>(command, { source: 'walkthrough' });
-	}
-}
-
-@command()
-export class WalkthroughPlusReactivateCommand extends GlCommandBase {
-	constructor(private readonly container: Container) {
-		super('gitlens.walkthrough.plus.reactivate');
-	}
-
-	execute(): void {
-		const command: GlCommands = 'gitlens.plus.reactivateProTrial';
-		this.container.telemetry.sendEvent('walkthrough/action', {
-			type: 'command',
-			name: 'plus/reactivate',
-			command: command,
-		});
-		executeCommand<Source>(command, { source: 'walkthrough' });
 	}
 }
 
