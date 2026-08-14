@@ -1,3 +1,4 @@
+import { normalizeHostname } from '@gitlens/hosting-integrations/providers/shared.js';
 import type { SecretKeys } from '../constants.storage.js';
 import type { HostingAuthenticationMode, HostingProviderId, HostingSession } from './models.js';
 
@@ -14,6 +15,7 @@ export type HostingAuthenticationServiceDependencies = {
 		scopes: readonly string[],
 		options: AuthenticationSessionOptions,
 	): PromiseLike<AuthenticationSession | undefined>;
+	deleteSecret(key: SecretKeys): PromiseLike<void>;
 	getSecret(key: SecretKeys): PromiseLike<string | undefined>;
 	showInputBox(options: { password: boolean; prompt: string; title: string }): PromiseLike<string | undefined>;
 	storeSecret(key: SecretKeys, value: string): PromiseLike<void>;
@@ -31,11 +33,13 @@ export class HostingAuthenticationService {
 
 	async getSession(
 		provider: HostingProviderId,
+		domain: string,
 		scopes: readonly string[],
 		mode: HostingAuthenticationMode,
 	): Promise<HostingSession | undefined> {
-		if (provider !== 'github') {
-			return this.getTokenSession(provider, mode);
+		const normalizedDomain = normalizeHostname(providerLabels[provider], domain);
+		if (provider !== 'github' || normalizedDomain !== 'github.com') {
+			return this.getTokenSession(provider, normalizedDomain, mode);
 		}
 
 		try {
@@ -48,19 +52,24 @@ export class HostingAuthenticationService {
 				return { provider: provider, accessToken: session.accessToken, accountLabel: session.account.label };
 			}
 
-			return undefined;
+			if ('silent' in mode) return undefined;
 		} catch (ex) {
 			if (!isAuthenticationProviderUnavailable(ex)) throw ex;
 		}
 
-		return this.getTokenSession(provider, mode);
+		return this.getTokenSession(provider, normalizedDomain, mode);
+	}
+
+	async deleteSession(provider: HostingProviderId, domain: string): Promise<void> {
+		await this.dependencies.deleteSecret(getSecretKey(provider, domain));
 	}
 
 	private async getTokenSession(
 		provider: HostingProviderId,
+		domain: string,
 		mode: HostingAuthenticationMode,
 	): Promise<HostingSession | undefined> {
-		const key = `gitlens.hosting.auth:${provider}` as const;
+		const key = getSecretKey(provider, domain);
 		const token = await this.dependencies.getSecret(key);
 		if (token != null) {
 			return { provider: provider, accessToken: token, accountLabel: providerLabels[provider] };
@@ -80,6 +89,10 @@ export class HostingAuthenticationService {
 
 		return { provider: provider, accessToken: accessToken, accountLabel: label };
 	}
+}
+
+function getSecretKey(provider: HostingProviderId, domain: string): SecretKeys {
+	return `gitlens.hosting.auth:${provider}:${normalizeHostname(providerLabels[provider], domain)}`;
 }
 
 function isAuthenticationProviderUnavailable(ex: unknown): boolean {

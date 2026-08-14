@@ -82,6 +82,41 @@ suite('GitLabHostingProvider', () => {
 		});
 	});
 
+	test('gets the merge request associated with a commit', async () => {
+		let request: unknown;
+		const provider = new GitLabHostingProvider('secret-gitlab-token', async value => {
+			request = value;
+			return {
+				status: 200,
+				body: [
+					{
+						id: 42,
+						iid: 7,
+						title: 'Fix provider wiring',
+						web_url: 'https://gitlab.com/team/gitlens/-/merge_requests/7',
+						state: 'opened',
+					},
+				],
+			};
+		});
+
+		assert.deepEqual(
+			await provider.getPullRequestForCommit({ owner: 'team', name: 'gitlens', domain: 'gitlab.com' }, 'abcdef1'),
+			{
+				id: '42',
+				number: 7,
+				title: 'Fix provider wiring',
+				url: 'https://gitlab.com/team/gitlens/-/merge_requests/7',
+				state: 'open',
+			},
+		);
+		assert.deepEqual(request, {
+			method: 'GET',
+			url: 'https://gitlab.com/api/v4/projects/team%2Fgitlens/repository/commits/abcdef1/merge_requests',
+			headers: { Accept: 'application/json', 'PRIVATE-TOKEN': 'secret-gitlab-token' },
+		});
+	});
+
 	test('gets the authenticated account and avatar URL', async () => {
 		let request: unknown;
 		const provider = new GitLabHostingProvider('secret-gitlab-token', async (value: HostingRequest) => {

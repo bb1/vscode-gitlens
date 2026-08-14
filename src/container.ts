@@ -1,5 +1,6 @@
 import type { ConfigurationChangeEvent, Disposable, Event, ExtensionContext } from 'vscode';
-import { EventEmitter, ExtensionMode } from 'vscode';
+import { authentication, EventEmitter, ExtensionMode, window } from 'vscode';
+import { fetch } from '@env/fetch.js';
 import { IpcService } from '@env/ipc/ipcService.js';
 import type { GkCliService, GkMcpService, LocalMcpService } from '@env/providers.js';
 import {
@@ -37,6 +38,9 @@ import { GitOperationOriginTracker } from './git/gitOperationOriginTracker.js';
 import { GitProviderService } from './git/gitProviderService.js';
 import type { RepositoryLocationProvider } from './git/location/repositorylocationProvider.js';
 import { registerPublishListener } from './git/publishListener.js';
+import { HostingAuthenticationService } from './hosting/authenticationService.js';
+import { HostingIntegrationService } from './hosting/hostingIntegrationService.js';
+import { createHostingRequestTransport, registerHostingProviders } from './hosting/registerHostingProviders.js';
 import { LineHoverController } from './hovers/lineHoverController.js';
 import { OnboardingService } from './onboarding/onboardingService.js';
 import { UsageTracker } from './onboarding/usageTracker.js';
@@ -270,6 +274,16 @@ export class Container {
 
 		this._disposables.push((this._eventBus = new EventBus()));
 		this._disposables.push((this._ipc = new IpcService(this)));
+		this._hostingAuthentication = new HostingAuthenticationService({
+			deleteSecret: key => storage.deleteSecret(key),
+			getAuthenticationSession: (provider, scopes, options) =>
+				authentication.getSession(provider, scopes, options),
+			getSecret: key => storage.getSecret(key),
+			showInputBox: options => window.showInputBox(options),
+			storeSecret: (key, value) => storage.storeSecret(key, value),
+		});
+		this._hosting = new HostingIntegrationService(this._hostingAuthentication);
+		registerHostingProviders(this._hosting, createHostingRequestTransport(fetch));
 		this._disposables.push((this._git = new GitProviderService(this)));
 		this._disposables.push(new GitFileSystemProvider(this));
 		this._disposables.push((this._virtualFs = new VirtualFileSystemService(this)));
@@ -577,6 +591,16 @@ export class Container {
 	private readonly _ipc: IpcService;
 	get ipc(): IpcService {
 		return this._ipc;
+	}
+
+	private readonly _hostingAuthentication: HostingAuthenticationService;
+	get hostingAuthentication(): HostingAuthenticationService {
+		return this._hostingAuthentication;
+	}
+
+	private readonly _hosting: HostingIntegrationService;
+	get hosting(): HostingIntegrationService {
+		return this._hosting;
 	}
 
 	get extensionMode(): ExtensionMode {

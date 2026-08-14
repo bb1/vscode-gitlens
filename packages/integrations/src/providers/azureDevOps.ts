@@ -62,6 +62,31 @@ export class AzureDevOpsHostingProvider implements HostingProvider {
 		});
 	}
 
+	async getPullRequestForCommit(
+		repository: HostingRepositoryDescriptor,
+		commit: string,
+	): Promise<HostingResult<HostingPullRequest | undefined>> {
+		return this.withAuthentication(async () => {
+			const value = validateCommit(commit);
+			const response = await sendRequest(providerName, this.request, {
+				method: 'POST',
+				url: `${this.repositoryUrl(repository)}/pullrequestquery?api-version=7.1`,
+				headers: { ...this.headers(), 'Content-Type': 'application/json' },
+				body: JSON.stringify({ queries: [{ items: [value], type: 'commit' }] }),
+			});
+			const id = getPullRequestId(response.body, value);
+			if (id == null) return undefined;
+
+			const pullRequest = await sendRequest(providerName, this.request, {
+				method: 'GET',
+				url: `${this.repositoryUrl(repository)}/pullrequests/${id}?api-version=7.1`,
+				headers: this.headers(),
+			});
+
+			return getPullRequest(pullRequest.body);
+		});
+	}
+
 	async createPullRequest(
 		repository: HostingRepositoryDescriptor,
 		input: CreatePullRequestInput,
@@ -130,6 +155,24 @@ function isAzurePathSegment(value: unknown): value is string {
 		!/[\\/?#]/.test(value) &&
 		!hasControlCharacter(value)
 	);
+}
+
+function validateCommit(value: string): string {
+	if (!/^[0-9a-f]{7,64}$/i.test(value)) {
+		throw new Error('Invalid Azure DevOps commit');
+	}
+
+	return value;
+}
+
+function getPullRequestId(value: unknown, commit: string): number | undefined {
+	if (!isRecord(value) || !Array.isArray(value.results) || !isRecord(value.results[0])) return undefined;
+
+	const pullRequests = value.results[0][commit];
+	if (!Array.isArray(pullRequests) || !isRecord(pullRequests[0])) return undefined;
+
+	const id = pullRequests[0].pullRequestId;
+	return isPositiveInteger(id) ? id : undefined;
 }
 
 function getPullRequests(value: unknown): readonly HostingPullRequest[] {

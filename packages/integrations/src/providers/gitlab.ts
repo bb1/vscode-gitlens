@@ -62,6 +62,21 @@ export class GitLabHostingProvider implements HostingProvider {
 		});
 	}
 
+	async getPullRequestForCommit(
+		repository: HostingRepositoryDescriptor,
+		commit: string,
+	): Promise<HostingResult<HostingPullRequest | undefined>> {
+		return this.withAuthentication(async () => {
+			const response = await sendRequest(providerName, this.request, {
+				method: 'GET',
+				url: `${this.projectUrl(repository)}/repository/commits/${encodeURIComponent(validateCommit(commit))}/merge_requests`,
+				headers: this.headers(),
+			});
+
+			return getPullRequests(response.body)[0];
+		});
+	}
+
 	async createPullRequest(
 		repository: HostingRepositoryDescriptor,
 		input: CreatePullRequestInput,
@@ -126,6 +141,14 @@ function isGitLabPath(value: unknown): value is string {
 
 function isGitLabPathSegment(value: string): boolean {
 	return /^[A-Za-z0-9][A-Za-z0-9._-]{0,254}$/.test(value) && value !== '.' && value !== '..';
+}
+
+function validateCommit(value: string): string {
+	if (!/^[0-9a-f]{7,64}$/i.test(value)) {
+		throw new Error('Invalid GitLab commit');
+	}
+
+	return value;
 }
 
 function getPullRequests(value: unknown): readonly HostingPullRequest[] {

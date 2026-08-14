@@ -1,28 +1,18 @@
-import type { MessageItem } from 'vscode';
-import { EventEmitter, Uri, window, workspace } from 'vscode';
+import { EventEmitter, Uri } from 'vscode';
 import { fetch } from '@env/fetch.js';
-import type { CommitAuthor } from '@gitlens/git/models/author.js';
-import { CustomRemoteProvider } from '@gitlens/git/remotes/custom.js';
-import { getGitHubNoReplyAddressParts } from '@gitlens/git/remotes/github.js';
 import { base64 } from '@gitlens/utils/base64.js';
 import { md5 } from '@gitlens/utils/crypto.js';
 import { debounce } from '@gitlens/utils/debounce.js';
 import { filterMap } from '@gitlens/utils/iterable.js';
-import { equalsIgnoreCase } from '@gitlens/utils/string.js';
 import type { GravatarDefaultStyle } from './config.js';
 import type { StoredAvatar } from './constants.storage.js';
 import { Container } from './container.js';
-import {
-	getBestRemoteWithIntegration,
-	getRemoteIntegration,
-	remoteSupportsIntegration,
-} from './git/utils/-webview/remote.utils.js';
-import { configuration } from './system/-webview/configuration.js';
-import { getContext } from './system/-webview/context.js';
+import { getHostingProviderDescriptor } from './git/utils/-webview/remote.utils.js';
 import type { ContactPresenceStatus } from './vsls/vsls.js';
 
 let avatarCache: Map<string, Avatar> | undefined;
 const avatarQueue = new Map<string, Promise<Uri>>();
+const providerAvatarUrls = new Set<string>();
 
 const _onDidFetchAvatar = new EventEmitter<{ email: string }>();
 _onDidFetchAvatar.event(
@@ -119,7 +109,6 @@ function getAvatarUriCore(
 	if (!email) {
 		const avatar = createOrUpdateAvatar(
 			`${missingGravatarHash}:${size}`,
-			undefined,
 			size,
 			missingGravatarHash,
 			options?.defaultStyle,
@@ -130,19 +119,13 @@ function getAvatarUriCore(
 	const hash = md5(email.trim().toLowerCase());
 	const key = `${hash}:${size}`;
 
-	const avatar = createOrUpdateAvatar(key, email, size, hash, options?.defaultStyle);
+	const avatar = createOrUpdateAvatar(key, size, hash, options?.defaultStyle);
 	if (avatar.uri != null) return avatar.uri;
 
-	if (
-		!options?.cached &&
-		repoPathOrCommit != null &&
-		getContext('gitlens:repos:withRemotes')?.includes(
-			typeof repoPathOrCommit === 'string' ? repoPathOrCommit : repoPathOrCommit.repoPath,
-		)
-	) {
+	if (!options?.cached && repoPathOrCommit != null) {
 		let query = avatarQueue.get(key);
 		if (query == null && hasAvatarExpired(avatar)) {
-			query = getAvatarUriFromRemoteProvider(avatar, key, email, repoPathOrCommit, { size: size }).then(
+			query = getAvatarUriFromRemoteProvider(avatar, email, repoPathOrCommit).then(
 				uri => uri ?? avatar.uri ?? avatar.fallback!,
 			);
 			avatarQueue.set(
@@ -157,24 +140,17 @@ function getAvatarUriCore(
 	return options?.cached ? avatar.uri : (avatar.uri ?? avatar.fallback!);
 }
 
-function createOrUpdateAvatar(
-	key: string,
-	email: string | undefined,
-	size: number,
-	hash: string,
-	defaultStyle?: GravatarDefaultStyle,
-): Avatar {
+function createOrUpdateAvatar(key: string, size: number, hash: string, defaultStyle?: GravatarDefaultStyle): Avatar {
 	let avatar = avatarCache!.get(key);
 	if (avatar == null) {
 		avatar = {
-			uri: email?.length ? getAvatarUriFromGitHubNoReplyAddress(email, size) : undefined,
-			fallback: getAvatarUriFromGravatar(hash, size, defaultStyle),
+			fallback: getGeneratedAvatarUri(hash, size, defaultStyle),
 			timestamp: 0,
 			retries: 0,
 		};
 		avatarCache!.set(key, avatar);
 	} else {
-		avatar.fallback ??= getAvatarUriFromGravatar(hash, size, defaultStyle);
+		avatar.fallback ??= getGeneratedAvatarUri(hash, size, defaultStyle);
 	}
 	return avatar;
 }
@@ -199,93 +175,44 @@ function hasAvatarExpired(avatar: Avatar) {
 	return Date.now() >= avatar.timestamp + retryDecay[Math.min(avatar.retries, retryDecay.length - 1)];
 }
 
-function getAvatarUriFromGravatar(hash: string, size: number, defaultStyle?: GravatarDefaultStyle): Uri {
-	return Uri.parse(
-		`https://www.gravatar.com/avatar/${hash}?s=${size}&d=${defaultStyle ?? getDefaultGravatarStyle()}`,
-	);
+function getGeneratedAvatarUri(hash: string, size: number, _defaultStyle?: GravatarDefaultStyle): Uri {
+	const color = `#${hash.slice(0, 6)}`;
+	const initials = hash.slice(6, 8).toUpperCase();
+	const contents = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 32 32"><rect width="32" height="32" fill="${color}"/><text x="16" y="21" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="12">${initials}</text></svg>`;
+	return Uri.parse(`data:image/svg+xml;base64,${base64(contents)}`);
 }
 
 export function getAvatarUriFromGravatarEmail(email: string, size: number, defaultStyle?: GravatarDefaultStyle): Uri {
-	return getAvatarUriFromGravatar(md5(email.trim().toLowerCase()), size, defaultStyle);
-}
-
-function getAvatarUriFromGitHubNoReplyAddress(email: string, size: number = 16): Uri | undefined {
-	if (email === 'noreply@github.com') {
-		return Uri.parse('https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png');
-	}
-
-	const parts = getGitHubNoReplyAddressParts(email);
-	if (parts == null || !equalsIgnoreCase(parts.authority, 'github.com')) return undefined;
-
-	return Uri.parse(
-		`https://avatars.githubusercontent.com/${parts.userId ? `u/${parts.userId}` : parts.login}?size=${size}`,
-	);
+	return getGeneratedAvatarUri(md5(email.trim().toLowerCase()), size, defaultStyle);
 }
 
 async function getAvatarUriFromRemoteProvider(
 	avatar: Avatar,
-	_key: string,
 	email: string,
 	repoPathOrCommit: string | { ref: string; repoPath: string },
-	{ size = 16 }: { size?: number } = {},
 ) {
 	ensureAvatarCache(avatarCache);
 
 	try {
-		let account: CommitAuthor | undefined;
-		let hasAvatarSource = false;
-		// if (typeof repoPathOrCommit === 'string') {
-		// 	const remote = await Container.instance.git.getRichRemoteProvider(repoPathOrCommit);
-		// 	account = await remote?.provider.getAccountForEmail(email, { avatarSize: size });
-		// } else {
-		if (typeof repoPathOrCommit !== 'string') {
-			const remote = await getBestRemoteWithIntegration(repoPathOrCommit.repoPath);
-			if (remote != null && remoteSupportsIntegration(remote)) {
-				hasAvatarSource = true;
-				account = await (
-					await getRemoteIntegration(remote)
-				)?.getAccountForCommit(remote.provider.repoDesc, repoPathOrCommit.ref, {
-					avatarSize: size,
-				});
-			}
+		if (typeof repoPathOrCommit === 'string') return undefined;
 
-			if (!account?.avatarUrl) {
-				const remoteWithProvider = await Container.instance.git
-					.getRepositoryService(repoPathOrCommit.repoPath)
-					.remotes.getBestRemoteWithProvider();
+		const remote = await Container.instance.git
+			.getRepositoryService(repoPathOrCommit.repoPath)
+			.remotes.getBestRemoteWithProvider();
+		const descriptor = remote?.provider == null ? undefined : getHostingProviderDescriptor(remote.provider);
+		const account =
+			descriptor == null
+				? undefined
+				: await Container.instance.hosting.get(descriptor.id, descriptor.repository.domain)?.getAccount?.();
+		if (account == null || 'authenticationRequired' in account || account.avatarUrl == null) return undefined;
 
-				if (remoteWithProvider?.provider instanceof CustomRemoteProvider) {
-					const avatarUrl = getApprovedCustomRemoteAvatarUrl(remoteWithProvider.provider, email, size);
-					if (avatarUrl != null) {
-						avatar.uri = Uri.parse(avatarUrl);
-						avatar.timestamp = Date.now();
-						avatar.retries = 0;
-						avatarCache.set(`${md5(email.trim().toLowerCase())}:${size}`, { ...avatar });
-						_onDidFetchAvatar.fire({ email: email });
-						return avatar.uri;
-					}
-				}
-			}
-		}
-
-		if (account?.avatarUrl == null) {
-			if (hasAvatarSource) {
-				// A provider was consulted but returned no avatar — permanently cache "no result"
-				avatar.uri = undefined;
-				avatar.timestamp = Infinity;
-				avatar.retries = 0;
-			}
-
-			return undefined;
-		}
+		const accountAvatar = new URL(account.avatarUrl);
+		if (accountAvatar.protocol !== 'https:') return undefined;
 
 		avatar.uri = Uri.parse(account.avatarUrl);
+		providerAvatarUrls.add(account.avatarUrl);
 		avatar.timestamp = Date.now();
 		avatar.retries = 0;
-
-		if (account.email != null && equalsIgnoreCase(email, account.email)) {
-			avatarCache.set(`${md5(account.email.trim().toLowerCase())}:${size}`, { ...avatar });
-		}
 
 		_onDidFetchAvatar.fire({ email: email });
 
@@ -304,7 +231,7 @@ const rasterImageTypes = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image
 
 export async function fetchAvatarImageAsDataUri(url: string): Promise<Uri | undefined> {
 	try {
-		if (!url.startsWith('https://')) return undefined;
+		if (!providerAvatarUrls.has(url)) return undefined;
 
 		const rsp = await fetch(url, { signal: AbortSignal.timeout(10_000) });
 		if (!rsp.ok) {
@@ -360,74 +287,9 @@ export function getPresenceDataUri(status: ContactPresenceStatus): string {
 	return dataUri;
 }
 
-const promptedAvatarTemplates = new Set<string>();
-
-function getApprovedCustomRemoteAvatarUrl(
-	provider: CustomRemoteProvider,
-	email: string,
-	size: number,
-): string | undefined {
-	// Avatar templates from `gitlens.remotes` may originate from workspace settings
-	// — only honor them in a trusted workspace
-	if (!workspace.isTrusted) return undefined;
-
-	const template = provider.avatarUrlTemplate;
-	if (template == null) return undefined;
-
-	const approval = getAvatarTemplateApproval(template);
-	if (approval === 'allow') {
-		return provider.getUrlForAvatar(email, size);
-	}
-	if (approval === 'deny') {
-		return undefined;
-	}
-
-	// Unknown template — prompt the user (non-blocking) and fall through to fallback avatar
-	void promptForAvatarTemplateApproval(template);
-	return undefined;
-}
-
-function getAvatarTemplateApproval(template: string): 'allow' | 'deny' | undefined {
-	const approvals = Container.instance.storage.get('avatars:approvedRemoteTemplates');
-	if (approvals == null) return undefined;
-	return Object.hasOwn(approvals, template) ? approvals[template] : undefined;
-}
-
-async function setAvatarTemplateApproval(template: string, decision: 'allow' | 'deny'): Promise<void> {
-	const approvals: Record<string, 'allow' | 'deny'> = Object.create(null);
-	Object.assign(approvals, Container.instance.storage.get('avatars:approvedRemoteTemplates'));
-	approvals[template] = decision;
-	await Container.instance.storage.store('avatars:approvedRemoteTemplates', approvals);
-}
-
-async function promptForAvatarTemplateApproval(template: string): Promise<void> {
-	if (promptedAvatarTemplates.has(template)) return;
-
-	promptedAvatarTemplates.add(template);
-
-	const allow: MessageItem = { title: 'Allow' };
-	const deny: MessageItem = { title: 'Deny' };
-	const notNow: MessageItem = { title: 'Not Now', isCloseAffordance: true };
-
-	const result = await window.showInformationMessage(
-		`The \`gitlens.remotes\` setting in this workspace includes an avatar URL template that will be requested for every commit author.\n\nTemplate: ${template}\n\nDo you trust this workspace to make these requests?`,
-		allow,
-		deny,
-		notNow,
-	);
-
-	if (result === allow) {
-		await setAvatarTemplateApproval(template, 'allow');
-		resetAvatarCache('failed');
-	} else if (result === deny) {
-		await setAvatarTemplateApproval(template, 'deny');
-	}
-}
-
 export function resetApprovedAvatarTemplates(): Promise<void> {
-	promptedAvatarTemplates.clear();
 	resetAvatarCache('failed');
-	return Container.instance.storage.delete('avatars:approvedRemoteTemplates');
+	return Promise.resolve();
 }
 
 export function resetAvatarCache(reset: 'all' | 'failed' | 'fallback'): void {
@@ -436,6 +298,7 @@ export function resetAvatarCache(reset: 'all' | 'failed' | 'fallback'): void {
 			void Container.instance.storage.delete('avatars');
 			avatarCache?.clear();
 			avatarQueue.clear();
+			providerAvatarUrls.clear();
 			break;
 
 		case 'failed':
@@ -456,13 +319,7 @@ export function resetAvatarCache(reset: 'all' | 'failed' | 'fallback'): void {
 	}
 }
 
-let defaultGravatarsStyle: GravatarDefaultStyle | undefined = undefined;
-function getDefaultGravatarStyle() {
-	defaultGravatarsStyle ??= configuration.get('defaultGravatarsStyle', undefined, 'robohash');
-	return defaultGravatarsStyle;
-}
-
 export function setDefaultGravatarsStyle(style: GravatarDefaultStyle): void {
-	defaultGravatarsStyle = style;
+	void style;
 	resetAvatarCache('fallback');
 }

@@ -10,6 +10,10 @@ import type {
 export type HostingProvider = {
 	id: HostingProviderId;
 	getAccount?(): Promise<HostingResult<HostingAccount>>;
+	getPullRequestForCommit?(
+		repository: HostingRepositoryDescriptor,
+		commit: string,
+	): Promise<HostingResult<HostingPullRequest | undefined>>;
 	getPullRequests(repository: HostingRepositoryDescriptor): Promise<HostingResult<readonly HostingPullRequest[]>>;
 	createPullRequest(
 		repository: HostingRepositoryDescriptor,
