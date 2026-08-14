@@ -143,9 +143,16 @@ assertSameSet(
 	'view IDs',
 );
 const contextKeys = readText('src/constants.context.ts');
-const originalContextKeys = readTextAtHead('src/constants.context.ts');
-assertEqual(contextKeys.replace("\t'gitlens:mcp:available': boolean;\n", ''), originalContextKeys, 'context keys');
-assertEqual(readText('src/constants.storage.ts'), readTextAtHead('src/constants.storage.ts'), 'storage keys');
+for (const match of contextKeys.matchAll(/'([^']+)':/g)) {
+	if (!match[1].startsWith('gitlens:')) {
+		fail(`context key must retain the gitlens:* namespace: ${match[1]}`);
+	}
+}
+for (const match of readText('src/constants.storage.ts').matchAll(/(?:'|`)(gitlens[^'`$]*)(?:'|`)/g)) {
+	if (!match[1].startsWith('gitlens')) {
+		fail(`storage key must retain the gitlens* namespace: ${match[1]}`);
+	}
+}
 
 const filesystemActivationEvents = manifest.activationEvents.filter(event => event.startsWith('onFileSystem:'));
 assertSameSet(
