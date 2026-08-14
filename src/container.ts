@@ -79,7 +79,7 @@ import { Views } from './views/views.js';
 import { VirtualFileSystemService } from './virtual/virtualFileSystemService.js';
 import { VslsController } from './vsls/vsls.js';
 import { registerAllowedSignersWebviewPanel } from './webviews/allowedSigners/registration.js';
-import { registerGraphWebviewCommands, registerGraphWebviewPanel } from './webviews/plus/graph/registration.js';
+import { registerGraphWebviewCommands, registerGraphWebviewPanel } from './webviews/graph/registration.js';
 import { registerPatchDetailsWebviewPanel } from './webviews/plus/patchDetails/registration.js';
 import {
 	registerTimelineWebviewCommands,

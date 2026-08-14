@@ -21159,7 +21159,7 @@
 		"gitlens.views.graph": {
 			"type": "webview",
 			"name": "Graph",
-			"when": "!gitlens:plus:disabled || gitlens:plus:disabled:view:overrides =~ /(?:^|\\|)gitlens\\.views\\.graph(?:\\||$)/",
+			"when": "!gitlens:disabled",
 			"contextualTitle": "GitLens",
 			"icon": "$(gitlens-graph)",
 			"initialSize": 7,

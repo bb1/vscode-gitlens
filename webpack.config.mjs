@@ -481,7 +481,7 @@ function getWebviewsConfigs(mode, env) {
 	let webviews = {
 		allowedSigners: { entry: './allowedSigners/allowedSigners.ts' },
 		commitDetails: { entry: './commitDetails/commitDetails.ts' },
-		graph: { entry: './plus/graph/graph.ts', plus: true },
+		graph: { entry: './graph/graph.ts' },
 		home: { entry: './home/home.ts' },
 		rebase: { entry: './rebase/rebase.ts' },
 		settings: { entry: './settings/settings.ts' },
