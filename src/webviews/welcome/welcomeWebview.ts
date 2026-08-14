@@ -5,9 +5,7 @@ import type { GraphWalkthroughContextKeys, WalkthroughContextKeys } from '../../
 import type { Container } from '../../container.js';
 import { FeatureFlagKey } from '../../featureFlags/featureFlagService.js';
 import type { SubscriptionChangeEvent } from '../../plus/gk/subscriptionService.js';
-import { needsCursorMcpCleanupNotice } from '../../plus/gk/utils/-webview/mcp.utils.js';
 import { registerCommand } from '../../system/-webview/command.js';
-import { getContext } from '../../system/-webview/context.js';
 import type { WebviewHost, WebviewProvider, WebviewShowingArgs } from '../webviewProvider.js';
 import type { WebviewShowOptions } from '../webviewsController.js';
 import type { GraphWalkthroughProgress, State, WalkthroughMode, WalkthroughProgress } from './protocol.js';
@@ -126,22 +124,6 @@ export class WelcomeWebviewProvider implements WebviewProvider<State, State, Wel
 		};
 	}
 
-	private getMcpCanAutoRegister(): boolean {
-		return this.container.gkMcp?.isRegistrationAllowed ?? false;
-	}
-
-	private isCliInstalled(): boolean {
-		return getContext('gitlens:gk:cli:installed', false);
-	}
-
-	private getMcpNeedsInstall(): boolean {
-		return !this.getMcpCanAutoRegister() || !this.isCliInstalled();
-	}
-
-	private getMcpShowCleanupNotice(): boolean {
-		return needsCursorMcpCleanupNotice(this.container);
-	}
-
 	private getWelcomeTitleVariant(): string | undefined {
 		const showVariant = this.container.featureFlags.getFlag(FeatureFlagKey.WelcomeTitleVariant, false);
 		return showVariant ? 'Welcome' : undefined;
@@ -161,8 +143,6 @@ export class WelcomeWebviewProvider implements WebviewProvider<State, State, Wel
 			walkthroughProgress: this.getWalkthroughProgress(),
 			graphWalkthroughProgress: this.getGraphWalkthroughProgress(),
 			mode: this._mode,
-			mcpNeedsInstall: this.getMcpNeedsInstall(),
-			mcpShowCleanupNotice: this.getMcpShowCleanupNotice(),
 		};
 	}
 }

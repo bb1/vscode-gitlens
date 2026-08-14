@@ -20,8 +20,6 @@ declare global {
 
 export type WalkthroughStepConditionState = {
 	plusState: SubscriptionState | undefined;
-	mcpNeedsInstall: boolean;
-	mcpShowCleanupNotice: boolean;
 };
 
 export type WalkthroughStep = {

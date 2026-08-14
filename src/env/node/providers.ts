@@ -24,10 +24,12 @@ import { GlCliGitProvider } from './git/cliGitProvider.js';
 import { VslsGitProvider } from './git/vslsGitProvider.js';
 import { GkCliService } from './gk/cli/gkCliService.js';
 import { runCLICommand } from './gk/cli/utils.js';
-import { GkMcpService } from './gk/mcp/gkMcpService.js';
+import { getLocalMcpService } from './mcp/localMcpService.js';
+import type { LocalMcpService } from './mcp/localMcpService.js';
 
 export type { GkCliService } from './gk/cli/gkCliService.js';
-export type { GkMcpService } from './gk/mcp/gkMcpService.js';
+export type { GkMcpRegistrar as GkMcpService } from '../../plus/gk/utils/-webview/mcp.utils.js';
+export type { LocalMcpService } from './mcp/localMcpService.js';
 import { LocalRepositoryLocationProvider } from './gk/localRepositoryLocationProvider.js';
 import { LocalSharedGkStorageLocationProvider } from './gk/localSharedGkStorageLocationProvider.js';
 import { LocalGkWorkspacesSharedStorageProvider } from './gk/localWorkspacesSharedStorageProvider.js';
@@ -101,8 +103,8 @@ export function getGkCliService(container: Container): GkCliService {
 	return new GkCliService(container);
 }
 
-export function getGkMcpService(container: Container, gkCli: GkCliService): GkMcpService {
-	return new GkMcpService(container, gkCli);
+export function getMcpService(container: Container): LocalMcpService {
+	return getLocalMcpService(container);
 }
 
 export function getAgentSessionProviders(container: Container): AgentSessionProvider[] {

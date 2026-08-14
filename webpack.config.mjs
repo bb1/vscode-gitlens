@@ -294,13 +294,22 @@ function getExtensionConfig(target, mode, env) {
 		entry:
 			target === 'webworker'
 				? { extension: './src/extension.ts' }
-				: { extension: './src/extension.ts', rebaseTodoEditor: './src/git/utils/rebaseTodoEditor.ts' },
+				: {
+						extension: './src/extension.ts',
+						mcpServer: './packages/mcp-server/src/server.ts',
+						rebaseTodoEditor: './src/git/utils/rebaseTodoEditor.ts',
+					},
 		mode: mode,
 		target: target,
 		devtool: mode === 'production' && !env.analyzeBundle ? false : 'cheap-module-source-map',
 		output: {
 			chunkFilename: '[name].js',
-			filename: pathData => (pathData.chunk?.name === 'extension' ? 'gitlens.js' : '[name].js'),
+			filename: pathData => {
+				if (pathData.chunk?.name === 'extension') return 'gitlens.js';
+				if (pathData.chunk?.name === 'mcpServer') return 'mcp-server/server.js';
+
+				return '[name].js';
+			},
 			libraryTarget: 'commonjs2',
 			path: target === 'webworker' ? path.join(__dirname, 'dist', 'browser') : path.join(__dirname, 'dist'),
 			// Clean output directory, but preserve other build targets' output directories

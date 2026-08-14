@@ -64,12 +64,17 @@ export function getSupportedWorkspacesStorageProvider(
 // `container.gkMcp?.isRegistration*` in both builds while TS keeps the stub from drifting from the service.
 export type GkCliService = never;
 export type { GkMcpRegistrar as GkMcpService } from '../../plus/gk/utils/-webview/mcp.utils.js';
+export type LocalMcpService = never;
 
 export function getGkCliService(_container: Container): undefined {
 	return undefined;
 }
 
 export function getGkMcpService(_container: Container, _gkCli: GkCliService): undefined {
+	return undefined;
+}
+
+export function getMcpService(_container: Container | undefined): undefined {
 	return undefined;
 }
 
