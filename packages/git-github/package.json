@@ -7,6 +7,10 @@
 	"type": "module",
 	"sideEffects": false,
 	"exports": {
+		"./gitDataModels.js": {
+			"types": "./dist/gitDataModels.d.ts",
+			"default": "./dist/gitDataModels.js"
+		},
 		"./githubClient.js": {
 			"types": "./dist/githubClient.d.ts",
 			"default": "./dist/githubClient.js"
