@@ -1,7 +1,6 @@
 import { Logger } from '@gitlens/utils/logger.js';
 import type { Source, Sources } from '../constants.telemetry.js';
 import type { Container } from '../container.js';
-import { executeGitCommand } from '../git/actions.js';
 import { showGenericErrorMessage } from '../messages.js';
 import { takeoverAutoRebaseRun, undoWithConfirmation } from '../plus/coretools/conflict/autoRebaseProgress.js';
 import { ensurePaidPlan } from '../plus/gk/utils/-webview/plus.utils.js';
@@ -11,35 +10,6 @@ import { GlCommandBase } from './commandBase.js';
 import type { CommandContext } from './commandContext.js';
 import { isCommandContextViewNodeHasRepoPath, isCommandContextViewNodeHasRepository } from './commandContext.utils.js';
 
-/**
- * Launches the rebase wizard pre-seeded with the automatic (AI conflict resolution) option, so the
- * user only picks the repo/target — the run itself resolves conflicts end-to-end, escalating to
- * the Resolve panel when confidence is low, and finishes with a reviewable, undoable summary.
- */
-@command()
-export class AutoRebaseCommand extends GlCommandBase {
-	constructor(private readonly container: Container) {
-		super('gitlens.ai.autoRebase');
-	}
-
-	async execute(): Promise<void> {
-		if (
-			!(await ensurePaidPlan(this.container, 'Automatic rebase is a Pro feature.', {
-				source: 'commandPalette',
-			}))
-		) {
-			return;
-		}
-
-		try {
-			await executeGitCommand({ command: 'rebase', state: { flags: ['ai-resolve'] } });
-		} catch (ex) {
-			Logger.error(ex, 'AutoRebaseCommand', 'execute');
-			void showGenericErrorMessage('Unable to start the automatic rebase');
-		}
-	}
-}
-
 export interface ContinueRebaseWithAiCommandArgs {
 	repoPath?: string;
 	source?: Sources;
@@ -47,7 +17,7 @@ export interface ContinueRebaseWithAiCommandArgs {
 
 /**
  * Takes over an already-paused rebase and automates its remaining steps with AI conflict
- * resolution — the paused-op counterpart of {@link AutoRebaseCommand}, and the way to re-engage
+ * resolution, and the way to re-engage
  * automation after an escalation was resolved manually.
  */
 @command()

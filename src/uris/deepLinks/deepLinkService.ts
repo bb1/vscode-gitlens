@@ -12,14 +12,12 @@ import { createReference } from '@gitlens/git/utils/reference.utils.js';
 import { parseGitRemoteUrl } from '@gitlens/git/utils/remote.utils.js';
 import { isSha } from '@gitlens/git/utils/revision.utils.js';
 import { isIntegrationId, isSupportedCloudIntegrationId } from '@gitlens/integrations/constants.js';
-import { fromBase64ToString } from '@gitlens/utils/base64.js';
 import { trace } from '@gitlens/utils/decorators/log.js';
 import { once } from '@gitlens/utils/event.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import { getScopedLogger } from '@gitlens/utils/logger.scoped.js';
 import { maybeUri, normalizePath } from '@gitlens/utils/path.js';
 import type { OpenChatActionCommandArgs } from '../../commands/openChatAction.js';
-import type { OpenCloudPatchCommandArgs } from '../../commands/patches.js';
 import type { StoredDeepLinkContext, StoredNamedRef } from '../../constants.storage.js';
 import type { Source } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
@@ -1273,25 +1271,8 @@ export class DeepLinkService implements Disposable {
 					break;
 				}
 				case DeepLinkServiceState.OpenDraft: {
-					if (!targetId) {
-						action = DeepLinkServiceAction.DeepLinkErrored;
-						message = 'Missing cloud patch id.';
-						break;
-					}
-
-					const type = this._context.params?.get('type');
-					let prEntityId = this._context.params?.get('prEntityId') ?? undefined;
-					if (prEntityId != null) {
-						prEntityId = fromBase64ToString(prEntityId);
-					}
-
-					void (await executeCommand<OpenCloudPatchCommandArgs>('gitlens.openCloudPatch', {
-						type: type === 'suggested_pr_change' ? 'code_suggestion' : 'patch',
-						id: targetId,
-						patchId: secondaryTargetId,
-						prEntityId: prEntityId,
-					}));
-					action = DeepLinkServiceAction.DeepLinkResolved;
+					action = DeepLinkServiceAction.DeepLinkErrored;
+					message = 'Cloud Patch links are not supported.';
 					break;
 				}
 				case DeepLinkServiceState.OpenWorkspace: {

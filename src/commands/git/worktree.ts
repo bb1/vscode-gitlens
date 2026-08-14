@@ -1,8 +1,8 @@
 ﻿import type { Uri } from 'vscode';
 import type { GitWorktree } from '@gitlens/git/models/worktree.js';
-import { proBadge, proBadgeSuperscript } from '../../constants.js';
 import type { Container } from '../../container.js';
 import type { GlRepository } from '../../git/models/repository.js';
+import { getWorktreesDisplay } from '../../system/worktrees.js';
 import type { ViewsWithRepositoryFolders } from '../../views/viewBase.js';
 import type { StepsContext } from '../quick-wizard/models/steps.js';
 import type { SubcommandState } from '../quick-wizard/quickCommandWithSubcommands.js';
@@ -48,8 +48,9 @@ export interface WorktreeGitCommandArgs {
 
 export class WorktreeGitCommand extends QuickCommandWithSubcommands<Subcommands, State, WorktreeContext> {
 	constructor(container: Container, args?: WorktreeGitCommandArgs) {
-		super(container, 'worktree', 'worktree', `Worktrees ${proBadgeSuperscript}`, {
-			description: `${proBadge}\u00a0\u00a0open, create, or delete worktrees`,
+		const display = getWorktreesDisplay();
+		super(container, 'worktree', 'worktree', display.title, {
+			description: display.description,
 		});
 
 		this.initialState = { confirm: args?.confirm, ...args?.state };
