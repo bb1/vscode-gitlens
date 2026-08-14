@@ -9,6 +9,7 @@
 		{ "path": "./packages/git" },
 		{ "path": "./packages/git-cli" },
 		{ "path": "./packages/integrations" },
+		{ "path": "./packages/git-github" },
 		{ "path": "./packages/mcp-server" },
 		{ "path": "./packages/plus/git-github" },
 		{ "path": "./packages/plus/ai" },

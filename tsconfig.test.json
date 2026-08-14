@@ -12,6 +12,7 @@
 			"@gitlens/git/*": ["./packages/git/src/*"],
 			"@gitlens/git-cli/*": ["./packages/git-cli/src/*"],
 			"@gitlens/hosting-integrations/*": ["./packages/integrations/src/*"],
+			"@gitlens/hosting-github/*": ["./packages/git-github/src/*"],
 			"@gitlens/git-github/*": ["./packages/plus/git-github/src/*"],
 			"@gitlens/agents/*": ["./packages/plus/agents/src/*"]
 		},

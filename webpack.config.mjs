@@ -50,6 +50,7 @@ function getLibraryAliases() {
 		'@gitlens/git': path.resolve(__dirname, 'packages', 'git', 'src'),
 		'@gitlens/git-cli': path.resolve(__dirname, 'packages', 'git-cli', 'src'),
 		'@gitlens/hosting-integrations': path.resolve(__dirname, 'packages', 'integrations', 'src'),
+		'@gitlens/hosting-github': path.resolve(__dirname, 'packages', 'git-github', 'src'),
 		'@gitlens/git-github': path.resolve(__dirname, 'packages', 'plus', 'git-github', 'src'),
 		'@gitlens/integrations': path.resolve(__dirname, 'packages', 'plus', 'integrations', 'src'),
 		'@gitlens/ai': path.resolve(__dirname, 'packages', 'plus', 'ai', 'src'),

@@ -314,6 +314,7 @@
 				"packages/ipc/src/**/*",
 				"packages/git/src/**/*",
 				"packages/git-cli/src/**/*",
+				"packages/git-github/src/**/*",
 				"packages/plus/git-github/src/**/*",
 				"packages/plus/integrations/src/**/*",
 				"packages/plus/ai/src/**/*",
@@ -602,6 +603,7 @@
 				"packages/ipc/src/**/*",
 				"packages/git/src/**/*",
 				"packages/git-cli/src/**/*",
+				"packages/git-github/src/**/*",
 				"packages/plus/git-github/src/**/*",
 				"packages/plus/integrations/src/**/*",
 				"packages/plus/ai/src/**/*",
@@ -770,7 +772,7 @@
 			}
 		},
 		{
-			"files": ["packages/git-cli/**/*", "packages/plus/git-github/**/*"],
+			"files": ["packages/git-cli/**/*", "packages/git-github/**/*", "packages/plus/git-github/**/*"],
 			"rules": {
 				"no-throw-literal": "off",
 				"no-unmodified-loop-condition": "off"
