@@ -148,11 +148,13 @@ async function* walk(dir) {
 	}
 }
 
-const specifierRegex = /(['"])@gitlens\/(utils|ipc|git|git-cli|ai|agents|hosting-integrations|hosting-github|git-github|integrations)\/([^'"]+)\1/g;
+const specifierRegex =
+	/(['"])@gitlens\/(utils|ipc|git|git-cli|ai|agents|hosting-integrations|hosting-github|git-github|integrations)\/([^'"]+)\1/g;
 // Also rewrite backtick-wrapped package mentions (typical in JSDoc) so the published tarball never
 // references the internal `@gitlens/*` names. Backticks are required to avoid false positives on
 // URLs or other incidental occurrences of the substring.
-const docMentionRegex = /`@gitlens\/(utils|ipc|git|git-cli|ai|agents|hosting-integrations|hosting-github|git-github|integrations)`/g;
+const docMentionRegex =
+	/`@gitlens\/(utils|ipc|git|git-cli|ai|agents|hosting-integrations|hosting-github|git-github|integrations)`/g;
 const publishedName = '@gitkraken/core-gitlens';
 
 async function rewriteSpecifiers() {
