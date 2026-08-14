@@ -121,7 +121,7 @@ export function findGkCliFromArgs(electronArgs: string[]): string {
 
 	const userDataDir = userDataDirArg.replace('--user-data-dir=', '');
 	const bin = process.platform === 'win32' ? 'gk.exe' : 'gk';
-	return path.join(userDataDir, 'User', 'globalStorage', 'eamodio.gitlens', bin);
+	return path.join(userDataDir, 'User', 'globalStorage', 'bb1.offline-gitlense', bin);
 }
 
 /**

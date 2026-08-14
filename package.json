@@ -1,7 +1,7 @@
 {
-	"name": "gitlens",
-	"displayName": "GitLens — Git supercharged",
-	"description": "Supercharge Git within VS Code — Visualize code authorship at a glance via Git blame annotations and CodeLens, seamlessly navigate and explore Git repositories, gain valuable insights via rich visualizations and powerful comparison commands, and so much more",
+	"name": "offline-gitlense",
+	"displayName": "Offline GitLense",
+	"description": "Offline GitLense is an offline-friendly Git extension for VS Code.",
 	"version": "19.0.1",
 	"engines": {
 		"node": ">= 22.18.0",
@@ -9,31 +9,21 @@
 		"vscode": "^1.101.0"
 	},
 	"license": "SEE LICENSE IN LICENSE",
-	"publisher": "eamodio",
-	"author": {
-		"name": "Eric Amodio",
-		"email": "eamodio@gmail.com"
-	},
-	"homepage": "https://gitkraken.com/gitlens",
+	"publisher": "bb1",
+	"author": "bb1",
+	"homepage": "https://github.com/bb1/vscode-gitlens",
 	"bugs": {
-		"url": "https://github.com/gitkraken/vscode-gitlens/issues"
+		"url": "https://github.com/bb1/vscode-gitlens/issues"
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/gitkraken/vscode-gitlens.git"
+		"url": "https://github.com/bb1/vscode-gitlens.git"
 	},
 	"customElements": "custom-elements.json",
 	"main": "./dist/gitlens.js",
 	"browser": "./dist/browser/gitlens.js",
 	"icon": "images/gitlens-icon.png",
 	"preview": false,
-	"badges": [
-		{
-			"url": "https://img.shields.io/badge/gitkraken--community-gitlens-blue.svg?logo=slack&labelColor=555555",
-			"href": "https://slack.gitkraken.com/",
-			"description": "Join us in the #gitlens channel"
-		}
-	],
 	"categories": [
 		"Other",
 		"SCM Providers"
@@ -43,6 +33,8 @@
 		"theme": "dark"
 	},
 	"keywords": [
+		"offline-gitlense",
+		"offline",
 		"gitlens",
 		"git",
 		"blame",
@@ -17648,12 +17640,12 @@
 			"extension/context": [
 				{
 					"command": "gitlens.getStarted",
-					"when": "extension =~ /^eamodio.gitlens?$/ && extensionStatus == installed && gitlens:walkthroughSupported",
+					"when": "extension =~ /^bb1\\.offline-gitlense$/ && extensionStatus == installed && gitlens:walkthroughSupported",
 					"group": "9_gitlens@1"
 				},
 				{
 					"command": "gitlens.showSettingsPage",
-					"when": "extension =~ /^eamodio.gitlens?$/ && extensionStatus == installed",
+					"when": "extension =~ /^bb1\\.offline-gitlense$/ && extensionStatus == installed",
 					"group": "9_gitlens@3"
 				}
 			],
@@ -29846,6 +29838,7 @@
 		"generate:contributions": "node ./scripts/generateContributions.mts",
 		"// Generates command types from contributions.json into src/constants.commands.generated.ts": "//",
 		"generate:commandTypes": "node ./scripts/generateCommandTypes.mts",
+		"verify:identity": "node ./scripts/verifyIdentity.mjs",
 		"generate:customElements": "cem analyze",
 		"// Generates docs/telemetry-events.md": "//",
 		"generate:docs:telemetry": "node ./scripts/generateTelemetryDocs.mjs",

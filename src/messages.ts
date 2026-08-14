@@ -231,13 +231,13 @@ export async function showPreReleaseExpiredErrorMessage(version: string): Promis
 	);
 
 	if (result === upgrade) {
-		void executeCoreCommand('workbench.extensions.installExtension', 'eamodio.gitlens', {
+		void executeCoreCommand('workbench.extensions.installExtension', 'bb1.offline-gitlense', {
 			installPreReleaseVersion: true,
 		});
 		void executeCoreCommand('workbench.extensions.action.extensionUpdates');
 	} else if (result === switchToRelease) {
 		void executeCoreCommand('workbench.extensions.action.installExtensions');
-		void executeCoreCommand('workbench.extensions.action.switchToRelease', 'eamodio.gitlens');
+		void executeCoreCommand('workbench.extensions.action.switchToRelease', 'bb1.offline-gitlense');
 	}
 }
 

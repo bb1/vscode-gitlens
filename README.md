@@ -2,7 +2,7 @@
 
 > Understand any line of code, keep every branch, worktree, and coding agent in view, and ship cleaner history &mdash; without leaving <!-- #vscode -->VS Code<!-- /#vscode: your editor -->.
 
-[GitLens](https://gitkraken.com/gitlens?utm_source=gitlens-extension&utm_medium=in-app-links&utm_campaign=gitlens-logo-links 'Learn more about GitLens') is an [open-source](https://github.com/gitkraken/vscode-gitlens 'Open GitLens on GitHub') extension built and maintained by GitKraken, and installed more than 51 million times.
+[Offline GitLense](https://github.com/bb1/vscode-gitlens 'Open Offline GitLense on GitHub') is an offline-friendly fork of GitLens for VS Code.
 
 Your repository moves faster than it used to. Coding agents open branches, worktrees pile up, and pull requests stack while you're still reading a diff. GitLens pulls all of it into one interactive view &mdash; history, working changes, branches, worktrees, and live agent activity together &mdash; then helps you review it, rebase it, and shape it into commits someone can actually read.
 
@@ -12,16 +12,16 @@ Your repository moves faster than it used to. Coding agents open branches, workt
   </a>
 </figure>
 
-**[Start your free 14-day Pro trial](https://gitkraken.dev/register?product=gitlens&source=marketing_page&redirect_uri=vscode%3A%2F%2Feamodio.gitlens%2Flogin&flow=gitlens_web&utm_source=gitlens-extension&utm_medium=readme&utm_content=hero)** &mdash; no credit card required.
+Offline GitLense is available directly from this repository.
 
 GitLens Community is free and open-source, forever &mdash; and several Pro features, the Commit Graph among them, are free on public repos.
 
 # Getting Started
 
 1. **Install it** &mdash; search for GitLens in <!-- #vscode -->the Extensions side bar in VS Code<!-- /#vscode: your editor's Extensions side bar -->.
-2. **Sign in** &mdash; a [free GitKraken account](https://gitkraken.dev/register?product=gitlens&source=marketing_page&redirect_uri=vscode%3A%2F%2Feamodio.gitlens%2Flogin&flow=gitlens_web&utm_source=gitlens-extension&utm_medium=readme&utm_content=getting-started) opens the Commit Graph on your public repos, and starts your trial if you want it everywhere.
+2. **Open the Command Palette** &mdash; run any `GitLens:` command to explore the repository.
 3. **Open the Commit Graph** &mdash; click the **GitLens** icon in the activity bar, and there it is: your history, your working changes, and everything in flight. (`GitLens: Show Commit Graph` works too.)
-4. **Connect what you use** &mdash; your Git host and issue tracker for pull requests, issues, and autolinks, then your coding agents for session tracking and the GitKraken MCP.<!-- #vscode -->
+4. **Connect what you use** &mdash; your Git host and issue tracker for pull requests, issues, and autolinks.<!-- #vscode -->
 
 💡 Want new features first? Hit `Switch to Pre-Release Version` on the GitLens extension page in VS Code.<!-- /#vscode -->
 
@@ -163,17 +163,13 @@ Every part of your repository gets its own view, and they act as well as list. M
 
 **Pro** opens those on private repos and adds the rest: agent sessions and Agent Kanban, the Pull Requests panel with in-graph review and merge, Launchpad, and every AI feature on this page.
 
-**[Start your free 14-day Pro trial](https://gitkraken.dev/register?product=gitlens&source=marketing_page&redirect_uri=vscode%3A%2F%2Feamodio.gitlens%2Flogin&flow=gitlens_web&utm_source=gitlens-extension&utm_medium=readme&utm_content=editions)** &mdash; no credit card, and when it ends your public repos keep everything they had. Or read the full [Community vs. Pro comparison](https://help.gitkraken.com/gitlens/gitlens-community-vs-gitlens-pro/?utm_source=gitlens-extension&utm_medium=in-app-links&utm_campaign=readme&utm_term=ready-for-gitlens-pro).
-
 # Support and Community
 
 Support documentation can be found on the [GitLens Help Center](https://help.gitkraken.com/gitlens/gitlens-home/). If you need further assistance or have any questions, there are various support channels and community forums available:
 
-- **Issues and feature requests** &mdash; reach out on our [GitHub Issues page](https://github.com/gitkraken/vscode-gitlens/issues).
-- **Discussions** &mdash; connect with other users and talk to our engineering team on [GitHub Discussions](https://github.com/gitkraken/vscode-gitlens/discussions).
+- **Issues and feature requests** &mdash; reach out on our [GitHub Issues page](https://github.com/bb1/vscode-gitlens/issues).
+- **Discussions** &mdash; connect with other users on [GitHub Discussions](https://github.com/bb1/vscode-gitlens/discussions).
 - **GitKraken Support** &mdash; for anything else, reach the support team via the [official support page](https://support.gitkraken.com/). GitLens Pro includes priority email support, plus custom onboarding and training to get your team up and running.
-
-Having a positive experience with GitLens? <!-- #vscode -->[Write a review](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens&ssr=false#review-details)<!-- /#vscode: [Write a review](https://open-vsx.org/extension/eamodio/gitlens/reviews) --> &mdash; it genuinely helps.
 
 # Contributing
 
@@ -183,7 +179,7 @@ Your contributions, feedback, and engagement in the GitLens community are invalu
 
 ## Code Contributions
 
-Want to contribute to GitLens? Follow the [CONTRIBUTING](https://github.com/gitkraken/vscode-gitlens/blob/main/CONTRIBUTING.md) docs to get started.
+Want to contribute to Offline GitLense? Follow the [CONTRIBUTING](https://github.com/bb1/vscode-gitlens/blob/main/CONTRIBUTING.md) docs to get started.
 
 ## Documentation Contributions
 

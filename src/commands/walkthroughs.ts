@@ -411,9 +411,9 @@ export class WalkthroughOpenAiCustomInstructionsSettings extends GlCommandBase {
 			type: 'command',
 			name: 'open/ai-custom-instructions-settings',
 			command: 'workbench.action.openSettings',
-			detail: '@ext:eamodio.gitlens gitlens.ai custom instructions',
+			detail: '@ext:bb1.offline-gitlense gitlens.ai custom instructions',
 		});
-		executeCoreCommand('workbench.action.openSettings', '@ext:eamodio.gitlens gitlens.ai custom instructions');
+		executeCoreCommand('workbench.action.openSettings', '@ext:bb1.offline-gitlense gitlens.ai custom instructions');
 	}
 }
 

@@ -7,7 +7,7 @@ import { AuthenticationUriPathPrefix, LoginUriPathPrefix } from '../plus/gk/auth
 import { AiAllAccessOptInPathPrefix, SubscriptionUpdatedUriPathPrefix } from '../plus/gk/utils/subscription.utils.js';
 
 // This service is in charge of registering a URI handler and handling/emitting URI events received by GitLens.
-// URI events to GitLens take the form of: vscode://eamodio.gitlens/... and are handled by the UriEventHandler.
+// URI events to GitLens take the form of: vscode://bb1.offline-gitlense/... and are handled by the UriEventHandler.
 // The UriEventHandler is responsible for parsing the URI and emitting the event to the UriService.
 export class UriService implements Disposable, UriHandler {
 	private _onDidReceiveAuthenticationUri: EventEmitter<Uri> = new EventEmitter<Uri>();

@@ -34,13 +34,13 @@ The following are used in link notation in this document:
 
 - _(contents)_ notation means that the _contents_ within the _()_ are optional in the deep link. The actual deep link does not include the _()_ symbols if the contents are included.
 
-- _{reference}_ is a short-form reference to some content previously defined in the document. For example, if we define _branchLink_ as _b_ and _prefix_ as _vscode://eamodio.gitlens/link_, then the notation _{prefix}/{branchLink}_ is short-form for _vscode://eamodio.gitlens/link/b_. The reference name and _{}_ should not be included in the link.
+- _{reference}_ is a short-form reference to some content previously defined in the document. For example, if we define _branchLink_ as _b_ and _prefix_ as _vscode://bb1.offline-gitlense/link_, then the notation _{prefix}/{branchLink}_ is short-form for _vscode://bb1.offline-gitlense/link/b_. The reference name and _{}_ should not be included in the link.
 
 ## Repository Item Deep Links
 
 ### Common References
 
-- _{prefix}_ = _vscode://eamodio.gitlens/link_
+- _{prefix}_ = _vscode://bb1.offline-gitlense/link_
 
 - _{remoteUrl}_ is the pull URL of a git remote, including the .git part. You can see this url when, for example, choosing “Clone” on the repo’s/remote’s page in GitHub.
 
@@ -189,7 +189,7 @@ To guide a teammate to a specific line of code, right click the line in the edit
 
 ### Common References
 
-- _{prefix}_ = _vscode://eamodio.gitlens/link_
+- _{prefix}_ = _vscode://bb1.offline-gitlense/link_
 
 ### Notes
 
@@ -246,7 +246,7 @@ Used to log in to a GitKraken account from GitLens.
 
 #### Format
 
-_vscode://eamodio.gitlens/login?code={code}(&state={state})(&context={context})_
+_vscode://bb1.offline-gitlense/login?code={code}(&state={state})(&context={context})_
 
 #### References
 

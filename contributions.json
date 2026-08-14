@@ -2818,7 +2818,7 @@
 			"menus": {
 				"extension/context": [
 					{
-						"when": "extension =~ /^eamodio.gitlens?$/ && extensionStatus == installed && gitlens:walkthroughSupported",
+						"when": "extension =~ /^bb1\\.offline-gitlense$/ && extensionStatus == installed && gitlens:walkthroughSupported",
 						"group": "9_gitlens",
 						"order": 1
 					}
@@ -7195,7 +7195,7 @@
 			"menus": {
 				"extension/context": [
 					{
-						"when": "extension =~ /^eamodio.gitlens?$/ && extensionStatus == installed",
+						"when": "extension =~ /^bb1\\.offline-gitlense$/ && extensionStatus == installed",
 						"group": "9_gitlens",
 						"order": 3
 					}

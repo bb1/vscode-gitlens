@@ -357,7 +357,7 @@ export class GitLensPage extends VSCodePage {
 	 * Find a GitLens webview by its title.
 	 * VS Code renders webviews outside their logical containers, so we search all webviews
 	 * and identify the correct one by:
-	 * 1. The outer iframe src containing extensionId=eamodio.gitlens and purpose=webviewView/webviewPanel
+	 * 1. The outer iframe src containing extensionId=bb1.offline-gitlense and purpose=webviewView/webviewPanel
 	 * 2. The inner iframe#active-frame having the specified title attribute
 	 *
 	 * @param title - The title of the webview (e.g., "Graph", "Graph Details", "Home")
@@ -378,8 +378,8 @@ export class GitLensPage extends VSCodePage {
 			// Find GitLens webview iframes
 			const iframes = this.page.locator(
 				usePurpose && purpose === 'webviewView'
-					? `iframe.webview[src*="extensionId=eamodio.gitlens"][src*="purpose=${purpose}"]`
-					: `iframe.webview[src*="extensionId=eamodio.gitlens"]`,
+					? `iframe.webview[src*="extensionId=bb1.offline-gitlense"][src*="purpose=${purpose}"]`
+					: `iframe.webview[src*="extensionId=bb1.offline-gitlense"]`,
 			);
 
 			iterations++;

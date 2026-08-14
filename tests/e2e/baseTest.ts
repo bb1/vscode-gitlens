@@ -22,7 +22,7 @@ export const DefaultTimeout = 2000;
 export const ShortTimeout = 500;
 
 /** GitLens extension identifier (publisher.name) */
-const gitlensExtensionId = 'eamodio.gitlens';
+const gitlensExtensionId = 'bb1.offline-gitlense';
 
 /**
  * Waits for the GitLens extension host to activate, polling `extensions.getExtension().isActive`.
