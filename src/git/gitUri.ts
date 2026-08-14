@@ -12,7 +12,7 @@ import { areUrisEqual } from '@gitlens/utils/uri.js';
 import { getQueryDataFromScmGitUri } from '../@types/vscode.git.uri.js';
 import { Schemes } from '../constants.js';
 import { Container } from '../container.js';
-import type { GitHubAuthorityMetadata } from '../plus/remotehub.js';
+import type { GitHubAuthorityMetadata } from '../hosting/githubRemoteHub.js';
 import { configuration } from '../system/-webview/configuration.js';
 import { formatPath } from '../system/-webview/formatPath.js';
 import { getBestPath, relativeDir, splitPath } from '../system/-webview/path.js';

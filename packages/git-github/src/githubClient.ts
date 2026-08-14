@@ -1,5 +1,6 @@
 import type { HostingAccount, HostingRepositoryDescriptor } from '@gitlens/hosting-integrations/models.js';
 import type {
+	GitHubAnnotatedTag,
 	GitHubBlob,
 	GitHubBranch,
 	GitHubCommit,
@@ -24,6 +25,7 @@ export type GitHubRequest = {
 export type GitHubResponse = {
 	status: number;
 	body: unknown;
+	headers?: Readonly<Record<string, string>>;
 };
 
 export type GitHubRequestTransport = (request: GitHubRequest) => Promise<GitHubResponse>;
@@ -37,6 +39,11 @@ export type GitHubRepository = {
 	url: string;
 	defaultBranch: string;
 	isPrivate: boolean;
+};
+
+export type GitHubPage<T> = {
+	values: readonly T[];
+	nextPage: number | undefined;
 };
 
 export type GitHubPullRequest = {
@@ -62,6 +69,8 @@ const maxPageSize = 100;
 const maxListResults = 1000;
 const maxTreeEntries = 100000;
 const maxContentBytes = 1024 * 1024;
+const maxComparisonFiles = 300;
+const maxCommitFiles = 3000;
 const defaultDomain = 'github.com';
 
 export class GitHubRequestError extends Error {
@@ -143,16 +152,23 @@ export class GitHubClient {
 		repository: GitHubRepositoryReference,
 		options?: GitHubListOptions,
 	): Promise<readonly GitHubBranch[]> {
-		const repositoryUrl = this.repositoryUrl(repository);
-		return this.listPages(options?.limit, 'branch', async (perPage, page) => {
-			const response = await this.send({
-				method: 'GET',
-				url: `${repositoryUrl}/branches${getQuery({ per_page: perPage, page: page })}`,
-				headers: this.headers(),
-			});
+		return this.listPages(options?.limit, 'branch', (perPage, page) =>
+			this.listBranchesPage(repository, { limit: perPage, page: page }).then(result => result.values),
+		);
+	}
 
-			return getBranches(response.body);
+	async listBranchesPage(
+		repository: GitHubRepositoryReference,
+		options: { limit: number; page: number },
+	): Promise<GitHubPage<GitHubBranch>> {
+		const { limit, page } = getPageOptions(options, 'branch');
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/branches${getQuery({ per_page: limit, page: page })}`,
+			headers: this.headers(),
 		});
+		const values = getBranches(response.body);
+		return { values: values, nextPage: values.length === limit ? page + 1 : undefined };
 	}
 
 	async getBranch(repository: GitHubRepositoryReference, name: string): Promise<GitHubBranch> {
@@ -180,21 +196,35 @@ export class GitHubClient {
 			throw new Error('Invalid GitHub content path');
 		}
 
-		const repositoryUrl = this.repositoryUrl(repository);
-		return this.listPages(options?.limit, 'commit', async (perPage, page) => {
-			const response = await this.send({
-				method: 'GET',
-				url: `${repositoryUrl}/commits${getQuery({
-					per_page: perPage,
-					page: page,
-					sha: options?.ref,
-					path: options?.path,
-				})}`,
-				headers: this.headers(),
-			});
+		return this.listPages(options?.limit, 'commit', (perPage, page) =>
+			this.listCommitsPage(repository, { ...options, limit: perPage, page: page }).then(result => result.values),
+		);
+	}
 
-			return getCommits(response.body);
+	async listCommitsPage(
+		repository: GitHubRepositoryReference,
+		options: GitHubListCommitsOptions & { limit: number; page: number },
+	): Promise<GitHubPage<GitHubCommit>> {
+		if (options.ref != null && !isGitReference(options.ref)) {
+			throw new Error('Invalid GitHub ref');
+		}
+		if (options.path != null && !isGitContentPath(options.path)) {
+			throw new Error('Invalid GitHub content path');
+		}
+
+		const { limit, page } = getPageOptions(options, 'commit');
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/commits${getQuery({
+				per_page: limit,
+				page: page,
+				sha: options.ref,
+				path: options.path,
+			})}`,
+			headers: this.headers(),
 		});
+		const values = getCommits(response.body);
+		return { values: values, nextPage: values.length === limit ? page + 1 : undefined };
 	}
 
 	async getCommit(repository: GitHubRepositoryReference, ref: string): Promise<GitHubCommit> {
@@ -208,7 +238,30 @@ export class GitHubClient {
 			headers: this.headers(),
 		});
 
-		return getCommit(response.body);
+		const commit = getCommit(response.body);
+		if (commit.files == null) {
+			throw new Error('GitHub response was invalid');
+		}
+		if (getNextPage(response) == null) return commit;
+
+		const files = [...commit.files];
+		let next = this.getNextCommitFilesPage(repository, response);
+		while (next != null) {
+			const page = await this.send({ method: 'GET', url: next, headers: this.headers() });
+			const pageCommit = getCommit(page.body);
+			if (
+				pageCommit.sha !== commit.sha ||
+				pageCommit.files == null ||
+				files.length + pageCommit.files.length > maxCommitFiles
+			) {
+				throw new GitHubResponseTooLargeError();
+			}
+
+			files.push(...pageCommit.files);
+			next = this.getNextCommitFilesPage(repository, page);
+		}
+
+		return { ...commit, files: files };
 	}
 
 	async compareCommits(repository: GitHubRepositoryReference, base: string, head: string): Promise<GitHubComparison> {
@@ -226,29 +279,70 @@ export class GitHubClient {
 	}
 
 	async listRefs(repository: GitHubRepositoryReference, options?: GitHubListOptions): Promise<readonly GitHubRef[]> {
-		const repositoryUrl = this.repositoryUrl(repository);
-		return this.listPages(options?.limit, 'ref', async (perPage, page) => {
-			const response = await this.send({
-				method: 'GET',
-				url: `${repositoryUrl}/git/matching-refs/${getQuery({ per_page: perPage, page: page })}`,
-				headers: this.headers(),
-			});
+		return this.listPages(options?.limit, 'ref', (perPage, page) =>
+			this.listRefsPage(repository, { limit: perPage, page: page }).then(result => result.values),
+		);
+	}
 
-			return getRefs(response.body);
+	async listRefsPage(
+		repository: GitHubRepositoryReference,
+		options: { limit: number; page: number },
+	): Promise<GitHubPage<GitHubRef>> {
+		const { limit, page } = getPageOptions(options, 'ref');
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/git/matching-refs/${getQuery({ per_page: limit, page: page })}`,
+			headers: this.headers(),
 		});
+		const values = getRefs(response.body);
+		return { values: values, nextPage: values.length === limit ? page + 1 : undefined };
+	}
+
+	async getRef(repository: GitHubRepositoryReference, name: string): Promise<GitHubRef | undefined> {
+		if (!isGitReference(name)) {
+			throw new Error('Invalid GitHub ref');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/git/matching-refs/${encodeGitContentPath(name)}`,
+			headers: this.headers(),
+		});
+		return getRefs(response.body).find(ref => ref.name === name);
 	}
 
 	async listTags(repository: GitHubRepositoryReference, options?: GitHubListOptions): Promise<readonly GitHubTag[]> {
-		const repositoryUrl = this.repositoryUrl(repository);
-		return this.listPages(options?.limit, 'tag', async (perPage, page) => {
-			const response = await this.send({
-				method: 'GET',
-				url: `${repositoryUrl}/tags${getQuery({ per_page: perPage, page: page })}`,
-				headers: this.headers(),
-			});
+		return this.listPages(options?.limit, 'tag', (perPage, page) =>
+			this.listTagsPage(repository, { limit: perPage, page: page }).then(result => result.values),
+		);
+	}
 
-			return getTags(response.body);
+	async listTagsPage(
+		repository: GitHubRepositoryReference,
+		options: { limit: number; page: number },
+	): Promise<GitHubPage<GitHubTag>> {
+		const { limit, page } = getPageOptions(options, 'tag');
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/tags${getQuery({ per_page: limit, page: page })}`,
+			headers: this.headers(),
 		});
+		const values = getTags(response.body);
+		return { values: values, nextPage: values.length === limit ? page + 1 : undefined };
+	}
+
+	async getAnnotatedTag(repository: GitHubRepositoryReference, sha: string): Promise<GitHubAnnotatedTag> {
+		if (!isGitObjectId(sha)) {
+			throw new Error('Invalid GitHub object id');
+		}
+
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/git/tags/${encodePathSegment(sha)}`,
+			headers: this.headers(),
+		});
+
+		return getAnnotatedTag(response.body);
 	}
 
 	async getTree(repository: GitHubRepositoryReference, ref: string): Promise<GitHubTree> {
@@ -304,16 +398,23 @@ export class GitHubClient {
 		repository: GitHubRepositoryReference,
 		options?: GitHubListOptions,
 	): Promise<readonly GitHubContributor[]> {
-		const repositoryUrl = this.repositoryUrl(repository);
-		return this.listPages(options?.limit, 'contributor', async (perPage, page) => {
-			const response = await this.send({
-				method: 'GET',
-				url: `${repositoryUrl}/contributors${getQuery({ per_page: perPage, page: page })}`,
-				headers: this.headers(),
-			});
+		return this.listPages(options?.limit, 'contributor', (perPage, page) =>
+			this.listContributorsPage(repository, { limit: perPage, page: page }).then(result => result.values),
+		);
+	}
 
-			return getContributors(response.body);
+	async listContributorsPage(
+		repository: GitHubRepositoryReference,
+		options: { limit: number; page: number },
+	): Promise<GitHubPage<GitHubContributor>> {
+		const { limit, page } = getPageOptions(options, 'contributor');
+		const response = await this.send({
+			method: 'GET',
+			url: `${this.repositoryUrl(repository)}/contributors${getQuery({ per_page: limit, page: page })}`,
+			headers: this.headers(),
 		});
+		const values = getContributors(response.body);
+		return { values: values, nextPage: values.length === limit ? page + 1 : undefined };
 	}
 
 	async getPullRequests(repository: GitHubRepositoryReference, perPage = 100): Promise<readonly GitHubPullRequest[]> {
@@ -383,6 +484,22 @@ export class GitHubClient {
 
 	private apiUrl(domain: string): string {
 		return getApiUrl(this.domain ?? domain);
+	}
+
+	private getNextCommitFilesPage(
+		repository: GitHubRepositoryReference,
+		response: GitHubResponse,
+	): string | undefined {
+		const next = getNextPage(response);
+		if (next == null) return undefined;
+
+		const expected = new URL(`${this.repositoryUrl(repository)}/commits/`);
+		const target = new URL(next);
+		if (target.origin !== expected.origin || !target.pathname.startsWith(expected.pathname)) {
+			throw new Error('Invalid GitHub pagination link');
+		}
+
+		return target.toString();
 	}
 
 	private async listPages<T>(
@@ -566,6 +683,17 @@ function getResultLimit(limit: number | undefined, label: string): number {
 	}
 
 	return Math.min(limit, maxListResults);
+}
+
+function getPageOptions(options: { limit: number; page: number }, label: string): { limit: number; page: number } {
+	if (!Number.isSafeInteger(options.limit) || options.limit < 1 || options.limit > maxPageSize) {
+		throw new Error(`Invalid GitHub ${label} result limit`);
+	}
+	if (!Number.isSafeInteger(options.page) || options.page < 1) {
+		throw new Error(`Invalid GitHub ${label} page`);
+	}
+
+	return options;
 }
 
 function hasControlCharacter(value: string): boolean {
@@ -754,6 +882,18 @@ function getComparison(value: unknown): GitHubComparison {
 			? value.merge_base_commit.sha
 			: undefined;
 
+	if (value.files == null) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	const files = getCommitFiles(value.files);
+	if (files.length >= maxComparisonFiles) {
+		throw new GitHubResponseTooLargeError();
+	}
+	if (value.commits.length !== value.total_commits) {
+		throw new GitHubResponseTooLargeError();
+	}
+
 	return {
 		status: value.status,
 		aheadBy: value.ahead_by,
@@ -761,7 +901,31 @@ function getComparison(value: unknown): GitHubComparison {
 		totalCommits: value.total_commits,
 		...(mergeBaseSha == null ? undefined : { mergeBaseSha: mergeBaseSha }),
 		commits: value.commits.map(getCommit),
-		files: value.files == null ? [] : getCommitFiles(value.files),
+		files: files,
+	};
+}
+
+function getAnnotatedTag(value: unknown): GitHubAnnotatedTag {
+	if (!isRecord(value) || !isRecord(value.object)) {
+		throw new Error('GitHub response was invalid');
+	}
+	if (
+		typeof value.tag !== 'string' ||
+		!isGitReference(value.tag) ||
+		!isGitObjectId(value.sha) ||
+		!isGitObjectId(value.object.sha) ||
+		value.object.type !== 'commit' ||
+		typeof value.message !== 'string'
+	) {
+		throw new Error('GitHub response was invalid');
+	}
+
+	return {
+		name: value.tag,
+		sha: value.sha,
+		message: value.message,
+		tagger: getCommitSignature(value.tagger),
+		targetSha: value.object.sha,
 	};
 }
 
@@ -1034,4 +1198,16 @@ function getSafeUrl(value: unknown): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function getNextPage(response: GitHubResponse): string | undefined {
+	const link = response.headers?.link;
+	if (link == null) return undefined;
+
+	for (const value of link.split(',')) {
+		const match = /<([^>]+)>;\s*rel="next"/.exec(value);
+		if (match != null) return match[1];
+	}
+
+	return undefined;
 }

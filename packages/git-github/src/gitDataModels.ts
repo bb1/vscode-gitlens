@@ -56,6 +56,14 @@ export type GitHubTag = {
 	sha: string;
 };
 
+export type GitHubAnnotatedTag = {
+	name: string;
+	sha: string;
+	message: string;
+	tagger: GitHubCommitSignature;
+	targetSha: string;
+};
+
 export type GitHubTreeEntry = {
 	path: string;
 	mode: string;
