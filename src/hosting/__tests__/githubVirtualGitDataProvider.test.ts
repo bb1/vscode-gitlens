@@ -5,13 +5,150 @@ import { encodeUtf8Hex } from '@gitlens/utils/hex.js';
 import { getGitHubVirtualRepository } from '../githubRemoteHub.js';
 import type { GitHubRemoteHub } from '../githubRemoteHub.js';
 import { GitHubVirtualGitDataProvider, GitHubVirtualUnsupportedError } from '../githubVirtualGitDataProvider.js';
-import { createGitHubRequestTransport } from '../githubVirtualGitProvider.js';
+import { createGitHubRequestTransport, GitHubVirtualGitProvider } from '../githubVirtualGitProvider.js';
+import { getGitHubVirtualGitProvider } from '../githubVirtualGitProviderRegistration.js';
 
 const sha = 'a'.repeat(40);
 const parentSha = 'b'.repeat(40);
 const blobSha = 'c'.repeat(40);
 
 suite('GitHubVirtualGitDataProvider', () => {
+	test('routes only GitHub RemoteHub authorities', () => {
+		const provider = new GitHubVirtualGitProvider(
+			{ hostingAuthentication: { getSession: async () => undefined } } as never,
+			() => ({ dispose: () => {}, [Symbol.dispose]: () => {} }),
+		);
+
+		assert.equal(
+			provider.canHandlePathOrUri(
+				'vscode-vfs',
+				`vscode-vfs://github+${encodeUtf8Hex(JSON.stringify({ v: 1 }))}/octo-cat/gitlens`,
+			),
+			`vscode-vfs://github+${encodeUtf8Hex(JSON.stringify({ v: 1 }))}/octo-cat/gitlens`,
+		);
+		assert.equal(provider.canHandlePathOrUri('vscode-vfs', 'vscode-vfs://azdo/octo-cat/gitlens'), undefined);
+	});
+
+	test('constructs only for validated GitHub RemoteHub workspace metadata without a token or request', async () => {
+		let sessions = 0;
+		let requests = 0;
+		const container = {
+			hostingAuthentication: {
+				getSession: async () => {
+					sessions++;
+					return { provider: 'github', accessToken: 'secret-token', accountLabel: 'octo-cat' };
+				},
+			},
+		};
+		const folder = {
+			uri: Uri.parse(`vscode-vfs://github+${encodeUtf8Hex(JSON.stringify({ v: 1 }))}/octo-cat/gitlens`),
+		};
+		const remoteHub: GitHubRemoteHub = {
+			getMetadata: async () => ({
+				provider: { id: 'github', domain: 'github.com' },
+				repo: { owner: 'octo-cat', name: 'gitlens', domain: 'github.com' },
+				getRevision: async () => ({ name: 'main', revision: sha }),
+			}),
+			getVirtualWorkspaceUri: value => value,
+		};
+		const provider = await getGitHubVirtualGitProvider(
+			container as never,
+			() => ({ dispose: () => {}, [Symbol.dispose]: () => {} }),
+			{
+				enabled: true,
+				workspaceFolders: [folder] as never,
+				getRemoteHub: async () => remoteHub,
+				request: async () => {
+					requests++;
+					return {
+						status: 200,
+						body: {
+							id: 1,
+							owner: { login: 'octo-cat' },
+							name: 'gitlens',
+							html_url: 'https://github.com/octo-cat/gitlens',
+							default_branch: 'main',
+							private: false,
+						},
+					};
+				},
+			},
+		);
+
+		assert.ok(provider);
+		assert.equal(sessions, 0);
+		assert.equal(requests, 0);
+
+		await provider.visibility(folder.uri.toString());
+
+		assert.equal(sessions, 1);
+		assert.equal(requests, 1);
+	});
+
+	test('does not resolve RemoteHub or construct a provider when disabled', async () => {
+		let remoteHubCalls = 0;
+		const provider = await getGitHubVirtualGitProvider(
+			{} as never,
+			() => ({ dispose: () => {}, [Symbol.dispose]: () => {} }),
+			{
+				enabled: false,
+				getRemoteHub: async () => {
+					remoteHubCalls++;
+					throw new Error('RemoteHub must not be resolved');
+				},
+			},
+		);
+
+		assert.equal(provider, undefined);
+		assert.equal(remoteHubCalls, 0);
+	});
+
+	test('rejects invalid and non-GitHub RemoteHub workspace metadata before construction', async () => {
+		const nonGitHubFolder = { uri: Uri.parse('vscode-vfs://azdo/octo-cat/gitlens') };
+		const invalidGitHubFolder = { uri: Uri.parse('vscode-vfs://github/octo-cat/gitlens') };
+		const remoteHub: GitHubRemoteHub = {
+			getMetadata: async () => ({
+				provider: { id: 'azdo' },
+				repo: { owner: 'octo-cat', name: 'gitlens' },
+				getRevision: async () => ({ name: 'main', revision: sha }),
+			}),
+			getVirtualWorkspaceUri: value => value,
+		};
+		const provider = await getGitHubVirtualGitProvider(
+			{} as never,
+			() => ({ dispose: () => {}, [Symbol.dispose]: () => {} }),
+			{
+				enabled: true,
+				workspaceFolders: [nonGitHubFolder, invalidGitHubFolder] as never,
+				getRemoteHub: async () => remoteHub,
+			},
+		);
+
+		assert.equal(provider, undefined);
+	});
+
+	test('rejects GitHub RemoteHub metadata with an invalid revision before construction', async () => {
+		const remoteHub: GitHubRemoteHub = {
+			getMetadata: async () => ({
+				provider: { id: 'github' },
+				repo: { owner: 'octo-cat', name: 'gitlens' },
+				getRevision: async () => ({ name: 'main', revision: 'not-an-object-id' }),
+			}),
+			getVirtualWorkspaceUri: value => value,
+		};
+		const provider = await getGitHubVirtualGitProvider(
+			{} as never,
+			() => ({ dispose: () => {}, [Symbol.dispose]: () => {} }),
+			{
+				enabled: true,
+				workspaceFolders: [{ uri: Uri.parse('vscode-vfs://github/octo-cat/gitlens') }] as never,
+				getRemoteHub: async () => remoteHub,
+			},
+		);
+
+		assert.equal(provider, undefined);
+	});
+
 	test('uses GitHub.com only as the trusted default for bare mounted GitHub authorities', async () => {
 		const remoteHub: GitHubRemoteHub = {
 			getMetadata: async () => ({

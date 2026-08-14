@@ -23,7 +23,8 @@ import type {
 } from '../git/gitProvider.js';
 import type { RepositoryChangeEvent } from '../git/models/repository.js';
 import { GlRepository } from '../git/models/repository.js';
-import { getGitHubRemoteHub, getGitHubVirtualRepository } from './githubRemoteHub.js';
+import { getGitHubRemoteHub, getGitHubVirtualRepository, isGitHubRemoteHubUri } from './githubRemoteHub.js';
+import type { GitHubRemoteHubProvider } from './githubRemoteHub.js';
 import { GitHubVirtualGitDataProvider } from './githubVirtualGitDataProvider.js';
 
 export class GitHubVirtualGitProvider implements GlGitProvider {
@@ -62,12 +63,13 @@ export class GitHubVirtualGitProvider implements GlGitProvider {
 		private readonly container: Container,
 		register: (provider: GitProvider, canHandle: (repoPath: string) => boolean) => UnifiedDisposable,
 		request: GitHubRequestTransport = createGitHubRequestTransport(fetch),
+		private readonly getRemoteHub: GitHubRemoteHubProvider = getGitHubRemoteHub,
 	) {
 		this.provider = new GitHubVirtualGitDataProvider({
 			getSession: container.hostingAuthentication.getSession.bind(container.hostingAuthentication),
 			request: request,
 			resolveRepository: async repoPath => {
-				const remoteHub = await getGitHubRemoteHub();
+				const remoteHub = await this.getRemoteHub();
 				return getGitHubVirtualRepository(remoteHub, Uri.parse(repoPath, true));
 			},
 		});
@@ -102,7 +104,7 @@ export class GitHubVirtualGitProvider implements GlGitProvider {
 	): Promise<GlRepository[]> {
 		if (!this.supportedSchemes.has(uri.scheme)) return [];
 
-		const remoteHub = await getGitHubRemoteHub();
+		const remoteHub = await this.getRemoteHub();
 		const workspaceUri = remoteHub.getVirtualWorkspaceUri(uri);
 		if (workspaceUri == null) return [];
 
@@ -156,13 +158,17 @@ export class GitHubVirtualGitProvider implements GlGitProvider {
 
 	canHandlePathOrUri(scheme: string, pathOrUri: string | GitUri): string | undefined {
 		if (!this.supportedSchemes.has(scheme)) return undefined;
+
+		const uri = typeof pathOrUri === 'string' ? Uri.parse(pathOrUri, true) : pathOrUri;
+		if (uri.scheme === Schemes.Virtual && !isGitHubRemoteHubUri(uri)) return undefined;
+
 		return typeof pathOrUri === 'string' ? pathOrUri : getRepositoryKey(pathOrUri);
 	}
 
 	async findRepositoryUri(uri: Uri): Promise<Uri | undefined> {
 		if (!this.supportedSchemes.has(uri.scheme)) return undefined;
 
-		const remoteHub = await getGitHubRemoteHub();
+		const remoteHub = await this.getRemoteHub();
 		const root = remoteHub.getVirtualWorkspaceUri(uri) ?? uri;
 		await getGitHubVirtualRepository(remoteHub, root);
 		return root;
@@ -259,5 +265,5 @@ export function createGitHubRequestTransport(
 }
 
 function getScheme(value: string): string {
-	return value.slice(0, value.indexOf(':'));
+	return Uri.parse(value, true).scheme;
 }
