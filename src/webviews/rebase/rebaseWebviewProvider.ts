@@ -2,15 +2,14 @@ import type { Disposable, TextDocument } from 'vscode';
 import { Uri, ViewColumn, window, workspace } from 'vscode';
 import type { GitCommit } from '@gitlens/git/models/commit.js';
 import type { GitFileConflictStatus } from '@gitlens/git/models/fileStatus.js';
-import type { ProcessedRebaseTodo, RebaseTodoAction } from '@gitlens/git/models/rebase.js';
-import { uncommitted } from '@gitlens/git/models/revision.js';
+import type { RebaseTodoAction } from '@gitlens/git/models/rebase.js';
 import { classifyConflictAction } from '@gitlens/git/utils/conflictResolution.utils.js';
 import { getConflictIncomingRef, resolveConflictFilePaths } from '@gitlens/git/utils/pausedOperationStatus.utils.js';
 import { createReference } from '@gitlens/git/utils/reference.utils.js';
 import type { Deferrable } from '@gitlens/utils/debounce.js';
 import { debounce } from '@gitlens/utils/debounce.js';
 import { debug } from '@gitlens/utils/decorators/log.js';
-import { concat, filterMap, find, first, join, last, map } from '@gitlens/utils/iterable.js';
+import { concat, filterMap, find, first, join, map } from '@gitlens/utils/iterable.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import { areEqual } from '@gitlens/utils/object.js';
 import { extname, normalizePath } from '@gitlens/utils/path.js';
@@ -18,7 +17,6 @@ import { getSettledValue } from '@gitlens/utils/promise.js';
 import { pluralize } from '@gitlens/utils/string.js';
 import { getAvatarUri, getAvatarUriFromGravatarEmail } from '../../avatars.js';
 import type { DiffWithCommandArgs } from '../../commands/diffWith.js';
-import type { ResolveConflictsCommandArgs } from '../../commands/resolveConflicts.js';
 import type { GlWebviewCommandsOrCommandsWithSuffix } from '../../constants.commands.js';
 import type { RebaseEditorTelemetryContext } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
@@ -43,12 +41,8 @@ import {
 } from '../../git/utils/-webview/rebase.parsing.utils.js';
 import { reopenRebaseTodoEditor } from '../../git/utils/-webview/rebase.utils.js';
 import { showGitErrorMessage } from '../../messages.js';
-import { resolveRecomposeScope } from '../../plus/coretools/compose/recomposeScope.js';
-import type { Subscription } from '../../plus/gk/models/subscription.js';
-import { isSubscriptionTrialOrPaidFromState } from '../../plus/gk/utils/subscription.utils.js';
 import { executeCommand, executeCoreCommand } from '../../system/-webview/command.js';
 import { configuration } from '../../system/-webview/configuration.js';
-import { getContext, onDidChangeContext } from '../../system/-webview/context.js';
 import { closeTab } from '../../system/-webview/vscode/tabs.js';
 import { exists } from '../../system/-webview/vscode/uris.js';
 import { createCommandDecorator, getWebviewCommand } from '../../system/decorators/command.js';
@@ -75,7 +69,6 @@ import {
 	DidChangeAvatarsNotification,
 	DidChangeCommitsNotification,
 	DidChangeNotification,
-	DidChangeSubscriptionNotification,
 	DismissCloseWarningCommand,
 	GetConflictsRequest,
 	GetMissingAvatarsCommand,
@@ -84,11 +77,9 @@ import {
 	MoveEntryCommand,
 	OpenConflictChangesCommand,
 	OpenConflictFileCommand,
-	RecomposeCommand,
 	ReorderCommand,
 	ResolveAllConflictsCommand,
 	ResolveConflictCommand,
-	ResolveConflictsInGraphCommand,
 	RevealRefCommand,
 	SearchCommand,
 	ShiftEntriesCommand,
@@ -139,21 +130,6 @@ export class RebaseWebviewProvider implements Disposable {
 		return configuration.get('rebaseEditor.ordering') === 'asc';
 	}
 
-	/** Computes whether the commits are already in place (parent of first commit is the onto commit) */
-	private computeIsInPlace(processed?: ProcessedRebaseTodo): boolean {
-		processed ??= this._todoDocument.parsed.processed;
-		const { commits, onto: ontoCommit } = this._enrichment;
-
-		const firstShortSha = first(processed.commits.keys());
-		if (firstShortSha == null || ontoCommit?.sha == null) return false;
-
-		const firstCommit = commits.get(firstShortSha);
-		if (firstCommit == null) return false;
-
-		// Use short SHA comparison - onto.sha is already a short SHA
-		return firstCommit.parents.some(parent => parent.startsWith(ontoCommit.sha));
-	}
-
 	constructor(
 		private readonly container: Container,
 		private readonly host: WebviewHost<'gitlens.rebase'>,
@@ -183,16 +159,8 @@ export class RebaseWebviewProvider implements Disposable {
 					void closeTab(document.uri);
 				}
 			}),
-			this.container.subscription.onDidChange(e => {
-				this.onSubscriptionChanged(e.current);
-			}),
 			this.container.onboarding.onDidChange(e => {
 				if (e.key === 'rebaseEditor:closeWarning') {
-					this.updateState();
-				}
-			}),
-			onDidChangeContext(key => {
-				if (key === 'gitlens:ai:allowed') {
 					this.updateState();
 				}
 			}),
@@ -289,12 +257,6 @@ export class RebaseWebviewProvider implements Disposable {
 		}
 
 		this.host.sendPendingIpcNotifications();
-	}
-
-	private onSubscriptionChanged(subscription: Subscription): void {
-		if (!this.host.visible) return;
-
-		void this.host.notify(DidChangeSubscriptionNotification, { subscription: subscription });
 	}
 
 	@ipcCommand(OpenConflictFileCommand)
@@ -584,19 +546,6 @@ export class RebaseWebviewProvider implements Disposable {
 		}
 	}
 
-	@ipcCommand(ResolveConflictsInGraphCommand)
-	@debug()
-	private async onResolveConflictsInGraph(): Promise<void> {
-		if (!this.container.ai.allowed) return;
-
-		this.host.sendTelemetryEvent('rebaseEditor/action/resolveConflictsInGraph');
-
-		await executeCommand<ResolveConflictsCommandArgs>('gitlens.ai.resolveConflicts', {
-			repoPath: this.repoPath,
-			source: 'rebaseEditor',
-		});
-	}
-
 	private async applyConflictResolution(
 		svc: ReturnType<Container['git']['getRepositoryService']>,
 		path: string,
@@ -631,14 +580,12 @@ export class RebaseWebviewProvider implements Disposable {
 			'context.session.duration': this.getSessionDuration(),
 		});
 
-		this._closing = true;
+		const svc = this.container.git.getRepositoryService(this.repoPath);
+		if (!(await abortPausedOperation(svc))) return;
 
-		// Delete the contents to abort the rebase
+		this._closing = true;
 		await this._todoDocument.clear();
 		await this._todoDocument.save();
-
-		const svc = this.container.git.getRepositoryService(this.repoPath);
-		await abortPausedOperation(svc);
 		await closeTab(this._todoDocument.uri);
 	}
 
@@ -652,65 +599,6 @@ export class RebaseWebviewProvider implements Disposable {
 
 		const svc = this.container.git.getRepositoryService(this.repoPath);
 		await continuePausedOperation(this.container, svc, { source: 'rebaseEditor' });
-	}
-
-	@ipcCommand(RecomposeCommand)
-	@debug()
-	private async onRecompose(): Promise<void> {
-		this.host.sendTelemetryEvent('rebaseEditor/action/recompose', {
-			'context.session.duration': this.getSessionDuration(),
-		});
-
-		// Capture everything derived from the todo document BEFORE aborting — the abort clears it.
-		const { processed } = this._todoDocument.parsed;
-
-		const firstShortSha = first(processed.commits.keys())!;
-		const ontoShortSha = this._enrichment.onto!.sha;
-
-		// Get the base commit SHA from the onto commit (the commit we're rebasing onto)
-		const headShortSha = last(processed.commits.keys())!;
-		const { commits } = await this.getAndUpdateCommits([headShortSha, ontoShortSha, firstShortSha]);
-
-		const ontoCommit = commits.get(ontoShortSha)!;
-		const firstCommit = commits.get(firstShortSha)!;
-
-		let baseCommitSha = ontoCommit.sha;
-		if (!firstCommit.parents.includes(baseCommitSha)) {
-			baseCommitSha = firstCommit.parents[0];
-		}
-
-		const headCommitSha = commits.get(headShortSha)!.sha;
-		const repoPath = this.repoPath;
-		const branchName = this._branchName ?? undefined;
-
-		// Abort FIRST (the user confirmed "Abort > Recompose") — the abort restores HEAD to the
-		// branch at its original tip, which is exactly the state the inline compose resolver
-		// requires. Mid-rebase HEAD is detached, so resolving before the abort could never go
-		// inline. The range endpoints are the original pre-rebase shas, which the abort restores.
-		await this.onAbort();
-
-		const repo = this.container.git.getRepository(repoPath);
-		const resolved =
-			repo != null
-				? await resolveRecomposeScope(this.container, repo.git, {
-						branchName: branchName,
-						range: { base: baseCommitSha, head: headCommitSha },
-						includeWip: false,
-					})
-				: undefined;
-
-		if (resolved?.ok) {
-			void executeCommand('gitlens.showGraph', {
-				action: 'enter-compose',
-				target: { sha: uncommitted, worktreePath: repoPath },
-				composeScope: { shas: resolved.shas, includeWip: resolved.includeWip },
-				source: { source: 'rebaseEditor' },
-			});
-		} else {
-			void window.showErrorMessage(
-				`Unable to recompose: ${resolved?.message ?? 'Repository not found'}. The rebase was aborted.`,
-			);
-		}
 	}
 
 	@command('gitlens.pausedOperation.showConflicts:')
@@ -891,62 +779,21 @@ export class RebaseWebviewProvider implements Disposable {
 		return { commits: requestedCommits, authors: requestedAuthors };
 	}
 
-	/** Handles rebase conflict detection requests (Pro feature) — unified for initial and todo triggers */
 	@ipcRequest(GetConflictsRequest)
 	private async onGetConflicts(
 		params: IpcParams<typeof GetConflictsRequest>,
 	): Promise<IpcResponse<typeof GetConflictsRequest>> {
 		const { trigger, onto, commits, base, stopOnFirstConflict } = params;
-		const startTime = performance.now();
-		const detection = trigger === 'initial' ? 'potential' : 'todo';
-
-		const subscription = await this.container.subscription.getSubscription();
-		if (!isSubscriptionTrialOrPaidFromState(subscription?.state)) {
-			return { conflicts: undefined };
-		}
-
-		if (!commits?.length) {
-			this.host.sendTelemetryEvent('rebaseEditor/conflicts/detected', {
-				duration: performance.now() - startTime,
-				status: 'clean',
-				detection: detection,
-				'commits.count': 0,
-			});
-			return { conflicts: { status: 'clean' } };
-		}
-
-		const svc = this.container.git.getRepositoryService(this.repoPath);
+		if (!commits.length) return { conflicts: { status: 'clean' } };
 
 		try {
-			const result = await svc.branches.getPotentialApplyConflicts?.(base ?? onto, commits, {
-				stopOnFirstConflict: trigger === 'initial' ? (stopOnFirstConflict ?? false) : false,
-			});
-
-			const duration = performance.now() - startTime;
-			if (result?.status === 'conflicts') {
-				this.host.sendTelemetryEvent('rebaseEditor/conflicts/detected', {
-					duration: duration,
-					status: 'conflicts',
-					detection: detection,
-					'commits.count': commits.length,
-					'commits.conflicting': result.conflict.shas?.length ?? 0,
+			const conflicts = await this.container.git
+				.getRepositoryService(this.repoPath)
+				.branches.getPotentialApplyConflicts?.(base ?? onto, commits, {
+					stopOnFirstConflict: trigger === 'initial' ? (stopOnFirstConflict ?? false) : false,
 				});
-			} else if (result?.status === 'clean') {
-				this.host.sendTelemetryEvent('rebaseEditor/conflicts/detected', {
-					duration: duration,
-					status: 'clean',
-					detection: detection,
-					'commits.count': commits.length,
-				});
-			}
-
-			return { conflicts: result };
+			return { conflicts: conflicts };
 		} catch (ex) {
-			this.host.sendTelemetryEvent('rebaseEditor/conflicts/failed', {
-				duration: performance.now() - startTime,
-				'commits.count': commits.length,
-				error: ex instanceof Error ? ex.message : String(ex),
-			});
 			Logger.error(ex, 'onGetConflicts');
 			return { conflicts: undefined };
 		}
@@ -1059,11 +906,9 @@ export class RebaseWebviewProvider implements Disposable {
 
 		const { parsed, processed } = this._todoDocument.parsed;
 
-		// Fetch branch, rebase status, and subscription
-		const [branchResult, rebaseStatusResult, subscriptionResult] = await Promise.allSettled([
+		const [branchResult, rebaseStatusResult] = await Promise.allSettled([
 			this._branchName === undefined ? svc.branches.getBranch() : undefined,
 			this.getRebaseStatus(svc),
-			this.container.subscription.getSubscription(),
 		]);
 
 		if (this._branchName === undefined) {
@@ -1079,8 +924,6 @@ export class RebaseWebviewProvider implements Disposable {
 			doneEntries: undefined,
 			conflictFiles: undefined,
 		});
-
-		const subscription = getSettledValue(subscriptionResult);
 
 		// Get onto from parsed header or active rebase status
 		const onto = parsed.info?.onto ?? rebaseStatus?.onto ?? '';
@@ -1139,7 +982,6 @@ export class RebaseWebviewProvider implements Disposable {
 								: undefined,
 					}
 				: undefined,
-			isInPlace: this.computeIsInPlace(processed),
 			entries: entries,
 			doneEntries: doneEntries,
 			authors: authors != null ? Object.fromEntries(authors) : {},
@@ -1150,10 +992,8 @@ export class RebaseWebviewProvider implements Disposable {
 			revealBehavior: this.getRevealBehavior(),
 			rebaseStatus: rebaseStatus,
 			repoPath: this.repoPath,
-			subscription: subscription,
 			conflictFiles: conflictFiles,
 			closeWarningDismissed: this.container.onboarding.isDismissed('rebaseEditor:closeWarning'),
-			aiAllowed: getContext('gitlens:ai:allowed', false),
 		};
 	}
 
@@ -1275,7 +1115,6 @@ export class RebaseWebviewProvider implements Disposable {
 		void this.host.notify(DidChangeCommitsNotification, {
 			commits: Object.fromEntries(map(commits, ([k, v]) => [k, convertCommit(v, defaultDateFormat)])),
 			authors: Object.fromEntries(authors),
-			isInPlace: this.computeIsInPlace(),
 		});
 	}
 

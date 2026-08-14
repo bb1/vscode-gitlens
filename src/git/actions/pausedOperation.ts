@@ -15,14 +15,19 @@ import { isDescendant } from '../../system/-webview/path.js';
 import type { GitRepositoryService } from '../gitRepositoryService.js';
 import { openRebaseEditor } from '../utils/-webview/rebase.utils.js';
 
-export async function abortPausedOperation(svc: GitRepositoryService, options?: { quit?: boolean }): Promise<void> {
+export async function abortPausedOperation(svc: GitRepositoryService, options?: { quit?: boolean }): Promise<boolean> {
+	const pausedOps = svc.pausedOps;
+	if (pausedOps?.abortPausedOperation == null) return false;
+
 	try {
-		return await svc.pausedOps?.abortPausedOperation?.(options);
+		await pausedOps.abortPausedOperation(options);
+		return true;
 	} catch (ex) {
-		// Ignore this as it can happen when the operation was already aborted (e.g., by clearing the rebase todo file before calling this)
-		if (PausedOperationAbortError.is(ex, 'nothingToAbort')) return;
+		// This can happen when the operation was already aborted.
+		if (PausedOperationAbortError.is(ex, 'nothingToAbort')) return false;
 
 		void showGitErrorMessage(ex);
+		return false;
 	}
 }
 
