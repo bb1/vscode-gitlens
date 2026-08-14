@@ -1,5 +1,5 @@
-import type { CancellationToken, Disposable, QuickInputButton } from 'vscode';
-import { env, ThemeIcon, Uri, window } from 'vscode';
+import type { CancellationToken, Disposable, QuickInputButton, Uri } from 'vscode';
+import { ThemeIcon, window } from 'vscode';
 import type { AIProviders } from '@gitlens/ai/constants.js';
 import type { AIModel } from '@gitlens/ai/models/model.js';
 import { getValidatedTemperature as _getValidatedTemperature } from '@gitlens/ai/utils/ai.utils.js';
@@ -20,6 +20,7 @@ import { createDirectiveQuickPickItem, Directive } from '../../../../quickpicks/
 import { configuration } from '../../../../system/-webview/configuration.js';
 import { getContext } from '../../../../system/-webview/context.js';
 import { openSettingsEditor } from '../../../../system/-webview/vscode/editors.js';
+import { openUrl } from '../../../../system/-webview/vscode/uris.js';
 import type { OrgAIConfig, OrgAIProvider } from '../../../gk/models/organization.js';
 import { ensureAccountQuickPick } from '../../../gk/utils/-webview/acount.utils.js';
 import type { AIResponse, AIResultContext } from '../../aiProviderService.js';
@@ -93,7 +94,7 @@ export async function getOrPromptApiKey(
 				}),
 				input.onDidTriggerButton(e => {
 					if (e === infoButton && provider.url) {
-						void env.openExternal(Uri.parse(provider.url));
+						void openUrl(provider.url);
 					}
 				}),
 			);

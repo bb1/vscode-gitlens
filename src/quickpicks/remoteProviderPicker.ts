@@ -1,5 +1,5 @@
 import type { Disposable, QuickInputButton, QuickPickItem } from 'vscode';
-import { env, ThemeIcon, Uri, window } from 'vscode';
+import { ThemeIcon, window } from 'vscode';
 import type { GitRemote } from '@gitlens/git/models/remote.js';
 import type { RemoteProvider } from '@gitlens/git/models/remoteProvider.js';
 import type { RemoteResource } from '@gitlens/git/models/remoteResource.js';
@@ -25,6 +25,7 @@ import {
 	setRemoteAsDefault,
 } from '../git/utils/-webview/remote.utils.js';
 import { getQuickPickIgnoreFocusOut } from '../system/-webview/vscode.js';
+import { openUrl } from '../system/-webview/vscode/uris.js';
 import { CommandQuickPickItem, createQuickPickItemOfT } from './items/common.js';
 import { createDirectiveQuickPickItem, Directive } from './items/directive.js';
 
@@ -34,9 +35,7 @@ export class ConfigureCustomRemoteProviderCommandQuickPickItem extends CommandQu
 	}
 
 	override async execute(): Promise<void> {
-		await env.openExternal(
-			Uri.parse('https://help.gitkraken.com/gitlens/gitlens-settings/#remote-provider-integration-settings'),
-		);
+		await openUrl('https://help.gitkraken.com/gitlens/gitlens-settings/#remote-provider-integration-settings');
 	}
 }
 
