@@ -14,6 +14,22 @@
 		"./provider.js": {
 			"types": "./dist/provider.d.ts",
 			"default": "./dist/provider.js"
+		},
+		"./providers/azureDevOps.js": {
+			"types": "./dist/providers/azureDevOps.d.ts",
+			"default": "./dist/providers/azureDevOps.js"
+		},
+		"./providers/bitbucket.js": {
+			"types": "./dist/providers/bitbucket.d.ts",
+			"default": "./dist/providers/bitbucket.js"
+		},
+		"./providers/gitlab.js": {
+			"types": "./dist/providers/gitlab.d.ts",
+			"default": "./dist/providers/gitlab.js"
+		},
+		"./providers/shared.js": {
+			"types": "./dist/providers/shared.d.ts",
+			"default": "./dist/providers/shared.js"
 		}
 	},
 	"files": [
@@ -24,9 +40,13 @@
 		"clean": "pnpx rimraf --glob dist out **/tsconfig*.tsbuildinfo",
 		"clean:all": "pnpm run clean && pnpm run clean:deps",
 		"clean:deps": "pnpx rimraf --glob **/node_modules",
-		"clean:lint": "pnpx rimraf --glob **/tsconfig*.tsbuildinfo"
+		"clean:lint": "pnpx rimraf --glob **/tsconfig*.tsbuildinfo",
+		"test": "mocha --require tsx --ui tdd --timeout 30000 'src/**/__tests__/**/*.test.ts'"
 	},
 	"devDependencies": {
+		"@types/mocha": "catalog:",
+		"mocha": "catalog:",
+		"tsx": "catalog:",
 		"typescript": "catalog:"
 	}
 }

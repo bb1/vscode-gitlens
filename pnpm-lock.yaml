@@ -525,6 +525,15 @@ importers:
 
   packages/integrations:
     devDependencies:
+      '@types/mocha':
+        specifier: 'catalog:'
+        version: 10.0.10
+      mocha:
+        specifier: 'catalog:'
+        version: 11.7.6
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.1
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

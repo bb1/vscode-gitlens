@@ -1,5 +1,6 @@
 import type {
 	CreatePullRequestInput,
+	HostingAccount,
 	HostingProviderId,
 	HostingPullRequest,
 	HostingRepositoryDescriptor,
@@ -8,6 +9,7 @@ import type {
 
 export type HostingProvider = {
 	id: HostingProviderId;
+	getAccount?(): Promise<HostingResult<HostingAccount>>;
 	getPullRequests(repository: HostingRepositoryDescriptor): Promise<HostingResult<readonly HostingPullRequest[]>>;
 	createPullRequest(
 		repository: HostingRepositoryDescriptor,
