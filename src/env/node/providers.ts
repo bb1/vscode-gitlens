@@ -12,27 +12,26 @@ import type { AgentSessionProvider } from '../../agents/provider.js';
 import { tryOpenClaudeSession } from '../../agents/utils/-webview/claudeExtension.js';
 import type { Container } from '../../container.js';
 import type { GlGitProvider } from '../../git/gitProvider.js';
-import type { RepositoryLocationProvider } from '../../git/location/repositorylocationProvider.js';
-import type { SharedGkStorageLocationProvider } from '../../plus/repos/sharedGkStorageLocationProvider.js';
-import type { GkWorkspacesSharedStorageProvider } from '../../plus/workspaces/workspacesSharedStorageProvider.js';
 import { configuration } from '../../system/-webview/configuration.js';
 import { loadChunk } from '../../system/-webview/loadChunk.js';
 import type { TelemetryService } from '../../telemetry/telemetry.js';
-import { activityDecayToMs } from '../../webviews/plus/graph/graphWebview.utils.js';
-// import { GitHubGitProvider } from '../../plus/github/githubGitProvider';
 import { GlCliGitProvider } from './git/cliGitProvider.js';
 import { VslsGitProvider } from './git/vslsGitProvider.js';
 import { GkCliService } from './gk/cli/gkCliService.js';
 import { runCLICommand } from './gk/cli/utils.js';
+import { LocalRepositoryLocationProvider } from './gk/localRepositoryLocationProvider.js';
+import { LocalSharedGkStorageLocationProvider } from './gk/localSharedGkStorageLocationProvider.js';
+import { LocalGkWorkspacesSharedStorageProvider } from './gk/localWorkspacesSharedStorageProvider.js';
 import { getLocalMcpService } from './mcp/localMcpService.js';
 import type { LocalMcpService } from './mcp/localMcpService.js';
 
 export type { GkCliService } from './gk/cli/gkCliService.js';
-export type { GkMcpRegistrar as GkMcpService } from '../../plus/gk/utils/-webview/mcp.utils.js';
+export type GkMcpService = {
+	isRegistrationAllowed: boolean;
+	isRegistrationCapable: boolean;
+	isRegistrationEnabled: boolean;
+};
 export type { LocalMcpService } from './mcp/localMcpService.js';
-import { LocalRepositoryLocationProvider } from './gk/localRepositoryLocationProvider.js';
-import { LocalSharedGkStorageLocationProvider } from './gk/localSharedGkStorageLocationProvider.js';
-import { LocalGkWorkspacesSharedStorageProvider } from './gk/localWorkspacesSharedStorageProvider.js';
 
 // Lightweight Git instance for VSLS host — only used for Live Share command proxying.
 // The primary Git execution path is inside CliGitProvider (created by LocalGitProvider).
@@ -66,36 +65,37 @@ export async function getSupportedGitProviders(
 	];
 
 	if (configuration.get('virtualRepositories.enabled')) {
-		providers.push(
-			new (
-				await loadChunk(
-					() =>
-						import(
-							/* webpackChunkName: "integrations" */ '../../plus/integrations/host/providers/githubGitProvider.js'
-						),
-				)
-			).GlGitHubGitProvider(container, cache, register),
+		const { getGitHubVirtualGitProvider } = await loadChunk(
+			() => import(/* webpackChunkName: "hosting" */ '../../hosting/githubVirtualGitProviderRegistration.js'),
 		);
+		const provider = await getGitHubVirtualGitProvider(container, register, {
+			enabled: true,
+		});
+		if (provider != null) {
+			providers.push(provider);
+		}
 	}
 
 	return providers;
 }
 
-export function getSharedGKStorageLocationProvider(container: Container): SharedGkStorageLocationProvider {
+export function getSharedGKStorageLocationProvider(
+	container: Container,
+): InstanceType<typeof LocalSharedGkStorageLocationProvider> {
 	return new LocalSharedGkStorageLocationProvider(container);
 }
 
 export function getSupportedRepositoryLocationProvider(
 	container: Container,
-	sharedStorage: SharedGkStorageLocationProvider,
-): RepositoryLocationProvider {
+	sharedStorage: ConstructorParameters<typeof LocalRepositoryLocationProvider>[1],
+): LocalRepositoryLocationProvider {
 	return new LocalRepositoryLocationProvider(container, sharedStorage);
 }
 
 export function getSupportedWorkspacesStorageProvider(
 	container: Container,
-	sharedStorage: SharedGkStorageLocationProvider,
-): GkWorkspacesSharedStorageProvider {
+	sharedStorage: ConstructorParameters<typeof LocalGkWorkspacesSharedStorageProvider>[1],
+): LocalGkWorkspacesSharedStorageProvider {
 	return new LocalGkWorkspacesSharedStorageProvider(container, sharedStorage);
 }
 
@@ -112,7 +112,7 @@ export function getAgentSessionProviders(container: Container): AgentSessionProv
 		new ClaudeCodeProvider({
 			ipc: container.ipc,
 			getActivityDecayMs: () =>
-				activityDecayToMs(configuration.get('graph.experimental.visualizations.activityDecay') ?? '5m'),
+				getActivityDecayMs(configuration.get('graph.experimental.visualizations.activityDecay')),
 			onSessionStarted: provider =>
 				container.telemetry.sendEvent('agents/session/started', { 'agent.provider': provider }),
 			onSessionEnded: provider =>
@@ -176,6 +176,25 @@ export function getAgentSessionProviders(container: Container): AgentSessionProv
 			},
 		}),
 	];
+}
+
+function getActivityDecayMs(decay: string | undefined): number {
+	switch (decay) {
+		case '30s':
+			return 30 * 1000;
+		case '1m':
+			return 60 * 1000;
+		case '2m':
+			return 2 * 60 * 1000;
+		case '5m':
+			return 5 * 60 * 1000;
+		case '10m':
+			return 10 * 60 * 1000;
+		case '30m':
+			return 30 * 60 * 1000;
+		default:
+			return 5 * 60 * 1000;
+	}
 }
 
 let _telemetryService: TelemetryService | undefined;

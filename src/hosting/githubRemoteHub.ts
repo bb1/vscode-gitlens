@@ -18,6 +18,8 @@ export type GitHubRemoteHub = {
 	getVirtualWorkspaceUri(uri: Uri): Uri | undefined;
 };
 
+export type GitHubRemoteHubProvider = () => Promise<GitHubRemoteHub>;
+
 export type GitHubVirtualRepository = {
 	domain: string;
 	owner: string;
@@ -55,16 +57,68 @@ export async function getGitHubVirtualRepository(
 	remoteHub: GitHubRemoteHub,
 	uri: Uri,
 ): Promise<GitHubVirtualRepository> {
-	const authority = decodeRemoteHubAuthority<GitHubAuthorityMetadata>(uri.authority);
-	if (
-		authority.scheme !== 'github' ||
-		(uri.authority.includes('+') && authority.metadata?.v !== 1) ||
-		(authority.metadata != null && authority.metadata.v !== 1)
-	) {
+	if (!isGitHubRemoteHubUri(uri)) {
 		throw new GitHubVirtualRepositoryError();
 	}
 
 	const metadata = await remoteHub.getMetadata(uri);
+	if (metadata == null) {
+		throw new GitHubVirtualRepositoryError();
+	}
+
+	const identity = getGitHubVirtualRepositoryIdentity(metadata);
+
+	const revision = await metadata.getRevision();
+	if (!isReference(revision.name) || !isObjectId(revision.revision)) {
+		throw new GitHubVirtualRepositoryError();
+	}
+
+	return {
+		domain: identity.domain,
+		owner: identity.owner,
+		name: identity.name,
+		revision: revision.revision,
+		revisionName: revision.name,
+	};
+}
+
+export async function getGitHubVirtualWorkspace(remoteHub: GitHubRemoteHub, uri: Uri): Promise<Uri | undefined> {
+	if (!isGitHubRemoteHubUri(uri)) return undefined;
+
+	const workspaceUri = remoteHub.getVirtualWorkspaceUri(uri);
+	if (workspaceUri == null || !isGitHubRemoteHubUri(workspaceUri)) return undefined;
+
+	try {
+		const metadata = await remoteHub.getMetadata(workspaceUri);
+		if (metadata == null) return undefined;
+
+		getGitHubVirtualRepositoryIdentity(metadata);
+		const revision = await metadata.getRevision();
+		if (!isReference(revision.name) || !isObjectId(revision.revision)) return undefined;
+
+		return workspaceUri;
+	} catch {
+		return undefined;
+	}
+}
+
+export function isGitHubRemoteHubUri(uri: Uri): boolean {
+	const parts = uri.authority.split('+');
+	const authority = decodeRemoteHubAuthority<GitHubAuthorityMetadata>(uri.authority);
+	return (
+		uri.scheme === 'vscode-vfs' &&
+		parts.length <= 2 &&
+		authority.scheme === 'github' &&
+		(!uri.authority.includes('+') || authority.metadata?.v === 1) &&
+		(authority.metadata == null || authority.metadata.v === 1)
+	);
+}
+
+function getGitHubVirtualRepositoryIdentity(metadata: GitHubRemoteHubMetadata | undefined): {
+	domain: string;
+	owner: string;
+	name: string;
+} {
 	if (metadata?.provider.id !== 'github') {
 		throw new GitHubVirtualRepositoryError();
 	}
@@ -82,18 +136,7 @@ export async function getGitHubVirtualRepository(
 		throw new GitHubVirtualRepositoryError();
 	}
 
-	const revision = await metadata.getRevision();
-	if (!isReference(revision.name) || !isObjectId(revision.revision)) {
-		throw new GitHubVirtualRepositoryError();
-	}
-
-	return {
-		domain: domain.toLowerCase(),
-		owner: metadata.repo.owner,
-		name: metadata.repo.name,
-		revision: revision.revision,
-		revisionName: revision.name,
-	};
+	return { domain: domain.toLowerCase(), owner: metadata.repo.owner, name: metadata.repo.name };
 }
 
 function isDomain(value: unknown): value is string {
