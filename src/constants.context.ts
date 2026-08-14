@@ -42,6 +42,7 @@ export type ContextKeys = {
 	'gitlens:gk:organization:drafts:enabled': boolean;
 	'gitlens:hasVirtualFolders': boolean;
 	'gitlens:launchpad:connected': boolean;
+	'gitlens:mcp:available': boolean;
 	/** Indicates that this is the first run of a new install of GitLens */
 	'gitlens:install:new': boolean;
 	/** Indicates that this is the first run after an upgrade of GitLens */

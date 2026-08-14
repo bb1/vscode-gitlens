@@ -1,11 +1,10 @@
 import type { ConfigurationChangeEvent, Disposable, Event, ExtensionContext } from 'vscode';
 import { EventEmitter, ExtensionMode } from 'vscode';
 import { IpcService } from '@env/ipc/ipcService.js';
-import type { GkCliService, GkMcpService } from '@env/providers.js';
+import type { GkCliService, GkMcpService, LocalMcpService } from '@env/providers.js';
 import {
 	getAgentSessionProviders,
-	getGkCliService,
-	getGkMcpService,
+	getMcpService,
 	getSharedGKStorageLocationProvider,
 	getSupportedRepositoryLocationProvider,
 	getSupportedWorkspacesStorageProvider,
@@ -213,6 +212,13 @@ export class Container {
 		return this._gkMcpService;
 	}
 
+	private readonly _mcpService: LocalMcpService | undefined;
+
+	/** The local read-only MCP service. Returns `undefined` on browser builds. */
+	get mcp(): LocalMcpService | undefined {
+		return this._mcpService;
+	}
+
 	private _agentStatusService: AgentStatusService | undefined;
 
 	get agentStatus(): AgentStatusService | undefined {
@@ -327,15 +333,9 @@ export class Container {
 			this._disposables.push((this._terminalLinks = new GitTerminalLinkProvider(this)));
 		}
 
-		// Both are Node-only (undefined on browser builds); the MCP service takes the CLI service as a
-		// dependency so it can wire its install/IPC listeners at construction.
-		this._gkCliService = getGkCliService(this);
-		if (this._gkCliService != null) {
-			this._disposables.push(this._gkCliService);
-			this._gkMcpService = getGkMcpService(this, this._gkCliService);
-			if (this._gkMcpService != null) {
-				this._disposables.push(this._gkMcpService);
-			}
+		this._mcpService = getMcpService(this);
+		if (this._mcpService != null) {
+			this._disposables.push(this._mcpService);
 		}
 
 		this._disposables.push(

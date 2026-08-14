@@ -79,6 +79,14 @@ function assertSameSet(actual, expected, label) {
 	}
 }
 
+function assertSameSetWithAllowedChanges(actual, expected, label, allowedMissing, allowedAdded) {
+	const missing = [...expected].filter(value => !actual.has(value) && !allowedMissing.has(value));
+	const added = [...actual].filter(value => !expected.has(value) && !allowedAdded.has(value));
+	if (missing.length || added.length) {
+		fail(`${label} changed (missing: ${missing.join(', ') || 'none'}; added: ${added.join(', ') || 'none'})`);
+	}
+}
+
 const manifest = readJson('package.json');
 const originalManifest = readHeadJson('package.json');
 const contributions = readJson('contributions.json');
@@ -96,10 +104,18 @@ assertEqual(manifest.repository?.url, 'https://github.com/bb1/vscode-gitlens.git
 assertEqual(manifest.badges, undefined, 'badges');
 assertIncludes(manifest.keywords.join(','), 'offline-gitlense', 'keywords');
 
-assertSameSet(
+assertSameSetWithAllowedChanges(
 	new Set(Object.keys(contributions.commands)),
 	new Set(Object.keys(originalContributions.commands)),
 	'command IDs',
+	new Set([
+		'gitlens.ai.mcp.install',
+		'gitlens.ai.mcp.installForAgent',
+		'gitlens.ai.mcp.installForAllAgents',
+		'gitlens.ai.mcp.reinstall',
+		'gitlens.ai.mcp.uninstallForAgent',
+	]),
+	new Set(['gitlens.mcp.disable', 'gitlens.mcp.enable', 'gitlens.mcp.showConfiguration']),
 );
 for (const command of Object.keys(contributions.commands)) {
 	if (!command.startsWith('gitlens.')) {
@@ -108,7 +124,13 @@ for (const command of Object.keys(contributions.commands)) {
 }
 
 const settings = collectSettings(manifest.contributes.configuration);
-assertSameSet(settings, collectSettings(originalManifest.contributes.configuration), 'setting IDs');
+assertSameSetWithAllowedChanges(
+	settings,
+	collectSettings(originalManifest.contributes.configuration),
+	'setting IDs',
+	new Set(['gitlens.gitkraken.mcp.autoEnabled']),
+	new Set(['gitlens.mcp.enabled']),
+);
 for (const setting of settings) {
 	if (!setting.startsWith('gitlens.')) {
 		fail(`setting ID must retain the gitlens.* namespace: ${setting}`);
@@ -120,7 +142,9 @@ assertSameSet(
 	collectViewIds(originalManifest.contributes.views),
 	'view IDs',
 );
-assertEqual(readText('src/constants.context.ts'), readTextAtHead('src/constants.context.ts'), 'context keys');
+const contextKeys = readText('src/constants.context.ts');
+const originalContextKeys = readTextAtHead('src/constants.context.ts');
+assertEqual(contextKeys.replace("\t'gitlens:mcp:available': boolean;\n", ''), originalContextKeys, 'context keys');
 assertEqual(readText('src/constants.storage.ts'), readTextAtHead('src/constants.storage.ts'), 'storage keys');
 
 const filesystemActivationEvents = manifest.activationEvents.filter(event => event.startsWith('onFileSystem:'));

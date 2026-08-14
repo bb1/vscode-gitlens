@@ -61,8 +61,8 @@
 	"contributes": {
 		"mcpServerDefinitionProviders": [
 			{
-				"id": "gitlens.gkMcpProvider",
-				"label": "GitKraken (bundled with GitLens)"
+				"id": "bb1.offline-gitlense.mcp",
+				"label": "Offline GitLense Local Git MCP Server"
 			}
 		],
 		"configuration": [
@@ -4478,10 +4478,10 @@
 							"experimental"
 						]
 					},
-					"gitlens.gitkraken.mcp.autoEnabled": {
+					"gitlens.mcp.enabled": {
 						"type": "boolean",
 						"default": true,
-						"markdownDescription": "Specifies whether to automatically install and enable the GitKraken MCP. This only applies to VS Code 1.101 and later.",
+						"markdownDescription": "Specifies whether to register the bundled local Git MCP server in supported desktop hosts.",
 						"scope": "window",
 						"order": 50
 					},
@@ -6937,29 +6937,6 @@
 				"icon": "$(sparkle)"
 			},
 			{
-				"command": "gitlens.ai.mcp.install",
-				"title": "Install GitKraken MCP Server",
-				"category": "GitLens"
-			},
-			{
-				"command": "gitlens.ai.mcp.installForAgent",
-				"title": "Install GitKraken MCP for Agent"
-			},
-			{
-				"command": "gitlens.ai.mcp.installForAllAgents",
-				"title": "Connect GitKraken MCP to All Detected Agents",
-				"category": "GitLens"
-			},
-			{
-				"command": "gitlens.ai.mcp.reinstall",
-				"title": "Reinstall GitKraken MCP Server",
-				"category": "GitLens"
-			},
-			{
-				"command": "gitlens.ai.mcp.uninstallForAgent",
-				"title": "Uninstall GitKraken MCP for Agent"
-			},
-			{
 				"command": "gitlens.ai.recomposeBranch",
 				"title": "Recompose Commits...",
 				"category": "GitLens"
@@ -8505,6 +8482,21 @@
 				"title": "Toggle Launchpad Indicator",
 				"category": "GitLens",
 				"icon": "$(rocket)"
+			},
+			{
+				"command": "gitlens.mcp.disable",
+				"title": "Disable Local Git MCP Server",
+				"category": "GitLens"
+			},
+			{
+				"command": "gitlens.mcp.enable",
+				"title": "Enable Local Git MCP Server",
+				"category": "GitLens"
+			},
+			{
+				"command": "gitlens.mcp.showConfiguration",
+				"title": "Configure Local Git MCP Server",
+				"category": "GitLens"
 			},
 			{
 				"command": "gitlens.openAssociatedPullRequestOnRemote",
@@ -13019,26 +13011,6 @@
 					"when": "false"
 				},
 				{
-					"command": "gitlens.ai.mcp.install",
-					"when": "!gitlens:untrusted && !gitlens:gk:cli:installed"
-				},
-				{
-					"command": "gitlens.ai.mcp.installForAgent",
-					"when": "false"
-				},
-				{
-					"command": "gitlens.ai.mcp.installForAllAgents",
-					"when": "!gitlens:untrusted && gitlens:gk:cli:installed"
-				},
-				{
-					"command": "gitlens.ai.mcp.reinstall",
-					"when": "!gitlens:untrusted && gitlens:gk:cli:installed"
-				},
-				{
-					"command": "gitlens.ai.mcp.uninstallForAgent",
-					"when": "false"
-				},
-				{
 					"command": "gitlens.ai.recomposeBranch",
 					"when": "gitlens:enabled && !gitlens:readonly && !gitlens:untrusted && gitlens:ai:allowed"
 				},
@@ -14265,6 +14237,18 @@
 				{
 					"command": "gitlens.launchpad.indicator.toggle",
 					"when": "gitlens:enabled"
+				},
+				{
+					"command": "gitlens.mcp.disable",
+					"when": "gitlens:mcp:available && config.gitlens.mcp.enabled"
+				},
+				{
+					"command": "gitlens.mcp.enable",
+					"when": "gitlens:mcp:available && !config.gitlens.mcp.enabled"
+				},
+				{
+					"command": "gitlens.mcp.showConfiguration",
+					"when": "gitlens:mcp:available"
 				},
 				{
 					"command": "gitlens.openAssociatedPullRequestOnRemote",

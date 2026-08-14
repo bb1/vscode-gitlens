@@ -1,7 +1,6 @@
 import { consume } from '@lit/context';
 import { html, LitElement, nothing } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
-import { urls } from '../../../../constants.js';
 import { SubscriptionState } from '../../../../constants.subscription.js';
 import type { GraphWalkthroughContextKeys } from '../../../../constants.walkthroughs.js';
 import { createCommandLink } from '../../../../system/commands.js';
@@ -285,65 +284,6 @@ const walkthroughSteps: WalkthroughStep[] = [
 				<gl-button href="command:gitlens.welcome.openKepler">Get Kepler</gl-button>
 			</div>
 		`,
-	},
-
-	{
-		id: 'mcp-bundled',
-		walkthroughKey: 'mcpFeatures',
-		title: 'GitKraken MCP',
-		body: html`
-			<p>
-				GitKraken MCP is active in your AI chat, leveraging Git and your integrations to provide context and
-				perform actions. You can also connect MCP to other agents on your machine.
-			</p>
-			<div class="card-part--centered">
-				<gl-button href="${createCommandLink('gitlens.ai.mcp.installForAllAgents', { source: 'welcome' })}"
-					>Connect More Agents</gl-button
-				>
-			</div>
-			<p><a href="${urls.helpCenterMCP}">Learn more in the Help Center</a></p>
-		`,
-		condition: state => state.mcpNeedsInstall === false && !state.mcpShowCleanupNotice,
-	},
-	{
-		id: 'mcp-bundled-cleanup',
-		walkthroughKey: 'mcpFeatures',
-		title: 'GitKraken MCP',
-		body: html`
-			<p>
-				GitKraken MCP is active in your AI chat, leveraging Git and your integrations to provide context and
-				perform actions. You can also connect MCP to other agents on your machine.
-			</p>
-			<div class="card-part--centered">
-				<gl-button href="${createCommandLink('gitlens.ai.mcp.installForAllAgents', { source: 'welcome' })}"
-					>Connect More Agents</gl-button
-				>
-			</div>
-			<p>
-				<strong>Note:</strong> You may have a duplicate entry in your Cursor <code>mcp.json</code> from a
-				previous install. Remove <code>mcpServers.GitKraken</code> to clean it up.
-			</p>
-			<p><a href="${urls.helpCenterMCP}">Learn more in the Help Center</a></p>
-		`,
-		condition: state => state.mcpNeedsInstall === false && state.mcpShowCleanupNotice,
-	},
-
-	{
-		id: 'mcp-install',
-		walkthroughKey: 'mcpFeatures',
-		title: 'Install GitKraken MCP for GitLens',
-		body: html`
-			<p>
-				Leverage Git and your integrations (issues, PRs, etc) to provide context and perform actions in AI chat.
-			</p>
-			<div class="card-part--centered">
-				<gl-button href="${createCommandLink('gitlens.ai.mcp.install', { source: 'welcome' })}"
-					>Install GitKraken MCP</gl-button
-				>
-			</div>
-			<p><a href="${urls.helpCenterMCP}">Learn more</a></p>
-		`,
-		condition: state => state.mcpNeedsInstall === true,
 	},
 ];
 

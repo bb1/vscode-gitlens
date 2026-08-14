@@ -33,6 +33,7 @@ export interface Config {
 	readonly keymap: KeyMap;
 	readonly launchpad: LaunchpadConfig;
 	readonly liveshare: LiveshareConfig;
+	readonly mcp: McpConfig;
 	readonly menus: boolean | MenuConfig;
 	readonly mode: ModeConfig;
 	readonly modes: ModesConfig | null;
@@ -574,6 +575,10 @@ interface LaunchpadConfig {
 interface LiveshareConfig {
 	readonly enabled: boolean;
 	readonly allowGuestAccess: boolean;
+}
+
+interface McpConfig {
+	readonly enabled: boolean;
 }
 
 export interface MenuConfig {
