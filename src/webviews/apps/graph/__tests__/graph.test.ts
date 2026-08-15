@@ -9,6 +9,7 @@ import {
 	applyGraphMessage,
 	createGraphState,
 	focusVirtualizedGraphRow,
+	GlGraphApp,
 	getGraphFilterRequest,
 	getGraphKeyboardAction,
 	getGraphNavigationIndex,
@@ -17,11 +18,19 @@ import {
 	shouldPageGraph,
 	updateGraphSelection,
 } from '../graph.js';
+import type { GraphState } from '../graph.js';
 import { layoutGraphRows } from '../laneLayout.js';
 
 type Deferred<T> = {
 	promise: Promise<T>;
 	resolve(value: T): void;
+};
+
+type GraphAppTestView = {
+	graph: GraphState;
+	onRowKeyDown(event: KeyboardEvent): void;
+	post(message: unknown): void;
+	selected: readonly string[];
 };
 
 function deferred<T>(): Deferred<T> {
@@ -58,6 +67,33 @@ suite('Graph app', () => {
 			active: 'b',
 			selected: ['a', 'b'],
 		});
+	});
+
+	test('toggles the focused row on Space and posts the multi-selection', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		app.graph = { layout: [], rows: [row('aaaaa'), row('bbbbb')], hasMore: false, selection: 'aaaaa' };
+		app.selected = ['aaaaa'];
+		const posted: unknown[] = [];
+		app.post = message => posted.push(message);
+		let prevented = false;
+
+		app.onRowKeyDown({
+			key: ' ',
+			preventDefault: () => {
+				prevented = true;
+			},
+			target: {
+				closest: <T extends HTMLElement>() => ({ dataset: { index: '1', sha: 'bbbbb' } }) as T,
+			},
+		} as unknown as KeyboardEvent);
+
+		assert.strictEqual(prevented, true);
+		assert.strictEqual(app.graph.selection, 'bbbbb');
+		assert.deepStrictEqual(app.selected, ['aaaaa', 'bbbbb']);
+		assert.deepStrictEqual(posted, [
+			{ type: 'graph/selection/update', selection: ['aaaaa', 'bbbbb'] },
+			{ type: 'graph/details', sha: 'bbbbb', includeFiles: false },
+		]);
 	});
 
 	test('applies bootstrap, append, and replacement row messages', () => {
