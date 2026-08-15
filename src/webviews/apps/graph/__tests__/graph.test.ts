@@ -52,7 +52,8 @@ suite('Graph app', () => {
 		assert.strictEqual(getGraphFilterRequest('x'.repeat(10001)), undefined);
 	});
 
-	test('keeps the active row when a multi-selection is toggled', () => {
+	test('maps Space to toggling the focused row without discarding other selected rows', () => {
+		assert.strictEqual(getGraphKeyboardAction({ key: ' ' }), 'toggle-selection');
 		assert.deepStrictEqual(updateGraphSelection(['a', 'b'], ['a'], 'b', { toggle: true }), {
 			active: 'b',
 			selected: ['a', 'b'],

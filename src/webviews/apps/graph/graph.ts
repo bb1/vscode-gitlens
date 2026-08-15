@@ -173,9 +173,10 @@ export function getGraphKeyboardAction(event: {
 	readonly ctrlKey?: boolean;
 	readonly key: string;
 	readonly metaKey?: boolean;
-}): GraphRowAction['action'] | undefined {
+}): GraphRowAction['action'] | 'toggle-selection' | undefined {
 	if (event.key === 'Enter') return event.altKey ? 'open-remote' : 'open-local';
 	if (event.key === 'c' && (event.ctrlKey || event.metaKey)) return 'copy-sha';
+	if (event.key === ' ') return 'toggle-selection';
 
 	return undefined;
 }
@@ -331,6 +332,11 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		const action = getGraphKeyboardAction(event);
 		if (action != null) {
 			event.preventDefault();
+			if (action === 'toggle-selection') {
+				this.select(row.dataset.sha!, { toggle: true });
+				return;
+			}
+
 			this.select(row.dataset.sha!);
 			this.post(getGraphRowAction(action, row.dataset.sha!));
 			return;
