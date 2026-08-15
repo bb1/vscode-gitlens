@@ -4,6 +4,7 @@ import type { GraphHostMessage } from './protocol.js';
 export type GraphSessionControllerOptions = {
 	readonly open: (cancellation: AbortSignal) => Promise<GitGraphSession>;
 	readonly postMessage: (message: GraphHostMessage) => Promise<void>;
+	readonly filter?: (query: string, cancellation: AbortSignal) => Promise<ReadonlySet<string>>;
 	readonly selection?: string;
 };
 
@@ -13,6 +14,9 @@ export type GraphSessionControllerOptions = {
  */
 export class GraphSessionController {
 	private readonly cancellation = new AbortController();
+	private readonly filterSession:
+		| ((query: string, cancellation: AbortSignal) => Promise<ReadonlySet<string>>)
+		| undefined;
 	private readonly openSession: (cancellation: AbortSignal) => Promise<GitGraphSession>;
 	private readonly postMessage: (message: GraphHostMessage) => Promise<void>;
 	private session: GitGraphSession | undefined;
@@ -24,6 +28,7 @@ export class GraphSessionController {
 	constructor(options: GraphSessionControllerOptions) {
 		this.openSession = options.open;
 		this.postMessage = options.postMessage;
+		this.filterSession = options.filter;
 		this.selection = options.selection;
 	}
 
@@ -88,6 +93,35 @@ export class GraphSessionController {
 			await this.send({
 				type: 'graph/replace',
 				rows: session.window,
+				paging: pagingOf(session),
+			});
+		});
+	}
+
+	filter(query: string): Promise<void> {
+		if (this.disposed) return Promise.reject(disposedError());
+
+		return this.enqueue(async () => {
+			await this.ensureOpen();
+			if (this.disposed) return;
+
+			const session = this.getSession();
+			const filter = this.filterSession;
+			if (filter == null) return;
+
+			let matches: ReadonlySet<string>;
+			try {
+				matches = await filter(query, this.cancellation.signal);
+			} catch (error) {
+				if (this.disposed) return;
+
+				throw error;
+			}
+			if (this.disposed || this.session !== session) return;
+
+			await this.send({
+				type: 'graph/replace',
+				rows: session.window.filter(row => matches.has(row.sha)),
 				paging: pagingOf(session),
 			});
 		});

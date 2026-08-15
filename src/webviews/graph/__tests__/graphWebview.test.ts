@@ -22,8 +22,10 @@ function message(params: unknown): {
 	};
 }
 
-function getProviderMethod(name: 'executeRowAction' | 'onMessageReceived'): (...args: unknown[]) => void {
-	return (GraphWebviewProvider.prototype as unknown as Record<string, (...args: unknown[]) => void>)[name];
+function getProviderMethod(
+	name: 'executeRowAction' | 'onMessageReceived' | 'sendCommitDetails' | 'sendWorkspaceContext',
+): (...args: unknown[]) => unknown {
+	return (GraphWebviewProvider.prototype as unknown as Record<string, (...args: unknown[]) => unknown>)[name];
 }
 
 suite('GraphWebviewProvider', () => {
@@ -68,9 +70,15 @@ suite('GraphWebviewProvider', () => {
 
 	test('ignores malformed graph messages before controller or action calls', () => {
 		const moreCalls: unknown[][] = [];
+		const filterCalls: unknown[][] = [];
+		const detailCalls: unknown[][] = [];
 		const actionCalls: unknown[][] = [];
 		const receiver = {
-			controller: { more: (...args: unknown[]) => moreCalls.push(args) },
+			controller: {
+				more: (...args: unknown[]) => moreCalls.push(args),
+				filter: (...args: unknown[]) => filterCalls.push(args),
+			},
+			sendCommitDetails: (...args: unknown[]) => detailCalls.push(args),
 			executeRowAction: (...args: unknown[]) => actionCalls.push(args),
 		};
 		const onMessageReceived = getProviderMethod('onMessageReceived');
@@ -87,13 +95,219 @@ suite('GraphWebviewProvider', () => {
 		}
 
 		assert.deepStrictEqual(moreCalls, []);
+		assert.deepStrictEqual(filterCalls, []);
+		assert.deepStrictEqual(detailCalls, []);
 		assert.deepStrictEqual(actionCalls, []);
 
 		onMessageReceived.call(receiver, message({ type: 'graph/more', limit: 1, targetId: 'abcdef' }));
+		onMessageReceived.call(receiver, message({ type: 'graph/filter', query: 'author:ada' }));
+		onMessageReceived.call(receiver, message({ type: 'graph/details', sha: 'abcdef', includeFiles: false }));
 		onMessageReceived.call(receiver, message({ type: 'graph/row/action', action: 'copy-sha', sha: 'abcdef' }));
 
 		assert.deepStrictEqual(moreCalls, [[1, 'abcdef']]);
+		assert.deepStrictEqual(filterCalls, [['author:ada']]);
+		assert.deepStrictEqual(detailCalls, [[{ type: 'graph/details', sha: 'abcdef', includeFiles: false }]]);
 		assert.deepStrictEqual(actionCalls, [[{ type: 'graph/row/action', action: 'copy-sha', sha: 'abcdef' }]]);
+	});
+
+	test('publishes workspace context for the active repository', async () => {
+		const notifications: unknown[] = [];
+		const repository = {
+			name: 'active-repository',
+			git: {
+				branches: {
+					getBranches: async () => ({
+						values: [
+							{ name: 'main', current: true, remote: false },
+							{ name: 'feature', current: false, remote: false },
+							{ name: 'origin/main', current: false, remote: true },
+						],
+					}),
+				},
+				tags: { getTags: async () => ({ values: [{ name: 'v1.0.0' }] }) },
+			},
+		};
+		const receiver = {
+			repository: repository,
+			contextRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+
+		await getProviderMethod('sendWorkspaceContext').call(receiver, repository);
+
+		assert.deepStrictEqual(notifications, [
+			{
+				type: 'graph/context',
+				repository: { name: 'active-repository', branch: 'main' },
+				refs: [
+					{ type: 'head', name: 'main' },
+					{ type: 'branch', name: 'feature' },
+					{ type: 'remote', name: 'origin/main' },
+					{ type: 'tag', name: 'v1.0.0' },
+				],
+			},
+		]);
+	});
+
+	test('bounds workspace context refs to the protocol limit', async () => {
+		const notifications: unknown[] = [];
+		const repository = {
+			name: 'active-repository',
+			git: {
+				branches: {
+					getBranches: async () => ({
+						values: Array.from({ length: 65 }, (_, i) => ({
+							name: `branch-${i}`,
+							current: i === 0,
+							remote: false,
+						})),
+					}),
+				},
+				tags: { getTags: async () => ({ values: [] }) },
+			},
+		};
+		const receiver = {
+			repository: repository,
+			contextRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+
+		await getProviderMethod('sendWorkspaceContext').call(receiver, repository);
+
+		assert.strictEqual((notifications[0] as { refs: unknown[] }).refs.length, 64);
+	});
+
+	test('sends selected commit details from the active repository and ignores stale results', async () => {
+		let resolveFirstCommit!: (value: object) => void;
+		const firstCommit = new Promise<object>(resolve => {
+			resolveFirstCommit = resolve;
+		});
+		const activeCommitCalls: string[] = [];
+		const inactiveCommitCalls: string[] = [];
+		const notifications: unknown[] = [];
+		const activeRepository = {
+			git: {
+				commits: {
+					getCommit: async (sha: string) => {
+						activeCommitCalls.push(sha);
+						return sha === 'abcdef' ? firstCommit : commit(sha, 'Current commit');
+					},
+				},
+				branches: { getBranches: async () => ({ values: [] }) },
+				tags: { getTags: async () => ({ values: [] }) },
+			},
+		};
+		const inactiveRepository = {
+			git: { commits: { getCommit: async (sha: string) => inactiveCommitCalls.push(sha) } },
+		};
+		const receiver = {
+			repository: activeRepository,
+			detailsRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+		const sendCommitDetails = getProviderMethod('sendCommitDetails');
+
+		const stale = sendCommitDetails.call(receiver, { type: 'graph/details', sha: 'abcdef', includeFiles: false });
+		const current = sendCommitDetails.call(receiver, { type: 'graph/details', sha: '123456', includeFiles: false });
+		await current;
+		resolveFirstCommit(commit('abcdef', 'Stale commit'));
+		await stale;
+
+		assert.deepStrictEqual(activeCommitCalls, ['abcdef', '123456']);
+		assert.deepStrictEqual(inactiveCommitCalls, []);
+		assert.deepStrictEqual(notifications, [
+			{
+				type: 'graph/details',
+				sha: '123456',
+				author: 'Ada Lovelace',
+				date: Date.UTC(2026, 7, 15),
+				message: 'Current commit',
+				refs: [],
+			},
+		]);
+	});
+
+	test('does not publish details after the active repository changes', async () => {
+		let resolveCommit!: (value: object) => void;
+		const pendingCommit = new Promise<object>(resolve => {
+			resolveCommit = resolve;
+		});
+		const activeCommitCalls: string[] = [];
+		const inactiveCommitCalls: string[] = [];
+		const notifications: unknown[] = [];
+		const activeRepository = {
+			git: {
+				commits: {
+					getCommit: async (sha: string) => {
+						activeCommitCalls.push(sha);
+						return pendingCommit;
+					},
+				},
+			},
+		};
+		const inactiveRepository = {
+			git: {
+				commits: {
+					getCommit: async (sha: string) => {
+						inactiveCommitCalls.push(sha);
+						return commit(sha, 'Inactive commit');
+					},
+				},
+			},
+		};
+		const receiver = {
+			repository: activeRepository,
+			detailsRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+		const sendCommitDetails = getProviderMethod('sendCommitDetails');
+
+		const details = sendCommitDetails.call(receiver, { type: 'graph/details', sha: 'abcdef', includeFiles: false });
+		receiver.repository = inactiveRepository;
+		resolveCommit(commit('abcdef', 'Stale commit'));
+		await details;
+
+		assert.deepStrictEqual(activeCommitCalls, ['abcdef']);
+		assert.deepStrictEqual(inactiveCommitCalls, []);
+		assert.deepStrictEqual(notifications, []);
+	});
+
+	test('serializes commit decoration refs with the active repository remotes', async () => {
+		const notifications: unknown[] = [];
+		const repository = {
+			git: {
+				commits: {
+					getCommit: async () =>
+						commit('abcdef', 'Current commit', [
+							'HEAD',
+							'->',
+							'main,',
+							'tag:',
+							'v1.0.0,',
+							'origin/main,',
+							'refs/stash',
+						]),
+				},
+				remotes: { getRemotes: async () => [{ name: 'origin' }] },
+			},
+		};
+		const receiver = {
+			repository: repository,
+			detailsRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+
+		await getProviderMethod('sendCommitDetails').call(receiver, {
+			type: 'graph/details',
+			sha: 'abcdef',
+			includeFiles: false,
+		});
+
+		assert.deepStrictEqual((notifications[0] as { refs: unknown[] }).refs, [
+			{ type: 'head', name: 'main' },
+			{ type: 'tag', name: 'v1.0.0' },
+			{ type: 'remote', name: 'origin/main' },
+		]);
 	});
 
 	test('revalidates row actions and uses the host-owned repository path', () => {
@@ -119,3 +333,13 @@ suite('GraphWebviewProvider', () => {
 		}
 	});
 });
+
+function commit(sha: string, message: string, tips?: string[]): object {
+	return {
+		sha: sha,
+		author: { name: 'Ada Lovelace', date: new Date(Date.UTC(2026, 7, 15)) },
+		message: message,
+		summary: message,
+		...(tips == null ? {} : { tips: tips }),
+	};
+}

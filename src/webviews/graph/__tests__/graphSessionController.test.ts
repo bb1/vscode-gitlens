@@ -6,6 +6,7 @@ import type {
 	GitGraphSessionRefreshResult,
 } from '@gitlens/git/models/graphSession.js';
 import { GraphSessionController } from '../graphSessionController.js';
+import type { GraphHostMessage } from '../protocol.js';
 
 type Deferred<T> = {
 	promise: Promise<T>;
@@ -276,6 +277,68 @@ suite('GraphSessionController', () => {
 			rows: [row('new-first'), row('new-second')],
 			paging: { hasMore: false },
 		});
+	});
+
+	test('serializes filtering after an active graph operation', async () => {
+		const session = new FakeGraphSession([row('first'), row('second')]);
+		const pendingMore = deferred<boolean>();
+		const filterResults = deferred<ReadonlySet<string>>();
+		const queries: string[] = [];
+		const sent: unknown[] = [];
+		session.moreResults = [pendingMore.promise];
+		const options = {
+			open: async () => session,
+			postMessage: async (message: GraphHostMessage) => {
+				sent.push(message);
+			},
+			filter: async (query: string) => {
+				queries.push(query);
+				return filterResults.promise;
+			},
+		};
+		const controller = new GraphSessionController(options);
+		await controller.open();
+
+		const more = controller.more();
+		await flush();
+		const filter = controller.filter('author:ada');
+		await flush();
+
+		assert.deepStrictEqual(queries, []);
+		pendingMore.resolve(false);
+		await more;
+		await flush();
+		assert.deepStrictEqual(queries, ['author:ada']);
+		filterResults.resolve(new Set(['second']));
+		await filter;
+
+		assert.deepStrictEqual(sent.at(-1), {
+			type: 'graph/replace',
+			rows: [row('second')],
+			paging: { hasMore: true },
+		});
+	});
+
+	test('preserves prior rows when filtering fails', async () => {
+		const session = new FakeGraphSession([row('first')]);
+		const sent: unknown[] = [];
+		const options = {
+			open: async () => session,
+			postMessage: async (message: GraphHostMessage) => {
+				sent.push(message);
+			},
+			filter: async () => {
+				throw new Error('filter failed');
+			},
+		};
+		const controller = new GraphSessionController(options);
+		await controller.open();
+
+		await assert.rejects(controller.filter('author:ada'), { message: 'filter failed' });
+
+		assert.deepStrictEqual(sent, [
+			{ type: 'graph/bootstrap', rows: [row('first')], paging: { hasMore: true }, selection: undefined },
+		]);
 	});
 
 	test('disposes once, aborts a pending page, and prevents its late append', async () => {

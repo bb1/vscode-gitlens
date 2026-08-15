@@ -1,4 +1,5 @@
 import type { Disposable } from 'vscode';
+import { GitCommit } from '@gitlens/git/models/commit.js';
 import { RemoteResourceType } from '@gitlens/git/models/remoteResource.js';
 import type { WebviewTelemetryContext } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
@@ -11,14 +12,31 @@ import type { IpcMessage } from '../ipc/models/ipc.js';
 import type { WebviewHost, WebviewProvider } from '../webviewProvider.js';
 import type { WebviewShowOptions } from '../webviewsController.js';
 import { GraphSessionController } from './graphSessionController.js';
-import { GraphDidChangeNotification, isGraphRowAction, parseGraphWebviewMessage, scope } from './protocol.js';
+import {
+	GraphDidChangeNotification,
+	type GraphDetailsRequest,
+	type GraphWorkspaceRef,
+	isGraphRowAction,
+	parseGraphWebviewMessage,
+	scope,
+} from './protocol.js';
 
 export type GraphWebviewShowingArgs = [unknown?];
 
 type State = Record<string, never>;
 
+const graphRefsMax = 64;
+const graphDetailFilesMax = 1000;
+const graphAuthorMaxLength = 256;
+const graphMessageMaxLength = 10000;
+const graphRefNameMaxLength = 1024;
+const graphFilePathMaxLength = 4096;
+const graphFileStatusMaxLength = 16;
+
 export class GraphWebviewProvider implements WebviewProvider<State, State, GraphWebviewShowingArgs> {
 	private controller: GraphSessionController | undefined;
+	private contextRequest = 0;
+	private detailsRequest = 0;
 	private repository: GlRepository | undefined;
 
 	constructor(
@@ -86,10 +104,20 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 						cancellation,
 					),
 				postMessage: message => this.host.notify(GraphDidChangeNotification, message).then(() => {}),
+				filter: async (query, cancellation) => {
+					const search = repository.git.graph.searchGraph({ query: query }, undefined, cancellation);
+					let result = await search.next();
+					while (!result.done) {
+						result = await search.next();
+					}
+
+					return new Set(result.value.results.keys());
+				},
 			});
 		}
 
 		await this.controller?.open();
+		void this.sendWorkspaceContext(repository);
 		return [true, undefined];
 	}
 
@@ -100,6 +128,12 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		if (request == null) return;
 
 		switch (request.type) {
+			case 'graph/filter':
+				void this.controller?.filter(request.query);
+				break;
+			case 'graph/details':
+				void this.sendCommitDetails(request);
+				break;
 			case 'graph/more':
 				void this.controller?.more(request.limit, request.targetId);
 				break;
@@ -109,6 +143,78 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			case 'graph/selection/update':
 				break;
 		}
+	}
+
+	private async sendWorkspaceContext(repository: GlRepository): Promise<void> {
+		const request = ++this.contextRequest;
+		const [branches, tags] = await Promise.all([
+			repository.git.branches.getBranches(),
+			repository.git.tags.getTags(),
+		]);
+		if (this.repository !== repository || request !== this.contextRequest) return;
+
+		const refs: GraphWorkspaceRef[] = [];
+		let branch: string | undefined;
+		for (const item of branches.values) {
+			if (item.current) {
+				branch = item.name;
+				refs.push({ type: 'head', name: item.name });
+			} else {
+				refs.push({ type: item.remote ? 'remote' : 'branch', name: item.name });
+			}
+		}
+		for (const tag of tags.values) {
+			refs.push({ type: 'tag', name: tag.name });
+		}
+
+		await this.host.notify(GraphDidChangeNotification, {
+			type: 'graph/context',
+			repository: {
+				name: truncate(repository.name, graphRefNameMaxLength),
+				...(branch == null ? {} : { branch: truncate(branch, graphRefNameMaxLength) }),
+			},
+			refs: refs.slice(0, graphRefsMax).map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+		});
+	}
+
+	private async sendCommitDetails(request: GraphDetailsRequest): Promise<void> {
+		const repository = this.repository;
+		if (repository == null) return;
+
+		const generation = ++this.detailsRequest;
+		const commit = await repository.git.commits.getCommit(request.sha);
+		if (commit == null || this.repository !== repository || generation !== this.detailsRequest) return;
+
+		const tips = commit.tips?.join(' ').split(', ') ?? [];
+		const remoteNames = tips.some(tip => tip.includes('/'))
+			? new Set((await repository.git.remotes.getRemotes()).map(remote => remote.name))
+			: new Set<string>();
+		if (this.repository !== repository || generation !== this.detailsRequest) return;
+
+		if (request.includeFiles) {
+			await GitCommit.ensureFullDetails(commit);
+			if (this.repository !== repository || generation !== this.detailsRequest) return;
+		}
+
+		await this.host.notify(GraphDidChangeNotification, {
+			type: 'graph/details',
+			sha: commit.sha,
+			author: truncate(commit.author.name, graphAuthorMaxLength),
+			date: commit.author.date.getTime(),
+			message: truncate(commit.message ?? commit.summary, graphMessageMaxLength),
+			refs: tips
+				.flatMap(tip => asWorkspaceRef(tip, remoteNames))
+				.slice(0, graphRefsMax)
+				.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+			...(request.includeFiles && commit.fileset?.files != null
+				? {
+						files: commit.fileset.files.slice(0, graphDetailFilesMax).map(file => ({
+							path: truncate(file.path, graphFilePathMaxLength),
+							status: truncate(file.status, graphFileStatusMaxLength),
+						})),
+					}
+				: {}),
+		});
 	}
 
 	private executeRowAction(request: unknown): void {
@@ -137,6 +243,20 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 				break;
 		}
 	}
+}
+
+function asWorkspaceRef(tip: string, remoteNames: ReadonlySet<string>): readonly GraphWorkspaceRef[] {
+	if (!tip || tip === 'refs/stash') return [];
+	if (tip.startsWith('HEAD -> ')) return [{ type: 'head', name: tip.substring(8) }];
+	if (tip === 'HEAD') return [{ type: 'head', name: tip }];
+	if (tip.startsWith('tag: ')) return [{ type: 'tag', name: tip.substring(5) }];
+
+	const remoteName = tip.substring(0, tip.indexOf('/'));
+	return [{ type: remoteNames.has(remoteName) ? 'remote' : 'branch', name: tip }];
+}
+
+function truncate(value: string, maxLength: number): string {
+	return value.slice(0, maxLength);
 }
 
 function getRepository(container: Container, arg: unknown): GlRepository | undefined {
