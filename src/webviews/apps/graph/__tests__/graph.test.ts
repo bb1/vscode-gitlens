@@ -27,9 +27,11 @@ type Deferred<T> = {
 };
 
 type GraphAppTestView = {
+	focusSelectedRow(): void;
 	graph: GraphState;
 	onRowKeyDown(event: KeyboardEvent): void;
 	post(message: unknown): void;
+	renderRoot: { querySelector<T extends HTMLElement>(selectors: string): T | null };
 	selected: readonly string[];
 };
 
@@ -94,6 +96,24 @@ suite('Graph app', () => {
 			{ type: 'graph/selection/update', selection: ['aaaaa', 'bbbbb'] },
 			{ type: 'graph/details', sha: 'bbbbb', includeFiles: false },
 		]);
+	});
+
+	test('restores focus to the rendered active row without waiting for the virtualizer', () => {
+		let focused = false;
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		app.graph = { layout: [], rows: [row('aaaaa')], hasMore: false, selection: 'aaaaa' };
+		app.renderRoot = {
+			querySelector: () =>
+				({
+					focus: () => {
+						focused = true;
+					},
+				}) as HTMLElement,
+		};
+
+		app.focusSelectedRow();
+
+		assert.strictEqual(focused, true);
 	});
 
 	test('applies bootstrap, append, and replacement row messages', () => {

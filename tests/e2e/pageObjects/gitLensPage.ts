@@ -144,6 +144,20 @@ export class GitLensPage extends VSCodePage {
 		await this.executeCommand('gitlens.showGraphView');
 	}
 
+	async getCommitGraphWebview(timeout = MaxTimeout / 2): Promise<FrameLocator> {
+		const graph = await this.getGitLensWebview('Graph', 'webviewView', timeout);
+		if (graph == null) throw new Error('Commit Graph webview was not found');
+
+		return graph;
+	}
+
+	async getCommitGraphPanel(timeout = MaxTimeout / 2): Promise<FrameLocator> {
+		const graph = await this.getGitLensWebview('Commit Graph', 'webviewPanel', timeout);
+		if (graph == null) throw new Error('Commit Graph panel was not found');
+
+		return graph;
+	}
+
 	// ============================================================================
 	// GitLens Status Bar Items
 	// ============================================================================

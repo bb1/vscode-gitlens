@@ -230,6 +230,9 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 	@state()
 	private filterQuery = '';
 
+	@state()
+	private inspectorOpen = false;
+
 	private paging = false;
 	private messageId = 0;
 	private readonly contextMenuProxy = new ContextMenuProxyController(this);
@@ -272,6 +275,7 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		}
 
 		this.graph = applyGraphMessage(this.graph, graphMessage);
+		this.inspectorOpen = this.graph.selection != null;
 		this.selected = this.selected.filter(sha => this.graph.rows.some(row => row.sha === sha));
 		if (this.graph.selection != null && this.selected.length === 0) {
 			this.selected = [this.graph.selection];
@@ -300,6 +304,7 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 	}
 
 	private select(sha: string, options: { readonly range?: boolean; readonly toggle?: boolean } = {}): void {
+		this.inspectorOpen = true;
 		const selection = updateGraphSelection(
 			this.graph.rows.map(row => row.sha),
 			this.selected,
@@ -367,6 +372,18 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		this.select(row.sha, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey });
 	}
 
+	private onKeyDown(event: KeyboardEvent): void {
+		if (event.key !== 'Escape' || !this.inspectorOpen) return;
+
+		event.preventDefault();
+		this.closeInspector();
+	}
+
+	private closeInspector(): void {
+		this.inspectorOpen = false;
+		this.focusSelectedRow();
+	}
+
 	private onFilterInput(event: InputEvent): void {
 		const input = event.target;
 		if (!(input instanceof HTMLInputElement)) return;
@@ -409,6 +426,23 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		if (row == null) return;
 
 		this.select(row.sha);
+		this.focusGraphRow(index);
+	}
+
+	private focusSelectedRow(): void {
+		const index = this.graph.rows.findIndex(row => row.sha === this.graph.selection);
+		if (index < 0) return;
+
+		const row = this.renderRoot.querySelector<HTMLElement>(`[data-index="${index}"]`);
+		if (row != null) {
+			row.focus();
+			return;
+		}
+
+		this.focusGraphRow(index);
+	}
+
+	private focusGraphRow(index: number): void {
 		void focusVirtualizedGraphRow(index, {
 			waitForUpdate: () => this.updateComplete,
 			getVirtualizer: () => this.virtualizer,
@@ -483,7 +517,7 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 	}
 
 	private renderCommandDeck(): unknown {
-		return html`<header class="command-deck">
+		return html`<section class="command-deck" aria-label="Commit graph commands">
 			<div>
 				<h1>Commit Graph</h1>
 				<p>
@@ -521,7 +555,7 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 					)}
 				</div>
 			</details>
-		</header>`;
+		</section>`;
 	}
 
 	private renderReferenceRail(): unknown {
@@ -548,6 +582,7 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 			<lit-virtualizer
 				class="rows"
 				role="listbox"
+				aria-label="Commit graph"
 				aria-multiselectable="true"
 				scroller
 				.items=${this.graph.rows}
@@ -576,10 +611,13 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 	}
 
 	private renderInspector(): unknown {
+		if (!this.inspectorOpen) return nothing;
+
 		const selected = this.graph.selection;
 		const details = this.details?.sha === selected ? this.details : undefined;
-		return html`<aside class="inspector" aria-labelledby="inspector-title">
+		return html`<section class="inspector" aria-label="Commit details">
 			<h2 id="inspector-title">Inspector</h2>
+			<button type="button" aria-label="Close commit details" @click=${this.closeInspector}>Close</button>
 			${
 				details == null
 					? html`<p>${selected == null ? 'Select a commit to inspect it' : 'Loading commit details'}</p>`
@@ -602,11 +640,11 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 								}
 							</details>`
 			}
-		</aside>`;
+		</section>`;
 	}
 
 	override render(): unknown {
-		return html`<main class="workspace">
+		return html`<main class="workspace" @keydown=${this.onKeyDown}>
 			${this.renderCommandDeck()} ${this.renderReferenceRail()}
 			<section class="canvas" aria-label="Commit graph">
 				${this.renderColumnHeader()} ${this.renderRows()}

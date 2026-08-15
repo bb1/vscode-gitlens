@@ -117,8 +117,17 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		}
 
 		await this.controller?.open();
-		void this.sendWorkspaceContext(repository).catch(() => undefined);
+		if (this.host.ready) {
+			void this.sendWorkspaceContext(repository).catch(() => undefined);
+		}
 		return [true, undefined];
+	}
+
+	onReady(): void {
+		const repository = this.repository;
+		if (repository != null) {
+			void this.sendWorkspaceContext(repository).catch(() => undefined);
+		}
 	}
 
 	onMessageReceived(message: IpcMessage): void {

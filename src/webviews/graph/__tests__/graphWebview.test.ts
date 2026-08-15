@@ -27,7 +27,7 @@ function flush(): Promise<void> {
 }
 
 function getProviderMethod(
-	name: 'executeRowAction' | 'onMessageReceived' | 'sendCommitDetails' | 'sendWorkspaceContext',
+	name: 'executeRowAction' | 'onMessageReceived' | 'onReady' | 'sendCommitDetails' | 'sendWorkspaceContext',
 ): (...args: unknown[]) => unknown {
 	return (GraphWebviewProvider.prototype as unknown as Record<string, (...args: unknown[]) => unknown>)[name];
 }
@@ -197,6 +197,21 @@ suite('GraphWebviewProvider', () => {
 				],
 			},
 		]);
+	});
+
+	test('publishes workspace context after the bootstrap snapshot reaches the webview', () => {
+		const repository = { name: 'active-repository' };
+		const contextCalls: unknown[][] = [];
+		const receiver = {
+			repository: repository,
+			sendWorkspaceContext: async (...args: unknown[]) => {
+				contextCalls.push(args);
+			},
+		};
+
+		getProviderMethod('onReady').call(receiver);
+
+		assert.deepStrictEqual(contextCalls, [[repository]]);
 	});
 
 	test('bounds workspace context refs to the protocol limit', async () => {
