@@ -9,11 +9,13 @@ import {
 	applyGraphMessage,
 	createGraphState,
 	focusVirtualizedGraphRow,
+	getGraphFilterRequest,
 	getGraphKeyboardAction,
 	getGraphNavigationIndex,
 	getGraphRowAction,
 	getGraphRowView,
 	shouldPageGraph,
+	updateGraphSelection,
 } from '../graph.js';
 import { layoutGraphRows } from '../laneLayout.js';
 
@@ -45,6 +47,18 @@ function row(sha: string, overrides?: Partial<GitGraphRow>): GitGraphRow {
 }
 
 suite('Graph app', () => {
+	test('posts a validated filter request after committed search input', () => {
+		assert.deepStrictEqual(getGraphFilterRequest('author:ada'), { type: 'graph/filter', query: 'author:ada' });
+		assert.strictEqual(getGraphFilterRequest('x'.repeat(10001)), undefined);
+	});
+
+	test('keeps the active row when a multi-selection is toggled', () => {
+		assert.deepStrictEqual(updateGraphSelection(['a', 'b'], ['a'], 'b', { toggle: true }), {
+			active: 'b',
+			selected: ['a', 'b'],
+		});
+	});
+
 	test('applies bootstrap, append, and replacement row messages', () => {
 		let state = createGraphState();
 		state = applyGraphMessage(state, {

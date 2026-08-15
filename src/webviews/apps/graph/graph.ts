@@ -2,14 +2,28 @@ import type { LitVirtualizer } from '@lit-labs/virtualizer';
 import { flow } from '@lit-labs/virtualizer/layouts/flow.js';
 import { html, nothing } from 'lit';
 import { customElement, query, state } from 'lit/decorators.js';
+import { debounce } from '@gitlens/utils/debounce.js';
 import { serializeWebviewItemContext } from '../../../system/webview.js';
-import type { GraphHostMessage, GraphRowAction, GraphWebviewMessage, GraphWebviewRow } from '../../graph/protocol.js';
-import { parseGraphHostMessage } from '../../graph/protocol.js';
+import type {
+	GraphColumn,
+	GraphCommitDetails,
+	GraphFilterRequest,
+	GraphHostMessage,
+	GraphRowAction,
+	GraphWebviewMessage,
+	GraphWebviewRow,
+	GraphWorkspaceContext,
+} from '../../graph/protocol.js';
+import { parseGraphDisplayPreferences, parseGraphHostMessage, parseGraphWebviewMessage } from '../../graph/protocol.js';
 import type { IpcMessage } from '../../ipc/models/ipc.js';
 import { SignalWatcherWebviewApp } from '../shared/appBase.js';
 import { ContextMenuProxyController } from '../shared/controllers/context-menu-proxy.js';
 import { getHostIpcApi } from '../shared/ipc.js';
 import { graphStyles } from './graph.css.js';
+import { getMinimapTargetIndex } from './graphMinimap.js';
+import { selectGraphRows } from './graphSelection.js';
+import type { GraphDisplayPreferences, GraphWorkspaceState } from './graphState.js';
+import { applyGraphWorkspaceMessage, toggleGraphColumn } from './graphState.js';
 import { layoutGraphRows } from './laneLayout.js';
 import type { GraphLayoutRow } from './laneLayout.js';
 import '@lit-labs/virtualizer';
@@ -29,6 +43,13 @@ export type GraphRowView = {
 
 const pageThreshold = 3;
 const pageSize = 200;
+const graphColumns: readonly GraphColumn[] = ['graph', 'message', 'refs', 'author', 'date', 'sha'];
+const defaultGraphDisplay: GraphDisplayPreferences = { columns: graphColumns, compact: false, minimap: true };
+
+export type GraphSelection = {
+	readonly active: string;
+	readonly selected: readonly string[];
+};
 
 export function createGraphState(): GraphState {
 	return { layout: [], rows: [], hasMore: false, selection: undefined };
@@ -89,8 +110,7 @@ export function getGraphRowView(
 		...(row.remotes?.map(ref => `${ref.owner}/${ref.name}`) ?? []),
 		...(row.tags?.map(ref => ref.name) ?? []),
 	];
-	const timestamp = new Date(row.date).getTime();
-	const date = Number.isNaN(timestamp) ? 'Unknown date' : new Date(timestamp).toISOString().slice(0, 10);
+	const date = getGraphDateLabel(row.date);
 	const refsLabel = refs.length === 0 ? 'no refs' : `refs: ${refs.join(', ')}`;
 
 	return {
@@ -98,6 +118,11 @@ export function getGraphRowView(
 		lane: layout.lane,
 		refs: refs,
 	};
+}
+
+function getGraphDateLabel(timestamp: number): string {
+	const date = new Date(timestamp);
+	return Number.isNaN(date.getTime()) ? 'Unknown date' : date.toISOString().slice(0, 10);
 }
 
 export function shouldPageGraph(lastVisibleIndex: number, rowCount: number, hasMore: boolean): boolean {
@@ -127,6 +152,20 @@ export function getGraphNavigationIndex(key: string, currentIndex: number, rowCo
 
 export function getGraphRowAction(action: GraphRowAction['action'], sha: string): GraphRowAction {
 	return { type: 'graph/row/action', action: action, sha: sha };
+}
+
+export function getGraphFilterRequest(query: string): GraphFilterRequest | undefined {
+	const message = parseGraphWebviewMessage({ type: 'graph/filter', query: query });
+	return message?.type === 'graph/filter' ? message : undefined;
+}
+
+export function updateGraphSelection(
+	rows: readonly string[],
+	selected: readonly string[],
+	row: string,
+	options: { readonly range?: boolean; readonly toggle?: boolean } = {},
+): GraphSelection {
+	return { active: row, selected: selectGraphRows(rows, selected, row, options) };
 }
 
 export function getGraphKeyboardAction(event: {
@@ -175,22 +214,75 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 	@state()
 	private graph = createGraphState();
 
+	@state()
+	private workspace: GraphWorkspaceState = { display: defaultGraphDisplay };
+
+	@state()
+	private selected: readonly string[] = [];
+
+	@state()
+	private context: GraphWorkspaceContext | undefined;
+
+	@state()
+	private details: GraphCommitDetails | undefined;
+
+	@state()
+	private filterQuery = '';
+
 	private paging = false;
 	private messageId = 0;
 	private readonly contextMenuProxy = new ContextMenuProxyController(this);
 	private readonly renderRow = (row: GraphWebviewRow, index: number) => this.renderGraphRow(row, index);
 	private readonly rowKey = (row: GraphWebviewRow) => row.sha;
+	private readonly requestFilter = debounce((query: string) => {
+		const request = getGraphFilterRequest(query);
+		if (request != null) {
+			this.post(request);
+		}
+	}, 250);
 
 	override connectedCallback(): void {
+		const state = getHostIpcApi().getState() as { readonly display?: unknown } | undefined;
+		const display = parseGraphDisplayPreferences(state?.display);
+		if (display != null) {
+			this.workspace = applyGraphWorkspaceMessage(this.workspace, { type: 'graph/display', display: display });
+		}
+
 		super.connectedCallback?.();
 		this.disposables.push(this._ipc.onReceiveMessage(this.onMessageReceived));
+	}
+
+	override disconnectedCallback(): void {
+		this.requestFilter.cancel();
+		super.disconnectedCallback?.();
 	}
 
 	protected onMessageReceived = (message: IpcMessage): void => {
 		const graphMessage = parseGraphHostMessage(message.params);
 		if (graphMessage == null) return;
 
+		switch (graphMessage.type) {
+			case 'graph/context':
+				this.context = graphMessage;
+				return;
+			case 'graph/details':
+				this.details = graphMessage;
+				return;
+		}
+
 		this.graph = applyGraphMessage(this.graph, graphMessage);
+		this.selected = this.selected.filter(sha => this.graph.rows.some(row => row.sha === sha));
+		if (this.graph.selection != null && this.selected.length === 0) {
+			this.selected = [this.graph.selection];
+		}
+		if (
+			(graphMessage.type === 'graph/bootstrap' || graphMessage.type === 'graph/replace') &&
+			this.graph.selection != null &&
+			this.details?.sha !== this.graph.selection
+		) {
+			this.post({ type: 'graph/details', sha: this.graph.selection, includeFiles: false });
+		}
+
 		this.paging = false;
 		this.restoreSelectedRow();
 	};
@@ -206,10 +298,24 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		});
 	}
 
-	private select(sha: string): void {
-		if (this.graph.selection !== sha) {
-			this.graph = { ...this.graph, selection: sha };
-			this.post({ type: 'graph/selection/update', selection: [sha] });
+	private select(sha: string, options: { readonly range?: boolean; readonly toggle?: boolean } = {}): void {
+		const selection = updateGraphSelection(
+			this.graph.rows.map(row => row.sha),
+			this.selected,
+			sha,
+			options,
+		);
+		const activeChanged = this.graph.selection !== selection.active;
+		const selectedChanged =
+			this.selected.length !== selection.selected.length ||
+			this.selected.some((selected, index) => selected !== selection.selected[index]);
+		if (!activeChanged && !selectedChanged) return;
+
+		this.graph = { ...this.graph, selection: selection.active };
+		this.selected = selection.selected;
+		this.post({ type: 'graph/selection/update', selection: selection.selected });
+		if (activeChanged) {
+			this.post({ type: 'graph/details', sha: sha, includeFiles: false });
 		}
 	}
 
@@ -251,6 +357,47 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		this.select(row.dataset.sha!);
 	}
 
+	private onRowClick(row: GraphWebviewRow, event: MouseEvent): void {
+		this.select(row.sha, { range: event.shiftKey, toggle: event.ctrlKey || event.metaKey });
+	}
+
+	private onFilterInput(event: InputEvent): void {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement)) return;
+
+		this.filterQuery = input.value;
+		this.requestFilter(input.value);
+	}
+
+	private onMinimapClick(event: MouseEvent): void {
+		const minimap = event.currentTarget as HTMLElement;
+		const bounds = minimap.getBoundingClientRect();
+		this.focusRow(getMinimapTargetIndex(event.clientY - bounds.top, bounds.height, this.graph.rows.length));
+	}
+
+	private updateDisplay(display: GraphDisplayPreferences): void {
+		this.workspace = applyGraphWorkspaceMessage(this.workspace, { type: 'graph/display', display: display });
+		getHostIpcApi().setState({ display: display });
+	}
+
+	private toggleColumn(column: GraphColumn): void {
+		this.updateDisplay(toggleGraphColumn(this.workspace.display, column));
+	}
+
+	private toggleCompact(event: Event): void {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement)) return;
+
+		this.updateDisplay({ ...this.workspace.display, compact: input.checked });
+	}
+
+	private toggleMinimap(event: Event): void {
+		const input = event.target;
+		if (!(input instanceof HTMLInputElement)) return;
+
+		this.updateDisplay({ ...this.workspace.display, minimap: input.checked });
+	}
+
 	private focusRow(index: number): void {
 		const row = this.graph.rows[index];
 		if (row == null) return;
@@ -286,24 +433,31 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 			data-sha=${row.sha}
 			data-vscode-context=${context}
 			aria-label=${view.ariaLabel}
-			aria-selected=${String(this.graph.selection === row.sha)}
+			aria-selected=${String(this.selected.includes(row.sha))}
 			tabindex=${this.graph.selection === row.sha ? 0 : -1}
-			@click=${() => this.select(row.sha)}
+			@click=${(event: MouseEvent) => this.onRowClick(row, event)}
 			@dblclick=${() => this.openDetails(row.sha)}
 			@keydown=${this.onRowKeyDown}
 			@contextmenu=${this.onContextMenu}
 		>
-			${this.renderLanes(view.lane, layout.edges)}
-			<div class="message">
-				<span class="subject">${row.message}</span>
-				<span class="metadata">${row.author}</span>
-				${
-					view.refs.length > 0
-						? html`<span class="refs">${view.refs.map(ref => html`<span class="ref">${ref}</span>`)}</span>`
-						: nothing
-				}
-			</div>
-			<span class="sha">${row.sha.slice(0, 8)}</span>
+			${this.workspace.display.columns.includes('graph') ? this.renderLanes(view.lane, layout.edges) : nothing}
+			${
+				this.workspace.display.columns.includes('message')
+					? html`<span class="subject">${row.message}</span>`
+					: nothing
+			}
+			${
+				this.workspace.display.columns.includes('refs') && view.refs.length > 0
+					? html`<span class="refs">${view.refs.map(ref => html`<span class="ref">${ref}</span>`)}</span>`
+					: nothing
+			}
+			${this.workspace.display.columns.includes('author') ? html`<span class="metadata">${row.author}</span>` : nothing}
+			${
+				this.workspace.display.columns.includes('date')
+					? html`<span class="metadata">${getGraphDateLabel(row.date)}</span>`
+					: nothing
+			}
+			${this.workspace.display.columns.includes('sha') ? html`<span class="sha">${row.sha.slice(0, 8)}</span>` : nothing}
 		</div>`;
 	}
 
@@ -322,11 +476,73 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 		</svg>`;
 	}
 
-	override render(): unknown {
-		return html`<main class="graph">
+	private renderCommandDeck(): unknown {
+		return html`<header class="command-deck">
+			<div>
+				<h1>Commit Graph</h1>
+				<p>
+					${this.context?.repository.name ?? 'Repository'}${this.context?.repository.branch ? `: ${this.context.repository.branch}` : ''}
+				</p>
+			</div>
+			<label>
+				<span class="visually-hidden">Filter commits</span>
+				<input
+					type="search"
+					placeholder="Filter commits"
+					.value=${this.filterQuery}
+					@input=${this.onFilterInput}
+				/>
+			</label>
+			<details>
+				<summary>Display</summary>
+				<label
+					><input type="checkbox" .checked=${this.workspace.display.compact} @change=${this.toggleCompact} />
+					Compact rows</label
+				>
+				<label
+					><input type="checkbox" .checked=${this.workspace.display.minimap} @change=${this.toggleMinimap} />
+					Show minimap</label
+				>
+				<div role="group" aria-label="Visible columns">
+					${graphColumns.map(
+						column => html`<button
+							type="button"
+							aria-pressed=${String(this.workspace.display.columns.includes(column))}
+							@click=${() => this.toggleColumn(column)}
+						>
+							${column}
+						</button>`,
+					)}
+				</div>
+			</details>
+		</header>`;
+	}
+
+	private renderReferenceRail(): unknown {
+		return html`<aside class="reference-rail" aria-label="Repository references">
+			<h2>References</h2>
+			${
+				this.context?.refs.length
+					? html`<ul>
+							${this.context.refs.map(ref => html`<li>${ref.name}</li>`)}
+						</ul>`
+					: html`<p>No references loaded</p>`
+			}
+		</aside>`;
+	}
+
+	private renderColumnHeader(): unknown {
+		return html`<header class="column-header" aria-label="Graph columns">
+			${this.workspace.display.columns.map(column => html`<span>${column}</span>`)}
+		</header>`;
+	}
+
+	private renderRows(): unknown {
+		return html`<div class="graph" ?data-compact=${this.workspace.display.compact}>
 			<lit-virtualizer
 				class="rows"
-				role="list"
+				role="listbox"
+				aria-multiselectable="true"
 				scroller
 				.items=${this.graph.rows}
 				.keyFunction=${this.rowKey}
@@ -335,6 +551,61 @@ export class GlGraphApp extends SignalWatcherWebviewApp {
 				@rangeChanged=${this.onRangeChanged}
 			></lit-virtualizer>
 			${this.paging ? html`<div class="loading" role="status">Loading more commits</div>` : nothing}
+		</div>`;
+	}
+
+	private renderMinimap(): unknown {
+		if (!this.workspace.display.minimap) return nothing;
+
+		return html`<nav class="minimap" aria-label="Graph minimap">
+			<button
+				type="button"
+				?disabled=${this.graph.rows.length === 0}
+				aria-label="Navigate ${this.graph.rows.length} loaded commits"
+				@click=${this.onMinimapClick}
+			>
+				${this.graph.layout.map(layout => html`<span aria-hidden="true" data-lane=${layout.lane}></span>`)}
+			</button>
+		</nav>`;
+	}
+
+	private renderInspector(): unknown {
+		const selected = this.graph.selection;
+		const details = this.details?.sha === selected ? this.details : undefined;
+		return html`<aside class="inspector" aria-labelledby="inspector-title">
+			<h2 id="inspector-title">Inspector</h2>
+			${
+				details == null
+					? html`<p>${selected == null ? 'Select a commit to inspect it' : 'Loading commit details'}</p>`
+					: html`<p>${details.message}</p>
+							<p>${details.author} · ${getGraphDateLabel(details.date)}</p>
+							${details.refs.length ? html`<p>${details.refs.map(ref => ref.name).join(', ')}</p>` : nothing}
+							<details>
+								<summary>Files</summary>
+								${
+									details.files == null
+										? html`<button
+												type="button"
+												@click=${() => this.post({ type: 'graph/details', sha: details.sha, includeFiles: true })}
+											>
+												Load changed files
+											</button>`
+										: html`<ul>
+												${details.files.map(file => html`<li>${file.status} ${file.path}</li>`)}
+											</ul>`
+								}
+							</details>`
+			}
+		</aside>`;
+	}
+
+	override render(): unknown {
+		return html`<main class="workspace">
+			${this.renderCommandDeck()} ${this.renderReferenceRail()}
+			<section class="canvas" aria-label="Commit graph">
+				${this.renderColumnHeader()} ${this.renderRows()}
+			</section>
+			${this.renderMinimap()} ${this.renderInspector()}
 		</main>`;
 	}
 }
