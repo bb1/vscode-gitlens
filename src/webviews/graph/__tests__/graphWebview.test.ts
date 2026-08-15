@@ -149,6 +149,17 @@ suite('GraphWebviewProvider', () => {
 		}
 	});
 
+	test('ignores filter requests before controller initialization', () => {
+		const receiver = { controller: undefined };
+
+		assert.doesNotThrow(() => {
+			getProviderMethod('onMessageReceived').call(
+				receiver,
+				message({ type: 'graph/filter', query: 'author:ada' }),
+			);
+		});
+	});
+
 	test('publishes workspace context for the active repository', async () => {
 		const notifications: unknown[] = [];
 		const repository = {

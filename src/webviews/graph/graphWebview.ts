@@ -129,7 +129,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 
 		switch (request.type) {
 			case 'graph/filter':
-				void this.controller?.filter(request.query).catch(() => undefined);
+				void this.controller?.filter(request.query)?.catch(() => undefined);
 				break;
 			case 'graph/details':
 				void this.sendCommitDetails(request).catch(() => undefined);
