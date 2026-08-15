@@ -25,7 +25,6 @@ import { createViewDecorationUri } from '../viewDecorationProvider.js';
 import { CacheableChildrenViewNode } from './abstract/cacheableChildrenViewNode.js';
 import type { ClipboardType, ViewNode } from './abstract/viewNode.js';
 import { ContextValues, getViewNodeId } from './abstract/viewNode.js';
-import { CodeSuggestionsNode } from './codeSuggestionsNode.js';
 import { CommandMessageNode, MessageNode } from './common.js';
 import { ResultsCommitsNode } from './resultsCommitsNode.js';
 import { ResultsFilesNode } from './resultsFilesNode.js';
@@ -227,7 +226,6 @@ export async function getPullRequestChildren(
 				description: pluralize('commit', counts?.right ?? 0),
 			},
 		),
-		new CodeSuggestionsNode(view, parent, repoPath, pullRequest),
 		new ResultsFilesNode(
 			view,
 			parent,

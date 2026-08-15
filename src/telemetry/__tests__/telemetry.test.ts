@@ -27,9 +27,9 @@ suite('Local telemetry', () => {
 		}
 	});
 
-	test('does not load OpenTelemetry or OTLP exporters', async () => {
+	test('does not load remote telemetry exporters', async () => {
 		const source = await readFile(resolve(process.cwd(), 'src/telemetry/telemetry.ts'), 'utf8');
 
-		assert.doesNotMatch(source, /OpenTelemetry|opentelemetry|loadChunk/);
+		assert.doesNotMatch(source, /open[a-z]+|loadChunk/);
 	});
 });

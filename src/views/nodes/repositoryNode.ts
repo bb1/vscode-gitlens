@@ -14,14 +14,6 @@ import type { RepositoryChangeEvent, RepositoryWorkingTreeChangeEvent } from '..
 import { GlRepository } from '../../git/models/repository.js';
 import { getRepositoryStatusIconPath } from '../../git/utils/-webview/icons.js';
 import { formatLastFetched } from '../../git/utils/-webview/repository.utils.js';
-import type {
-	CloudWorkspace,
-	CloudWorkspaceRepositoryDescriptor,
-} from '../../plus/workspaces/models/cloudWorkspace.js';
-import type {
-	LocalWorkspace,
-	LocalWorkspaceRepositoryDescriptor,
-} from '../../plus/workspaces/models/localWorkspace.js';
 import { gate } from '../../system/decorators/gate.js';
 import type { TreeViewNodeCollapsibleStateChangeEvent, ViewsWithRepositories } from '../viewBase.js';
 import { createViewDecorationUri } from '../viewDecorationProvider.js';
@@ -85,14 +77,6 @@ export class RepositoryNode extends SubscribeableViewNode<'repository', ViewsWit
 
 	get repoPath(): string {
 		return this.repo.path;
-	}
-
-	get workspace(): CloudWorkspace | LocalWorkspace | undefined {
-		return this.context.workspace;
-	}
-
-	get wsRepositoryDescriptor(): CloudWorkspaceRepositoryDescriptor | LocalWorkspaceRepositoryDescriptor | undefined {
-		return this.context.wsRepositoryDescriptor;
 	}
 
 	async getChildren(): Promise<ViewNode[]> {
@@ -231,21 +215,10 @@ export class RepositoryNode extends SubscribeableViewNode<'repository', ViewsWit
 		}${this.repo.name ? `\\\n${this.uri.repoPath}` : ''}`;
 		let workingStatus = '';
 
-		const { workspace } = this.context;
-
 		let contextValue: string = ContextValues.GlRepository;
 		if (this.repo.starred) {
 			contextValue += '+starred';
 		}
-		if (workspace != null) {
-			contextValue += '+workspace';
-			if (workspace.type === 'cloud') {
-				contextValue += '+cloud';
-			} else if (workspace.type === 'local') {
-				contextValue += '+local';
-			}
-		}
-
 		if (this.repo.virtual) {
 			contextValue += '+virtual';
 		} else if (!this.repo.opened) {
@@ -304,26 +277,13 @@ export class RepositoryNode extends SubscribeableViewNode<'repository', ViewsWit
 			}
 		}
 
-		if (workspace != null) {
-			tooltip += `\n\nRepository is ${!this.repo.opened ? 'not ' : ''}open in the current window`;
-		}
-
-		const item = new TreeItem(
-			label,
-			workspace != null || this.view.type === 'workspaces'
-				? TreeItemCollapsibleState.Collapsed
-				: TreeItemCollapsibleState.Expanded,
-		);
+		const item = new TreeItem(label, TreeItemCollapsibleState.Expanded);
 		item.id = this.id;
 		item.contextValue = contextValue;
 		item.description = `${description ?? ''}${
 			lastFetched ? `${pad(GlyphChars.Dot, 1, 1)}Last fetched ${formatLastFetched(lastFetched)}` : ''
 		}`;
 		item.iconPath = getRepositoryStatusIconPath(this.view.container, this.repo, status);
-
-		if (workspace != null && this.repo.opened) {
-			item.resourceUri = createViewDecorationUri('repository', { state: 'open', workspace: true });
-		}
 
 		const markdown = new MarkdownString(tooltip, true);
 		markdown.supportHtml = true;

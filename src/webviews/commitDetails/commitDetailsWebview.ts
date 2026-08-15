@@ -8,8 +8,6 @@ import { isUncommitted } from '@gitlens/git/utils/revision.utils.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import type { CopyMessageToClipboardCommandArgs } from '../../commands/copyMessageToClipboard.js';
 import type { CopyShaToClipboardCommandArgs } from '../../commands/copyShaToClipboard.js';
-import type { ExplainCommitCommandArgs } from '../../commands/explainCommit.js';
-import type { ExplainStashCommandArgs } from '../../commands/explainStash.js';
 import type { InspectTelemetryContext, InspectWebviewTelemetryContext, Sources } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
 import type { CommitSelectedEvent } from '../../eventBus.js';
@@ -20,7 +18,7 @@ import { getReferenceFromRevision } from '../../git/utils/-webview/reference.uti
 import { executeCommand, executeCoreCommand, registerWebviewCommand } from '../../system/-webview/command.js';
 import { getWebviewCommand } from '../../system/decorators/command.js';
 import type { LinesChangeEvent } from '../../trackers/lineTracker.js';
-import type { ShowInCommitGraphCommandArgs } from '../plus/graph/registration.js';
+import type { ShowInCommitGraphCommandArgs } from '../graph/registration.js';
 import type { EventVisibilityBuffer, SubscriptionTracker } from '../rpc/eventVisibilityBuffer.js';
 import { bufferEventHandler } from '../rpc/eventVisibilityBuffer.js';
 import { createSharedServices } from '../rpc/services/common.js';
@@ -28,7 +26,7 @@ import { proxyServices } from '../rpc/services/proxy.js';
 import type { WebviewHost, WebviewProvider, WebviewShowingArgs } from '../webviewProvider.js';
 import type { WebviewShowOptions } from '../webviewsController.js';
 import { isSerializedState } from '../webviewsController.js';
-import type { CommitDetailsServices, CommitSelectionEvent, ExplainResult } from './commitDetailsService.js';
+import type { CommitDetailsServices, CommitSelectionEvent } from './commitDetailsService.js';
 import type { ComparisonContext } from './commitDetailsWebview.utils.js';
 import {
 	getCoreCommitDetails,
@@ -377,11 +375,6 @@ export class CommitDetailsWebviewProvider implements WebviewProvider<State, Stat
 		}
 	}
 
-	/** Computes hasAccount fresh (no caching) */
-	async getHasAccount(): Promise<boolean> {
-		return (await this.container.subscription.getSubscription())?.account != null;
-	}
-
 	private onCommitSelected(e: CommitSelectedEvent) {
 		if (e.data == null) return;
 
@@ -450,38 +443,6 @@ export class CommitDetailsWebviewProvider implements WebviewProvider<State, Stat
 				sha: commit.sha,
 				passive: true, // Line tracker selections are passive
 			});
-		}
-	}
-
-	private async onExplainRequest(
-		repoPath: string,
-		sha: string,
-		prompt?: string,
-		signal?: AbortSignal,
-	): Promise<ExplainResult> {
-		try {
-			signal?.throwIfAborted();
-			if (this._showingCommitRef?.refType === 'stash') {
-				await executeCommand<ExplainStashCommandArgs>('gitlens.ai.explainStash', {
-					repoPath: repoPath,
-					rev: sha,
-					prompt: prompt || undefined,
-					source: { source: this.getTelemetrySource(), context: { type: 'stash' } },
-				});
-			} else {
-				await executeCommand<ExplainCommitCommandArgs>('gitlens.ai.explainCommit', {
-					repoPath: repoPath,
-					rev: sha,
-					prompt: prompt || undefined,
-					source: { source: this.getTelemetrySource(), context: { type: 'commit' } },
-				});
-			}
-			signal?.throwIfAborted();
-
-			return { result: { summary: '', body: '' } };
-		} catch (ex) {
-			debugger;
-			return { error: { message: ex.message } };
 		}
 	}
 
@@ -621,7 +582,7 @@ export class CommitDetailsWebviewProvider implements WebviewProvider<State, Stat
 			...shared,
 
 			// ============================================================
-			// Inspect: view-specific commit/WIP queries, navigation, actions, AI
+			// Inspect: view-specific commit/WIP queries, navigation, and actions
 			// ============================================================
 			inspect: {
 				// ── Events ──
@@ -704,11 +665,6 @@ export class CommitDetailsWebviewProvider implements WebviewProvider<State, Stat
 				openAutolinkSettings: async () => {
 					await executeCommand('gitlens.showSettingsPage!autolinks');
 				},
-
-				// ── AI Operations ──
-
-				explainCommit: (repoPath: string, sha: string, prompt?: string, signal?: AbortSignal) =>
-					this.onExplainRequest(repoPath, sha, prompt, signal),
 			},
 		} satisfies CommitDetailsServices);
 	}

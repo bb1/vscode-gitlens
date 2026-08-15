@@ -8,7 +8,6 @@ import { getRepositoryKey } from '@gitlens/utils/uri.js';
 import type { Source } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
 import { showGitErrorMessage } from '../../messages.js';
-import { arePlusFeaturesEnabled } from '../../plus/gk/utils/-webview/plus.utils.js';
 import { executeCommand } from '../../system/-webview/command.js';
 import { isDescendant } from '../../system/-webview/path.js';
 import type { GitRepositoryService } from '../gitRepositoryService.js';
@@ -260,9 +259,7 @@ export async function showPausedOperationStatus(
 }
 
 async function isGraphAccessible(container: Container, repoPath: string): Promise<boolean> {
-	if (!arePlusFeaturesEnabled()) return false;
-
-	return (await container.git.access('graph', repoPath)).allowed !== false;
+	return (await container.git.getAccess()).available;
 }
 
 function revealPausedOperationInGraph(repoPath: string, source?: Source): void {

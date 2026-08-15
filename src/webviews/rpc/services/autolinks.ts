@@ -78,7 +78,7 @@ export class AutolinksService {
 		signal?.throwIfAborted();
 		if (commit == null) return undefined;
 
-		const remote = await getBestRemoteWithIntegration(commit.repoPath, { includeDisconnected: true });
+		const remote = await getBestRemoteWithIntegration(commit.repoPath);
 		signal?.throwIfAborted();
 
 		const autolinks =
@@ -170,7 +170,7 @@ export class AutolinksService {
 	private async parseAutolinksFromMessages(repoPath: string, messages: string[]): Promise<Autolink[]> {
 		if (!messages.length) return [];
 
-		const remote = await getBestRemoteWithIntegration(repoPath, { includeDisconnected: true });
+		const remote = await getBestRemoteWithIntegration(repoPath);
 		const autolinks = await this.container.autolinks.getAutolinks(messages.join('\n'), remote);
 		return [...map(autolinks.values(), serializeAutolink)];
 	}
@@ -221,7 +221,7 @@ export class AutolinksService {
 		signal?.throwIfAborted();
 		if (commit == null) return undefined;
 
-		const remote = await getBestRemoteWithIntegration(commit.repoPath, { includeDisconnected: true });
+		const remote = await getBestRemoteWithIntegration(commit.repoPath);
 		signal?.throwIfAborted();
 		if (remote?.provider == null) return undefined;
 

@@ -10,26 +10,25 @@ This project incorporates components from the projects listed below.
 5. @lit-labs/signals version 0.3.0 (https://github.com/lit/lit)
 6. @lit-labs/virtualizer version 2.1.1 (https://github.com/lit/lit)
 7. @lit/context version 1.1.6 (https://github.com/lit/lit)
-8. @octokit/graphql version 9.0.3 (https://github.com/octokit/graphql.js)
-9. @octokit/request-error version 7.1.0 (https://github.com/octokit/request-error.js)
-10. @octokit/request version 10.0.11 (https://github.com/octokit/request.js)
-11. @octokit/types version 16.0.0 (https://github.com/octokit/types.ts)
-12. @vscode/codicons version 0.0.45 (https://github.com/microsoft/vscode-codicons)
-13. diff2html version 3.4.56 (https://github.com/rtfpessoa/diff2html)
-14. fast-string-truncated-width version 3.0.3 (https://github.com/fabiospampinato/fast-string-truncated-width)
-15. fflate version 0.8.3 (https://github.com/101arrowz/fflate)
-16. ignore version 7.0.6 (https://github.com/kaelzhang/node-ignore)
-17. lit version 3.3.3 (https://github.com/lit/lit)
-18. marked version 18.0.7 (https://github.com/markedjs/marked)
-19. microsoft/vscode (https://github.com/microsoft/vscode)
-20. offline-gitlense version 19.0.1 (https://github.com/bb1/vscode-gitlens)
-21. os-browserify version 0.3.0 (https://github.com/CoderPuppy/os-browserify)
-22. path-browserify version 1.0.1 (https://github.com/browserify/path-browserify)
-23. signal-polyfill version 0.2.2 (https://github.com/proposal-signals/signal-polyfill)
-24. signal-utils version 0.21.1 (https://github.com/proposal-signals/signal-utils)
-25. slug version 12.0.1 (https://github.com/Trott/slug)
-26. sortablejs version 1.15.7 (https://github.com/SortableJS/Sortable)
-27. vscode-uri version 3.1.0 (https://github.com/microsoft/vscode-uri)
+8. @modelcontextprotocol/sdk version 1.30.0 (https://github.com/modelcontextprotocol/typescript-sdk)
+9. @vscode/codicons version 0.0.45 (https://github.com/microsoft/vscode-codicons)
+10. diff2html version 3.4.56 (https://github.com/rtfpessoa/diff2html)
+11. fast-string-truncated-width version 3.0.3 (https://github.com/fabiospampinato/fast-string-truncated-width)
+12. fflate version 0.8.3 (https://github.com/101arrowz/fflate)
+13. ignore version 7.0.6 (https://github.com/kaelzhang/node-ignore)
+14. lit-html version 3.3.3 (https://github.com/lit/lit)
+15. lit version 3.3.3 (https://github.com/lit/lit)
+16. marked version 18.0.7 (https://github.com/markedjs/marked)
+17. microsoft/vscode (https://github.com/microsoft/vscode)
+18. offline-gitlense version 19.0.1 (https://github.com/bb1/vscode-gitlens)
+19. os-browserify version 0.3.0 (https://github.com/CoderPuppy/os-browserify)
+20. path-browserify version 1.0.1 (https://github.com/browserify/path-browserify)
+21. signal-polyfill version 0.2.2 (https://github.com/proposal-signals/signal-polyfill)
+22. signal-utils version 0.21.1 (https://github.com/proposal-signals/signal-utils)
+23. slug version 12.0.1 (https://github.com/Trott/slug)
+24. sortablejs version 1.15.7 (https://github.com/SortableJS/Sortable)
+25. vscode-uri version 3.1.0 (https://github.com/microsoft/vscode-uri)
+26. zod version 4.4.3 (https://github.com/colinhacks/zod)
 
 %% @awesome.me/webawesome NOTICES AND INFORMATION BEGIN HERE
 =========================================
@@ -1446,11 +1445,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 =========================================
 END OF  @lit/context NOTICES AND INFORMATION
 
-%% @octokit/graphql NOTICES AND INFORMATION BEGIN HERE
+%% @modelcontextprotocol/sdk NOTICES AND INFORMATION BEGIN HERE
 =========================================
-The MIT License
+MIT License
 
-Copyright (c) 2018 Octokit contributors
+Copyright (c) 2024 Anthropic, PBC
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -1459,86 +1458,19 @@ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 
 =========================================
-END OF  @octokit/graphql NOTICES AND INFORMATION
-
-%% @octokit/request-error NOTICES AND INFORMATION BEGIN HERE
-=========================================
-The MIT License
-
-Copyright (c) 2019 Octokit contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-=========================================
-END OF  @octokit/request-error NOTICES AND INFORMATION
-
-%% @octokit/request NOTICES AND INFORMATION BEGIN HERE
-=========================================
-The MIT License
-
-Copyright (c) 2018 Octokit contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-
-=========================================
-END OF  @octokit/request NOTICES AND INFORMATION
-
-%% @octokit/types NOTICES AND INFORMATION BEGIN HERE
-=========================================
-MIT License Copyright (c) 2019 Octokit contributors
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice (including the next paragraph) shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-=========================================
-END OF  @octokit/types NOTICES AND INFORMATION
+END OF  @modelcontextprotocol/sdk NOTICES AND INFORMATION
 
 %% @vscode/codicons NOTICES AND INFORMATION BEGIN HERE
 =========================================
@@ -2043,6 +1975,40 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =========================================
 END OF  ignore NOTICES AND INFORMATION
 
+%% lit-html NOTICES AND INFORMATION BEGIN HERE
+=========================================
+BSD 3-Clause License
+
+Copyright (c) 2017 Google LLC. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+=========================================
+END OF  lit-html NOTICES AND INFORMATION
+
 %% lit NOTICES AND INFORMATION BEGIN HERE
 =========================================
 BSD 3-Clause License
@@ -2157,9 +2123,7 @@ END OF  microsoft/vscode NOTICES AND INFORMATION
 =========================================
 ===============================================================================
 
-The following license applies to all files in this repository,
-except for those in or under any directory named "plus",
-which are covered by LICENSE.plus.
+The following license applies to all files in this repository.
 
 ===============================================================================
 
@@ -2528,3 +2492,30 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 =========================================
 END OF  vscode-uri NOTICES AND INFORMATION
+
+%% zod NOTICES AND INFORMATION BEGIN HERE
+=========================================
+MIT License
+
+Copyright (c) 2025 Colin McDonnell
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+=========================================
+END OF  zod NOTICES AND INFORMATION

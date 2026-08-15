@@ -6,7 +6,7 @@ import type { GitRemote } from '@gitlens/git/models/remote.js';
 import type { GlCommands } from '../../constants.commands.js';
 import type { GlRepository } from '../../git/models/repository.js';
 import type { OpenWorkspaceLocation } from '../../system/-webview/vscode/workspaces.js';
-import type { GraphShowAction } from '../../webviews/plus/graph/protocol.js';
+export type GraphShowAction = 'enter-compose' | 'enter-review';
 
 export type UriTypes = 'link';
 
@@ -24,15 +24,8 @@ export enum DeepLinkType {
 }
 
 export enum DeepLinkCommandType {
-	CloudPatches = 'cloud-patches',
 	Graph = 'graph',
-	Home = 'home',
-	Inspect = 'inspect',
 	InstallMCP = 'install-mcp',
-	Launchpad = 'launchpad',
-	StartReview = 'start-review',
-	StartWork = 'start-work',
-	Walkthrough = 'walkthrough',
 	Worktrees = 'worktrees',
 }
 
@@ -41,15 +34,9 @@ export function isDeepLinkCommandType(type: string): type is DeepLinkCommandType
 }
 
 export const DeepLinkCommandTypeToCommand = new Map<DeepLinkCommandType, GlCommands>([
-	[DeepLinkCommandType.CloudPatches, 'gitlens.showDraftsView'],
 	[DeepLinkCommandType.Graph, 'gitlens.showGraph'],
-	[DeepLinkCommandType.Home, 'gitlens.showHomeView'],
-	[DeepLinkCommandType.Inspect, 'gitlens.showCommitDetailsView'],
-	[DeepLinkCommandType.Launchpad, 'gitlens.showLaunchpad'],
-	// StartReview and StartWork are handled specially in DeepLinkService
-	[DeepLinkCommandType.Walkthrough, 'gitlens.getStarted'],
 	[DeepLinkCommandType.Worktrees, 'gitlens.showWorktreesView'],
-	[DeepLinkCommandType.InstallMCP, 'gitlens.ai.mcp.install'],
+	[DeepLinkCommandType.InstallMCP, 'gitlens.mcp.enable'],
 ]);
 
 /** Optional `mode` param on a `link/command/graph` deep link — opens the Commit Graph straight into
@@ -66,9 +53,6 @@ export enum DeepLinkActionType {
 	SwitchToPullRequest = 'switch-to-pr',
 	SwitchToPullRequestWorktree = 'switch-to-pr-worktree',
 }
-
-export const AccountDeepLinkTypes: DeepLinkType[] = [DeepLinkType.Draft, DeepLinkType.Workspace];
-export const PaidDeepLinkTypes: DeepLinkType[] = [];
 
 export function deepLinkTypeToString(type: DeepLinkType): string {
 	switch (type) {
@@ -341,10 +325,6 @@ export interface DeepLinkServiceContext {
 	prData?: PullRequestShape | undefined;
 	issueData?: IssueShape | undefined;
 	instructions?: string | undefined;
-	/** Optional agent descriptor for Start Work / Start Review with `showOpenInAgent`. */
-	agent?: import('../../plus/agents/agentDescriptor.js').AgentDescriptor | undefined;
-	/** Worktree path for CLI dispatch `cwd`. */
-	worktreePath?: string | undefined;
 }
 
 export const deepLinkStateTransitionTable: Record<string, Record<string, DeepLinkServiceState>> = {

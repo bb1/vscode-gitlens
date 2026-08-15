@@ -51,7 +51,7 @@ suite('HostingIntegrationService', () => {
 		assert.ok(provider);
 
 		const result = await provider.getPullRequests({
-			owner: 'gitkraken',
+			owner: 'example-org',
 			name: 'vscode-gitlens',
 			domain: 'github.com',
 		});

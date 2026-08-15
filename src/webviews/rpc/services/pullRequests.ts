@@ -13,7 +13,6 @@ import type { Container } from '../../../container.js';
 import { openComparisonChanges } from '../../../git/actions/commit.js';
 import { getBranchAssociatedPullRequest } from '../../../git/utils/-webview/branch.utils.js';
 import { getCommitAssociatedPullRequest } from '../../../git/utils/-webview/commit.utils.js';
-import { getBestRemoteWithIntegration, getRemoteIntegration } from '../../../git/utils/-webview/remote.utils.js';
 import { executeCommand } from '../../../system/-webview/command.js';
 
 export class PullRequestsService {
@@ -107,21 +106,8 @@ export class PullRequestsService {
 	 * single-WIP scenarios where the current branch IS the PR's branch).
 	 */
 	async openPullRequestDetails(repoPath: string, prId: string, prProvider: string): Promise<void> {
-		if (prId && prProvider) {
-			const remote = await getBestRemoteWithIntegration(repoPath, {
-				filter: r => r.provider.id === prProvider,
-			});
-			if (remote != null) {
-				const integration = await getRemoteIntegration(remote);
-				const pr = await integration?.getPullRequest(remote.provider.repoDesc, prId);
-				if (pr != null) {
-					void this.container.views.pullRequest.showPullRequest(pr, repoPath);
-					return;
-				}
-			}
-		}
-
-		// Fallback: resolve via the repo's current branch.
+		// Resolve via the repo's current branch. Direct hosting providers expose commit lookups,
+		// not the legacy arbitrary pull-request detail API.
 		const repoService = this.container.git.getRepositoryService(repoPath);
 		const status = await repoService.status.getStatus();
 		if (status?.branch == null) return;

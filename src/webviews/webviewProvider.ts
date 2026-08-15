@@ -2,6 +2,7 @@ import type { Disposable, Uri, ViewBadge, ViewColumn } from 'vscode';
 import type { GlWebviewCommands } from '../constants.commands.js';
 import type {
 	Source,
+	TelemetryEventData,
 	TelemetryEvents,
 	WebviewTelemetryContext,
 	WebviewTelemetryEvents,
@@ -134,12 +135,7 @@ export interface WebviewHost<ID extends WebviewIds | CustomEditorIds> {
 	 * @param name The event name
 	 * @param data The event data (excluding properties provided by the provider's getTelemetryContext)
 	 */
-	sendTelemetryEvent<T extends keyof TelemetryEvents>(
-		name: T,
-		...args: [keyof WebviewTelemetryEvents[T]] extends [never]
-			? [data?: never, source?: Source]
-			: [data: WebviewTelemetryEvents[T], source?: Source]
-	): void;
+	sendTelemetryEvent(name: string, data?: TelemetryEventData, source?: Source): void;
 	is(type: 'editor'): this is WebviewHost<ID & (WebviewPanelIds | CustomEditorIds)>;
 	is(type: 'view'): this is WebviewHost<ID & WebviewViewIds>;
 

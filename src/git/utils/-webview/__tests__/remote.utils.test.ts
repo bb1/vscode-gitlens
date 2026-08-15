@@ -5,24 +5,24 @@ import { getHostingProviderDescriptor } from '../remote.utils.js';
 
 suite('getHostingProviderDescriptor', () => {
 	test('maps a GitHub remote descriptor without accepting a caller-supplied domain', () => {
-		const provider = new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens');
+		const provider = new GitHubRemoteProvider('github.com', 'example-org/example-repo');
 
 		assert.deepStrictEqual(getHostingProviderDescriptor(provider), {
 			id: 'github',
-			repository: { domain: 'github.com', owner: 'gitkraken', name: 'vscode-gitlens' },
+			repository: { domain: 'github.com', owner: 'example-org', name: 'example-repo' },
 		});
 	});
 
 	test('maps Azure project details from its remote descriptor', () => {
-		const provider = new AzureDevOpsRemoteProvider('dev.azure.com', 'gitkraken/gitlens/_git/vscode-gitlens');
+		const provider = new AzureDevOpsRemoteProvider('dev.azure.com', 'example-org/example/_git/example-repo');
 
 		assert.deepStrictEqual(getHostingProviderDescriptor(provider), {
 			id: 'azureDevOps',
 			repository: {
 				domain: 'dev.azure.com',
-				owner: 'gitkraken',
-				project: 'gitlens',
-				name: 'vscode-gitlens',
+				owner: 'example-org',
+				project: 'example',
+				name: 'example-repo',
 			},
 		});
 	});

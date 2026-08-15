@@ -24,7 +24,6 @@ import {
 	isCommandContextViewNodeHasComparison,
 	isCommandContextViewNodeHasRemote,
 	isCommandContextViewNodeHasTag,
-	isCommandContextViewNodeHasWorkspace,
 } from './commandContext.utils.js';
 
 export interface CopyDeepLinkCommandArgs {
@@ -45,7 +44,6 @@ export class CopyDeepLinkCommand extends ActiveEditorCommand {
 			'gitlens.copyDeepLinkToRepo',
 			'gitlens.copyDeepLinkToTag',
 			'gitlens.copyDeepLinkToComparison',
-			'gitlens.copyDeepLinkToWorkspace',
 		]);
 	}
 
@@ -72,8 +70,6 @@ export class CopyDeepLinkCommand extends ActiveEditorCommand {
 				args = { refOrRepoPath: context.node.tag };
 			} else if (isCommandContextViewNodeHasRemote(context)) {
 				args = { refOrRepoPath: context.node.remote.repoPath, remote: context.node.remote.name };
-			} else if (isCommandContextViewNodeHasWorkspace(context)) {
-				args = { workspaceId: context.node.workspace.id };
 			}
 		}
 

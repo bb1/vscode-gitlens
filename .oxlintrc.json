@@ -52,6 +52,9 @@
 		"/patches",
 		"/scripts",
 		"/src/@types",
+		"/src/plus",
+		"/src/webviews/plus",
+		"/src/webviews/apps/plus",
 		"/packages/core",
 		"/tests/e2e/runner/**",
 		"/tests/fixtures/**"
@@ -308,18 +311,10 @@
 			"files": [
 				"src/**/*",
 				"tests/**/*",
-				"src/constants.subscription.ts",
-				"src/plus/gk/__debug__accountDebug.ts",
 				"packages/utils/src/**/*",
-				"packages/ipc/src/**/*",
 				"packages/git/src/**/*",
 				"packages/git-cli/src/**/*",
-				"packages/git-github/src/**/*",
-				"packages/plus/git-github/src/**/*",
-				"packages/plus/integrations/src/**/*",
-				"packages/plus/ai/src/**/*",
-				"packages/plus/agents/src/**/*",
-				"packages/plus/commit-graph/src/**/*"
+				"packages/git-github/src/**/*"
 			],
 			"rules": {
 				"curly": ["error", "multi-line", "consistent"],
@@ -572,7 +567,7 @@
 			"env": { "browser": true }
 		},
 		{
-			"files": ["tests/**/*", "src/constants.subscription.ts", "src/plus/gk/__debug__accountDebug.ts"],
+			"files": ["tests/**/*"],
 			"rules": {
 				"no-restricted-imports": "off"
 			},
@@ -600,15 +595,9 @@
 		{
 			"files": [
 				"packages/utils/src/**/*",
-				"packages/ipc/src/**/*",
 				"packages/git/src/**/*",
 				"packages/git-cli/src/**/*",
-				"packages/git-github/src/**/*",
-				"packages/plus/git-github/src/**/*",
-				"packages/plus/integrations/src/**/*",
-				"packages/plus/ai/src/**/*",
-				"packages/plus/agents/src/**/*",
-				"packages/plus/commit-graph/src/**/*"
+				"packages/git-github/src/**/*"
 			],
 			"rules": {
 				"no-restricted-imports": [
@@ -636,70 +625,6 @@
 			},
 			"env": {
 				"node": true
-			}
-		},
-		{
-			// The commit-graph engine is deliberately host- and renderer-agnostic, which was convention
-			// only — nothing failed if a GitLens type crept in. These bans make the boundary real. Scoped
-			// to this package alone: the sibling plus packages legitimately import `@gitlens/*`.
-			"files": ["packages/plus/commit-graph/src/**/*"],
-			"rules": {
-				"no-restricted-imports": [
-					"error",
-					{
-						"paths": [{ "name": "vscode", "message": "Packages must not import vscode" }],
-						"patterns": [
-							{
-								"group": ["@gitlens/*", "@gitlens/**", "@gitkraken/*", "@gitkraken/**"],
-								"message": "The commit-graph engine must not depend on GitLens or the host. Make the module generic over the package's own row types and inject an accessor from the consumer instead — see `scope.ts`'s heads predicate."
-							},
-							{
-								"group": ["**/container.js", "**/container"],
-								"importNames": ["Container"],
-								"message": "Packages must not import Container"
-							},
-							{
-								"group": ["**/-webview/**/*"],
-								"message": "Packages must not import -webview modules"
-							}
-						]
-					}
-				]
-			}
-		},
-		{
-			"files": ["packages/plus/integrations/src/**/*"],
-			"rules": {
-				"no-restricted-imports": [
-					"error",
-					{
-						"paths": [
-							{
-								"name": "vscode",
-								"message": "Packages must not import vscode"
-							}
-						],
-						"patterns": [
-							{
-								"group": ["**/container.js", "**/container"],
-								"importNames": ["Container"],
-								"message": "Packages must not import Container"
-							},
-							{
-								"group": ["**/-webview/**/*"],
-								"message": "Packages must not import -webview modules"
-							},
-							{
-								"group": ["**/src/*", "**/src/**", "*/src/*", "*/src/**"],
-								"message": "The @gitlens/integrations package must not import from the host (src/)."
-							},
-							{
-								"group": ["@env/*"],
-								"message": "The package gets fetch/isWeb via ctx.http; @env/* belongs to the host adapter."
-							}
-						]
-					}
-				]
 			}
 		},
 		{
@@ -772,7 +697,7 @@
 			}
 		},
 		{
-			"files": ["packages/git-cli/**/*", "packages/git-github/**/*", "packages/plus/git-github/**/*"],
+			"files": ["packages/git-cli/**/*", "packages/git-github/**/*"],
 			"rules": {
 				"no-throw-literal": "off",
 				"no-unmodified-loop-condition": "off"

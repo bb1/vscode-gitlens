@@ -12,9 +12,6 @@ import { loadChunk } from '../../system/-webview/loadChunk.js';
 import type { TelemetryService } from '../../telemetry/telemetry.js';
 import { GlCliGitProvider } from './git/cliGitProvider.js';
 import { VslsGitProvider } from './git/vslsGitProvider.js';
-import { LocalRepositoryLocationProvider } from './gk/localRepositoryLocationProvider.js';
-import { LocalSharedGkStorageLocationProvider } from './gk/localSharedGkStorageLocationProvider.js';
-import { LocalGkWorkspacesSharedStorageProvider } from './gk/localWorkspacesSharedStorageProvider.js';
 import { getLocalMcpService } from './mcp/localMcpService.js';
 import type { LocalMcpService } from './mcp/localMcpService.js';
 
@@ -64,26 +61,6 @@ export async function getSupportedGitProviders(
 	}
 
 	return providers;
-}
-
-export function getSharedGKStorageLocationProvider(
-	container: Container,
-): InstanceType<typeof LocalSharedGkStorageLocationProvider> {
-	return new LocalSharedGkStorageLocationProvider(container);
-}
-
-export function getSupportedRepositoryLocationProvider(
-	container: Container,
-	sharedStorage: ConstructorParameters<typeof LocalRepositoryLocationProvider>[1],
-): LocalRepositoryLocationProvider {
-	return new LocalRepositoryLocationProvider(container, sharedStorage);
-}
-
-export function getSupportedWorkspacesStorageProvider(
-	container: Container,
-	sharedStorage: ConstructorParameters<typeof LocalGkWorkspacesSharedStorageProvider>[1],
-): LocalGkWorkspacesSharedStorageProvider {
-	return new LocalGkWorkspacesSharedStorageProvider(container, sharedStorage);
 }
 
 export function getMcpService(container: Container): LocalMcpService {

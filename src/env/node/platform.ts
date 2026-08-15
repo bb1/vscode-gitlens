@@ -12,7 +12,8 @@ export function getIsOffline(): boolean {
 	const now = Date.now();
 	if (cachedOffline != null && cachedOffline.expires > now) return cachedOffline.value;
 
-	const value = Object.values(networkInterfaces()).every(iface => iface?.every(addr => addr.internal));
+	const interfaces = networkInterfaces() as Record<string, { internal: boolean }[] | undefined>;
+	const value = Object.values(interfaces).every(iface => iface?.every(addr => addr.internal));
 	cachedOffline = { value: value, expires: now + offlineCacheTTL };
 	return value;
 }
@@ -32,12 +33,12 @@ export function getPlatform(): Platform {
 }
 
 export function getTempFile(filename: string): string {
-	return join(tmpdir(), filename);
+	return join(tmpdir() as string, filename) as string;
 }
 
 /** Returns the current user's home directory, or an empty string when unavailable (e.g. on the web). */
 export function getHomeDir(): string {
-	return homedir();
+	return homedir() as string;
 }
 
 export function getAltKeySymbol(): string {
@@ -64,11 +65,11 @@ export function getShiftKeySymbol(): string {
 export function getRemoteInstanceIdentifier(): string | undefined {
 	// For WSL, use the distro name (e.g., "Ubuntu", "Debian")
 	const wslDistro = processEnv.WSL_DISTRO_NAME;
-	if (wslDistro) return wslDistro;
+	if (typeof wslDistro === 'string') return wslDistro;
 
 	// For SSH and other remotes, use hostname to differentiate
 	try {
-		return hostname();
+		return hostname() as string;
 	} catch {
 		return undefined;
 	}

@@ -1,29 +1,31 @@
-export declare global {
-	declare const DEBUG: boolean;
+export {};
 
-	export type PartialDeep<T> = T extends Record<string, unknown> ? { [K in keyof T]?: PartialDeep<T[K]> } : T;
-	export type Optional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
-	export type PickPartialDeep<T, K extends keyof T> = Omit<Partial<T>, K> & { [P in K]?: Partial<T[P]> };
+declare global {
+	const DEBUG: boolean;
 
-	export type Mutable<T> = { -readonly [P in keyof T]: T[P] };
-	export type MutableDeep<T> = { -readonly [P in keyof T]: MutableDeep<T[P]> };
-	export type PickMutable<T, K extends keyof T> = Omit<T, K> & { -readonly [P in K]: T[P] };
+	type PartialDeep<T> = T extends Record<string, unknown> ? { [K in keyof T]?: PartialDeep<T[K]> } : T;
+	type Optional<T, K extends keyof T> = Omit<T, K> & { [P in K]?: T[P] };
+	type PickPartialDeep<T, K extends keyof T> = Omit<Partial<T>, K> & { [P in K]?: Partial<T[P]> };
 
-	export type EntriesType<T> = T extends Record<infer K, infer V> ? [K, V] : never;
+	type Mutable<T> = { -readonly [P in keyof T]: T[P] };
+	type MutableDeep<T> = { -readonly [P in keyof T]: MutableDeep<T[P]> };
+	type PickMutable<T, K extends keyof T> = Omit<T, K> & { -readonly [P in K]: T[P] };
 
-	export type ExcludeSome<T, K extends keyof T, R> = Omit<T, K> & { [P in K]-?: Exclude<T[P], R> };
+	type EntriesType<T> = T extends Record<infer K, infer V> ? [K, V] : never;
 
-	export type ExtractAll<T, U> = { [K in keyof T]: T[K] extends U ? T[K] : never };
-	export type ExtractPrefixes<T extends string, SEP extends string> = T extends `${infer Prefix}${SEP}${infer Rest}`
+	type ExcludeSome<T, K extends keyof T, R> = Omit<T, K> & { [P in K]-?: Exclude<T[P], R> };
+
+	type ExtractAll<T, U> = { [K in keyof T]: T[K] extends U ? T[K] : never };
+	type ExtractPrefixes<T extends string, SEP extends string> = T extends `${infer Prefix}${SEP}${infer Rest}`
 		? Prefix | `${Prefix}${SEP}${ExtractPrefixes<Rest, SEP>}`
 		: T;
-	export type ExtractSome<T, K extends keyof T, R> = Omit<T, K> & { [P in K]-?: Extract<T[P], R> };
+	type ExtractSome<T, K extends keyof T, R> = Omit<T, K> & { [P in K]-?: Extract<T[P], R> };
 
-	export type NarrowRepo<T extends { repo?: unknown }> = ExcludeSome<T, 'repo', string | undefined>;
-	export type NarrowRepos<T extends { repos?: unknown }> = ExcludeSome<T, 'repos', string | string[] | undefined>;
+	type NarrowRepo<T extends { repo?: unknown }> = ExcludeSome<T, 'repo', string | undefined>;
+	type NarrowRepos<T extends { repos?: unknown }> = ExcludeSome<T, 'repos', string | string[] | undefined>;
 
 	// Note this is more complex to deal with function overloads
-	export type OmitFirstArg<F> = F extends {
+	type OmitFirstArg<F> = F extends {
 		(first: any, ...args: infer A1): infer R1;
 		(first: any, ...args: infer A2): infer R2;
 		(first: any, ...args: infer A3): infer R3;
@@ -47,26 +49,26 @@ export declare global {
 					? (...args: A1) => R1
 					: never;
 
-	export type RequireNonNullable<T> = { [P in keyof T]-?: NonNullable<T[P]> };
-	export type RequireSome<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: T[P] };
-	export type RequireSomeNonNullable<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
-	export type RequireSomeWithProps<T, K extends keyof T, Props extends keyof T[K]> = Omit<T, K> & {
+	type RequireNonNullable<T> = { [P in keyof T]-?: NonNullable<T[P]> };
+	type RequireSome<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: T[P] };
+	type RequireSomeNonNullable<T, K extends keyof T> = Omit<T, K> & { [P in K]-?: NonNullable<T[P]> };
+	type RequireSomeWithProps<T, K extends keyof T, Props extends keyof T[K]> = Omit<T, K> & {
 		[P in K]-?: RequireSome<T[P], Props>;
 	};
 
-	export type Replace<T, K extends keyof T, R> = Omit<T, K> & { [P in K]: R };
+	type Replace<T, K extends keyof T, R> = Omit<T, K> & { [P in K]: R };
 
-	export type FilterByPrefix<
+	type FilterByPrefix<
 		P extends string,
 		T extends string,
 		S extends string = '',
 	> = T extends `${P}${S}${string}` ? T : never;
-	export type StripPrefix<P extends string, T extends string, S extends string = ''> = T extends `${P}${S}${infer R}`
+	type StripPrefix<P extends string, T extends string, S extends string = ''> = T extends `${P}${S}${infer R}`
 		? R
 		: never;
 
-	export type UnwrapCustomEvent<T> = T extends CustomEvent<infer U> ? U : never;
+	type UnwrapCustomEvent<T> = T extends { detail: infer U } ? U : never;
 
-	export type UnionKeys<T> = T extends T ? keyof T : never;
-	export type PartialUnionValues<T> = T extends T ? { [K in keyof T]: Partial<T[K]> } : never;
+	type UnionKeys<T> = T extends T ? keyof T : never;
+	type PartialUnionValues<T> = T extends T ? { [K in keyof T]: Partial<T[K]> } : never;
 }

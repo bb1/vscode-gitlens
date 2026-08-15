@@ -48,7 +48,6 @@ import { exists } from '../../system/-webview/vscode/uris.js';
 import { createCommandDecorator, getWebviewCommand } from '../../system/decorators/command.js';
 import type { IpcParams, IpcResponse } from '../ipc/handlerRegistry.js';
 import { ipcCommand, ipcRequest } from '../ipc/handlerRegistry.js';
-import type { ShowInCommitGraphCommandArgs } from '../plus/graph/registration.js';
 import type { WebviewHost } from '../webviewProvider.js';
 import type {
 	Author,
@@ -584,8 +583,6 @@ export class RebaseWebviewProvider implements Disposable {
 		if (!(await abortPausedOperation(svc))) return;
 
 		this._closing = true;
-		await this._todoDocument.clear();
-		await this._todoDocument.save();
 		await closeTab(this._todoDocument.uri);
 	}
 
@@ -815,7 +812,7 @@ export class RebaseWebviewProvider implements Disposable {
 				name: params.ref,
 				remote: false,
 			});
-			await executeCommand<ShowInCommitGraphCommandArgs>('gitlens.showInCommitGraph', {
+			await executeCommand('gitlens.showInCommitGraph', {
 				ref: ref,
 				preserveFocus: true,
 				viewColumn: ViewColumn.Beside,
@@ -832,7 +829,7 @@ export class RebaseWebviewProvider implements Disposable {
 
 		const ref = createReference(params.ref, this.repoPath, { refType: 'revision' });
 		if (revealIn === 'graph') {
-			await executeCommand<ShowInCommitGraphCommandArgs>('gitlens.showInCommitGraph', {
+			await executeCommand('gitlens.showInCommitGraph', {
 				ref: ref,
 				preserveFocus: true,
 				viewColumn: ViewColumn.Beside,
@@ -885,7 +882,7 @@ export class RebaseWebviewProvider implements Disposable {
 		const revealLocation = configuration.get('rebaseEditor.revealLocation');
 		if (revealLocation === 'graph') {
 			const ref = createReference(commit.sha, this.repoPath, { refType: 'revision' });
-			await executeCommand<ShowInCommitGraphCommandArgs>('gitlens.showInCommitGraph', {
+			await executeCommand('gitlens.showInCommitGraph', {
 				ref: ref,
 				preserveFocus: true,
 				viewColumn: ViewColumn.Beside,

@@ -5,7 +5,6 @@ import { isAbsolute } from '@gitlens/utils/path.js';
 import { getAvatarUri } from '../../avatars.js';
 import type { WebviewTelemetryContext } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
-import { getBestRemoteWithIntegration, getRemoteIntegration } from '../../git/utils/-webview/remote.utils.js';
 import type { AllowedSignerEntry } from '../../git/utils/allowedSignersFile.js';
 import { getExistingEntryKeys, mergeAllowedSigners, parsePublicKey } from '../../git/utils/allowedSignersFile.js';
 import type { IpcParams, IpcResponse } from '../ipc/handlerRegistry.js';
@@ -28,9 +27,6 @@ import type { AllowedSignersWebviewShowingArgs } from './registration.js';
  * under a second; this window comfortably covers a repo's active signers without scanning all of history.
  */
 const signedCommitScanLimit = 2000;
-
-/** How many signer emails to verify against the provider (the integration batches the lookups). */
-const providerVerifyLimit = 50;
 
 const defaultAllowedSignersPath = '~/.ssh/allowed_signers';
 
@@ -298,20 +294,9 @@ export class AllowedSignersWebviewProvider implements WebviewProvider<State, Sta
 			}
 			const existingKeys = getExistingEntryKeys(existingContent);
 
-			// Resolve the connected integration up front so the empty state shows the right guidance.
-			const remote = await getBestRemoteWithIntegration(repoPath);
-			const integration = remote != null ? await getRemoteIntegration(remote) : undefined;
-			integrationConnected = integration != null && remote != null;
-			// Capture the provider so the webview can render its icon on provider-verified signers.
-			this._provider =
-				remote != null
-					? { id: remote.provider.id, name: remote.provider.name, icon: remote.provider.icon }
-					: undefined;
 			if (this._disposed) return;
 
-			// Source B — extract full public keys embedded in this repo's SSH-signed commits (offline, any host).
-			// Preserve original-cased emails discovered locally, keyed by their lowercased form, for provider lookups.
-			const emails = new Map<string, string>();
+			// Extract full public keys embedded in this repo's SSH-signed commits.
 
 			const getSshSigners = svc.commits.getCommitsSshSigners;
 			if (getSshSigners != null) {
@@ -336,7 +321,6 @@ export class AllowedSignersWebviewProvider implements WebviewProvider<State, Sta
 						continue;
 					}
 
-					emails.set(email.toLowerCase(), email);
 					byId.set(id, {
 						id: id,
 						name: name || undefined,
@@ -347,52 +331,6 @@ export class AllowedSignersWebviewProvider implements WebviewProvider<State, Sta
 						fingerprint: await computeSshFingerprint(key.keyData),
 						provenance: 'commits',
 						commitCount: 1,
-						alreadyPresent: existingKeys.has(id),
-					});
-				}
-			}
-
-			if (this._disposed) return;
-
-			// Show the commit-derived signers immediately — the panel is usable now. Provider verification (Source A)
-			// can be slow on large repos (one API call per signer), so it runs in the background and never blocks this.
-			this.notifyResults(byId, integrationConnected, integrationConnected);
-			if (!integrationConnected || integration == null || remote == null) return;
-
-			// Source A — cross-check/enrich via the git host's SSH signing keys API. Bounded to a capped set of emails;
-			// the integration batches the lookups (e.g. GitHub resolves logins in a single GraphQL request).
-			const currentUser = await svc.config.getCurrentUser();
-			const emailsToVerify = prioritizeEmails(byId, emails, currentUser?.email);
-			const originalByLower = new Map(emailsToVerify.map(e => [e.toLowerCase(), e]));
-
-			const keysByEmail = await integration.getSshSigningKeysForEmails(remote.provider.repoDesc, emailsToVerify);
-			if (this._disposed) return;
-
-			for (const [emailLower, keys] of keysByEmail) {
-				const email = originalByLower.get(emailLower) ?? emailLower;
-				for (const raw of keys) {
-					const parsed = parsePublicKey(raw);
-					if (parsed == null) continue;
-
-					const id = makeId(email, parsed.keyType, parsed.keyData);
-					const existing = byId.get(id);
-					if (existing != null) {
-						// A key that both signed commits here AND is registered with the provider is the strongest signal.
-						if (existing.provenance === 'commits') {
-							existing.provenance = 'both';
-						}
-						continue;
-					}
-
-					byId.set(id, {
-						id: id,
-						email: email,
-						avatarUrl: getAvatarUri(email).toString(true),
-						keyType: parsed.keyType,
-						keyData: parsed.keyData,
-						fingerprint: await computeSshFingerprint(parsed.keyData),
-						provenance: 'provider',
-						commitCount: 0,
 						alreadyPresent: existingKeys.has(id),
 					});
 				}
@@ -444,48 +382,9 @@ export class AllowedSignersWebviewProvider implements WebviewProvider<State, Sta
 	}
 }
 
-/** Sorts signers strongest-provenance first, then by signed-commit count, then by email. */
+/** Sorts commit-derived signers by signed-commit count, then email. */
 function sortSigners(byId: Map<string, CandidateSigner>): CandidateSigner[] {
-	// Trust ordering: dual-confirmed first, then provider (a verified identity binding from the host), then
-	// commits (self-asserted in the commit object, so the weakest evidence the key belongs to the principal).
-	const provenanceRank = { both: 0, provider: 1, commits: 2 };
-	return [...byId.values()].sort(
-		(a, b) =>
-			provenanceRank[a.provenance] - provenanceRank[b.provenance] ||
-			b.commitCount - a.commitCount ||
-			a.email.localeCompare(b.email),
-	);
-}
-
-/** Picks the emails most worth verifying against the provider: the current user first, then top signers by commit count. */
-function prioritizeEmails(
-	byId: Map<string, CandidateSigner>,
-	emails: Map<string, string>,
-	currentUserEmail: string | undefined,
-): string[] {
-	const commitCountByEmail = new Map<string, number>();
-	for (const signer of byId.values()) {
-		const key = signer.email.toLowerCase();
-		commitCountByEmail.set(key, (commitCountByEmail.get(key) ?? 0) + signer.commitCount);
-	}
-
-	const ordered = [...emails.values()].sort(
-		(a, b) => (commitCountByEmail.get(b.toLowerCase()) ?? 0) - (commitCountByEmail.get(a.toLowerCase()) ?? 0),
-	);
-
-	const result: string[] = [];
-	const seen = new Set<string>();
-	for (const email of [currentUserEmail, ...ordered]) {
-		if (!email) continue;
-
-		const key = email.toLowerCase();
-		if (seen.has(key)) continue;
-
-		seen.add(key);
-		result.push(email);
-	}
-
-	return result.slice(0, providerVerifyLimit);
+	return [...byId.values()].sort((a, b) => b.commitCount - a.commitCount || a.email.localeCompare(b.email));
 }
 
 function makeId(email: string, keyType: string, keyData: string): string {

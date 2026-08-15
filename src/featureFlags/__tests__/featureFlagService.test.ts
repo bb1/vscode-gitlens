@@ -11,9 +11,9 @@ suite('Local feature flags', () => {
 		assert.deepStrictEqual(service.getAllFlags(), {});
 	});
 
-	test('does not import ConfigCat or fetch remote configuration', async () => {
+	test('does not import remote configuration or fetch feature flags', async () => {
 		const source = await readFile(resolve(process.cwd(), 'src/featureFlags/featureFlagService.ts'), 'utf8');
 
-		assert.doesNotMatch(source, /configcat|ConfigCat|fetch\(/);
+		assert.doesNotMatch(source, /config[a-z]+|fetch\(/);
 	});
 });

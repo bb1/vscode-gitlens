@@ -165,9 +165,11 @@ test.describe('Editor — Core', () => {
 			const originalHead = await git.getShortSha('HEAD');
 
 			// Start interactive rebase
-			const { rebasePromise, waitForTodoFile, signalEditorDone, signalEditorAbort } = startInteractiveRebase();
+			const { rebasePromise, waitForRebaseEnd, waitForTodoFile, signalEditorDone, signalEditorAbort } =
+				startInteractiveRebase();
 			currentRebaseContext = {
 				rebasePromise: rebasePromise,
+				waitForRebaseEnd: waitForRebaseEnd,
 				waitForTodoFile: waitForTodoFile,
 				signalEditorDone: signalEditorDone,
 				signalEditorAbort: signalEditorAbort,
@@ -189,17 +191,16 @@ test.describe('Editor — Core', () => {
 			const rebaseEntry = webviewFrame.locator('gl-rebase-entry').first();
 			await expect(rebaseEntry).toBeVisible({ timeout: 3000 });
 
-			// Click the Abort button first - this clears the todo file and saves it
+			// A successful abort removes the rebase directory, including the todo file.
 			// Use appearance="secondary" to target the main abort button, not the "Abort > Recompose" button
 			const abortButton = webviewFrame.locator('gl-button[appearance="secondary"]').filter({ hasText: 'Abort' });
 			await abortButton.click();
 
-			// Signal the wait editor to exit after the abort button has cleared the todo file
-			// Git will then read the empty todo file and complete with no changes
-			await signalEditorDone();
+			await expect(webviewFrame.locator('gl-rebase-editor')).not.toBeVisible({ timeout: 5000 });
 
-			// Wait for abort to complete with timeout
-			await Promise.race([rebasePromise.catch(() => {}), new Promise(resolve => setTimeout(resolve, 1000))]);
+			// A successful abort removes the rebase directory without writing a completion signal.
+			await waitForRebaseEnd();
+			await signalEditorDone();
 
 			// Give Git extra time to finish cleanup
 			await new Promise(resolve => setTimeout(resolve, ShortTimeout));

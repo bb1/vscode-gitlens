@@ -204,8 +204,6 @@ export class ResetCommand extends GlCommandBase {
 				await this.container.storage.delete('home:walkthrough:dismissed');
 				await this.container.storage.delete('mcp:banner:dismissed');
 				await this.container.storage.delete('views:scm:grouped:welcome:dismissed');
-				await this.container.storage.delete('composer:onboarding:dismissed');
-				await this.container.storage.delete('composer:onboarding:stepReached');
 				break;
 
 			case 'repositoryAccess':

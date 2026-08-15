@@ -58,7 +58,7 @@ function setContainer(hosting: { get(): unknown }): void {
 				getRepositoryService: () => ({
 					remotes: {
 						getBestRemoteWithProvider: async () => ({
-							provider: new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens'),
+							provider: new GitHubRemoteProvider('github.com', 'example-org/example-repo'),
 						}),
 					},
 				}),

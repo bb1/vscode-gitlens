@@ -11,10 +11,8 @@ export type TreeViewTypes =
 	| 'branches'
 	| 'commits'
 	| 'contributors'
-	| 'drafts'
 	| 'fileHistory'
 	| 'scm.grouped'
-	| 'launchpad'
 	| 'lineHistory'
 	| 'pullRequest'
 	| 'remotes'
@@ -22,7 +20,6 @@ export type TreeViewTypes =
 	| 'searchAndCompare'
 	| 'stashes'
 	| 'tags'
-	| 'workspaces'
 	| 'worktrees';
 export type TreeViewIds<T extends TreeViewTypes = TreeViewTypes> = `gitlens.views.${T}`;
 export type TreeViewTypeFromId<T extends TreeViewIds> = T extends `gitlens.views.${infer U}` ? U : never;
@@ -33,7 +30,6 @@ export type GroupableTreeViewTypes = Extract<
 	| 'commits'
 	| 'contributors'
 	| 'fileHistory'
-	| 'launchpad'
 	| 'remotes'
 	| 'repositories'
 	| 'searchAndCompare'
@@ -63,7 +59,6 @@ export const groupableViewTypes: readonly GroupableTreeViewTypes[] = [
 	'contributors',
 	'repositories',
 	'searchAndCompare',
-	'launchpad',
 	'fileHistory',
 ];
 
@@ -78,14 +73,13 @@ export const groupableViewTypeLabels: Readonly<Record<GroupableTreeViewTypes, st
 	contributors: 'Contributors',
 	repositories: 'Repositories',
 	searchAndCompare: 'Search & Compare',
-	launchpad: 'Launchpad',
 	fileHistory: 'File History',
 };
 
-export type WebviewPanelTypes = 'allowedSigners' | 'graph' | 'patchDetails' | 'settings' | 'timeline';
+export type WebviewPanelTypes = 'allowedSigners' | 'graph' | 'settings';
 export type WebviewPanelIds = `gitlens.${WebviewPanelTypes}`;
 
-export type WebviewViewTypes = 'commitDetails' | 'graph' | 'home' | 'patchDetails' | 'timeline' | 'welcome';
+export type WebviewViewTypes = 'commitDetails' | 'graph';
 export type WebviewViewIds<T extends WebviewViewTypes = WebviewViewTypes> = `gitlens.views.${T}`;
 
 export type WebviewTypes = CustomEditorTypes | WebviewPanelTypes | WebviewViewTypes;
@@ -120,36 +114,14 @@ export type CoreViewContainerTypes = 'scm';
 export type CoreViewContainerIds = `workbench.view.${CoreViewContainerTypes}`;
 
 // export const viewTypes: ViewTypes[] = [
-// 	'account',
-// 	'branches',
-// 	'commits',
-// 	'commitDetails',
-// 	'contributors',
-// 	'fileHistory',
-// 	'graph',
-// 	'home',
-// 	'lineHistory',
-// 	'remotes',
-// 	'repositories',
-// 	'searchAndCompare',
-// 	'stashes',
-// 	'tags',
-// 	'timeline',
-// 	'workspaces',
-// 	'worktrees',
-// ];
-
 export const viewIdsByDefaultContainerId = new Map<ViewContainerIds | CoreViewContainerIds, ViewTypes[]>([
 	[
 		'workbench.view.scm',
 		['branches', 'commits', 'remotes', 'repositories', 'stashes', 'tags', 'worktrees', 'contributors'],
 	],
 	['workbench.view.extension.gitlensPanel', []],
-	[
-		'workbench.view.extension.gitlensInspect',
-		['commitDetails', 'fileHistory', 'lineHistory', 'timeline', 'searchAndCompare'],
-	],
-	['workbench.view.extension.gitlens', ['welcome', 'graph', 'home', 'launchpad', 'drafts', 'workspaces']],
+	['workbench.view.extension.gitlensInspect', ['commitDetails', 'fileHistory', 'lineHistory', 'searchAndCompare']],
+	['workbench.view.extension.gitlens', ['graph']],
 ]);
 
 export type TreeViewRefNodeTypes = 'branch' | 'commit' | 'stash' | 'tag';
@@ -197,13 +169,8 @@ export type TreeViewNodeTypes =
 	| 'conflict-files'
 	| 'conflict-current-changes'
 	| 'conflict-incoming-changes'
-	| 'draft'
-	| 'drafts'
-	| 'drafts-code-suggestions'
 	| 'folder'
 	| 'grouping'
-	| 'launchpad'
-	| 'launchpad-item'
 	| 'message'
 	| 'pager'
 	| 'paused-operation-status'
@@ -221,7 +188,5 @@ export type TreeViewNodeTypes =
 	| 'tracking-status'
 	| 'tracking-status-files'
 	| 'uncommitted-files'
-	| 'workspace-missing-repository'
-	| 'workspaces'
 	| 'worktree'
 	| 'worktrees';

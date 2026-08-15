@@ -2,7 +2,7 @@
  * Telemetry service — send telemetry events and update context from webviews.
  */
 
-import type { TelemetryEventData, TelemetryEvents } from '../../../constants.telemetry.js';
+import type { TelemetryEventData } from '../../../constants.telemetry.js';
 import type { RpcServiceHost } from './types.js';
 
 export class TelemetryService {
@@ -27,10 +27,10 @@ export class TelemetryService {
 	/**
 	 * Sends a telemetry event from the webview through the host's telemetry pipeline.
 	 *
-	 * @param name Event name (must be a known TelemetryEvents key)
+	 * @param name Event name
 	 * @param data Optional event data
 	 */
-	sendEvent(name: keyof TelemetryEvents, data?: TelemetryEventData): Promise<void> {
+	sendEvent(name: string, data?: TelemetryEventData): Promise<void> {
 		this.host.sendTelemetryEvent(name, data);
 		return Promise.resolve();
 	}

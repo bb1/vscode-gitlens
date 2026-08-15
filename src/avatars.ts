@@ -15,27 +15,26 @@ const avatarQueue = new Map<string, Promise<Uri>>();
 const providerAvatarUrls = new Set<string>();
 
 const _onDidFetchAvatar = new EventEmitter<{ email: string }>();
-_onDidFetchAvatar.event(
-	debounce(() => {
-		const avatars =
-			avatarCache != null
-				? [
-						...filterMap(avatarCache, ([key, avatar]) =>
-							avatar.uri != null
-								? ([
-										key,
-										{
-											uri: avatar.uri.toString(),
-											timestamp: avatar.timestamp,
-										},
-									] as [string, StoredAvatar])
-								: undefined,
-						),
-					]
-				: undefined;
-		void Container.instance.storage.store('avatars', avatars).catch();
-	}, 1000),
-);
+const storeAvatars = debounce(() => {
+	const avatars =
+		avatarCache != null
+			? [
+					...filterMap(avatarCache, ([key, avatar]) =>
+						avatar.uri != null
+							? ([
+									key,
+									{
+										uri: avatar.uri.toString(),
+										timestamp: avatar.timestamp,
+									},
+								] as [string, StoredAvatar])
+							: undefined,
+					),
+				]
+			: undefined;
+	void Container.instance.storage.store('avatars', avatars).catch();
+}, 1000);
+_onDidFetchAvatar.event(storeAvatars);
 
 export const onDidFetchAvatar = _onDidFetchAvatar.event;
 
@@ -295,6 +294,7 @@ export function resetApprovedAvatarTemplates(): Promise<void> {
 export function resetAvatarCache(reset: 'all' | 'failed' | 'fallback'): void {
 	switch (reset) {
 		case 'all':
+			storeAvatars.cancel();
 			void Container.instance.storage.delete('avatars');
 			avatarCache?.clear();
 			avatarQueue.clear();

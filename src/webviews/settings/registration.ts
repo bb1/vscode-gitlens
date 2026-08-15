@@ -20,7 +20,6 @@ export function registerSettingsWebviewPanel(
 			contextKeyPrefix: `gitlens:webview:settings`,
 			trackingFeature: 'settingsWebview',
 			type: 'settings',
-			plusFeature: false,
 			column: ViewColumn.Active,
 			webviewHostOptions: {
 				retainContextWhenHidden: false,

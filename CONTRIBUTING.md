@@ -151,12 +151,6 @@ See https://code.visualstudio.com/api/extension-guides/web-extensions#test-your-
 
 Please follow all the instructions in the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
-### Contributions to GitLens+ Licensed Files
-
-This repository contains both OSS-licensed and non-OSS-licensed files. All files in or under any directory named "plus" fall under LICENSE.plus. The remaining files fall under LICENSE, the MIT license.
-
-If a pull request is submitted which contains changes to files in or under any directory named "plus", then you agree that GitKraken and/or its licensors (as applicable) retain all right, title and interest in and to all such modifications and/or patches.
-
 ### Update the CHANGELOG
 
 The [Change Log](CHANGELOG.md) is updated manually and an entry should be added for each change. Changes are grouped in lists by `added`, `changed`, `removed`, or `fixed`.

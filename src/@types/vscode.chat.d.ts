@@ -26,7 +26,7 @@ export interface ChatViewOpenOptions {
 	/**
 	 * Any previous chat requests and responses that should be shown in the chat view.
 	 */
-	previousRequests?: IChatViewOpenRequestEntry[];
+	previousRequests?: ChatViewOpenRequestEntry[];
 	/**
 	 * Whether a screenshot of the focused window should be taken and attached
 	 */

@@ -22,7 +22,6 @@ suite('settings — GitLens SCM grouped-views editor', () => {
 			'contributors',
 			'repositories',
 			'searchAndCompare',
-			'launchpad',
 			'fileHistory',
 		].sort();
 		assert.deepStrictEqual([...groupableViewTypes].sort(), expected);

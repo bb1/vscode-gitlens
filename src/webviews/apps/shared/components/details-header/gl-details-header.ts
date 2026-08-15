@@ -3,8 +3,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { classMap } from 'lit/directives/class-map.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
 import type { OnboardingKeys } from '../../../../../constants.onboarding.js';
-import type { RunningOperationExecState } from '../../../plus/graph/components/detailsState.js';
-import { chipStateSuffix, statusIconFor } from '../../../plus/graph/components/runningOperationStatus.js';
 import { elementBase } from '../styles/lit/base.css.js';
 import { modeHeaderStyles, modeToggleStyles } from '../styles/lit/mode.css.js';
 import { renderDetailsMaximizeChip } from './details-maximize-chip.js';
@@ -19,6 +17,15 @@ import '../progress.js';
  *  label-collapse parity), but it is NOT a `Mode`: it has no active/close state — clicking
  *  it opens a compare sheet over the panel (dispatches `toggle-mode`/'compare'). */
 type Mode = 'review' | 'compose' | 'resolve';
+type RunningOperationExecState = string;
+
+function chipStateSuffix(state: RunningOperationExecState | undefined, _hasResult: boolean): string {
+	return state == null ? '' : ` (${state})`;
+}
+
+function statusIconFor(state: RunningOperationExecState, _hasResult: boolean): string {
+	return state === 'generating' ? 'loading' : 'check';
+}
 
 const modeConfig: Record<
 	Mode,

@@ -6,8 +6,6 @@ import { ifDefined } from 'lit/directives/if-defined.js';
 import type { Ref } from 'lit/directives/ref.js';
 import { createRef, ref } from 'lit/directives/ref.js';
 import { when } from 'lit/directives/when.js';
-import type { AgentSessionPhase } from '@gitlens/agents/types.js';
-import { agentPhaseToCategory, agentSuffixIconFor } from '../../agentUtils.js';
 import type { CollectionIndexController } from '../../controllers/collection-index.js';
 import { FilterController } from '../../controllers/filter.js';
 import type { FocusController } from '../../controllers/focus.js';
@@ -21,6 +19,7 @@ import { getAutolinkIcon } from '../rich/utils.js';
 import type { GlGitStatus } from '../status/git-status.js';
 import { scrollableBase } from '../styles/lit/base.css.js';
 import type {
+	AgentSessionPhase,
 	TreeItemAction,
 	TreeItemActionDetail,
 	TreeItemCheckedDetail,
@@ -263,15 +262,15 @@ export class GlTreeView extends GlElement {
 	   of variables. code-icon's :host inherits color from its parent, so styling the
 	   element here flows through to its rendered glyph. */
 			code-icon.tree-icon-agent {
-				color: var(--gl-agent-idle-color);
+				color: var(--gl-activity-idle-color);
 			}
 
 			code-icon.tree-icon-agent--working {
-				color: var(--gl-agent-working-color);
+				color: var(--gl-activity-active-color);
 			}
 
 			code-icon.tree-icon-agent--waiting {
-				color: var(--gl-agent-waiting-color);
+				color: var(--gl-activity-waiting-color);
 			}
 
 			code-icon.tree-icon-agent--completed {
@@ -809,13 +808,7 @@ export class GlTreeView extends GlElement {
 				return html`<code-icon
 					slot=${slot}
 					part=${slot}
-					class=${
-						decoration.kind
-							? `decoration-icon--${decoration.kind}`
-							: decoration.muted
-								? 'decoration-icon--muted'
-								: nothing
-					}
+					class=${decoration.muted ? 'decoration-icon--muted' : nothing}
 					aria-label="${decoration.label}"
 					.icon=${decoration.icon}
 				></code-icon>`;
@@ -870,35 +863,14 @@ export class GlTreeView extends GlElement {
 			}
 
 			if (decoration.type === 'agent') {
-				// One identity glyph: the robot (never animates) carries identity + phase color, with
-				// the phase glyph overlaid as a corner badge — the same vocabulary the graph's WIP row
-				// indicator uses, via the shared `agentSuffixIconFor`. The badge must be its own
-				// element rather than a ::after on the robot: code-icon's `modifier="spin"` rotates
-				// the whole host, which would spin the robot along with it. Color comes from the
-				// shared --gl-agent-* palette via `tree-icon-agent--${phase}` on each `code-icon`.
 				const tooltip = decoration.tooltip ?? decoration.label;
-				const category = agentPhaseToCategory[decoration.phase];
-				const badge = agentSuffixIconFor(category);
 				return html`<gl-tooltip slot=${slot} part=${slot} placement="top">
 					<span class="tree-icon-agent-anchor">
 						<code-icon
 							icon="robot"
-							class="tree-icon-agent tree-icon-agent--${decoration.phase} ${
-								badge != null ? 'tree-icon-agent--badged' : ''
-							}"
+							class="tree-icon-agent tree-icon-agent--${decoration.phase}"
 							aria-label=${ifDefined(tooltip)}
 						></code-icon>
-						${
-							badge != null
-								? html`<code-icon
-										icon=${badge}
-										size="12"
-										modifier=${category === 'working' ? 'spin' : ''}
-										class="tree-icon-agent tree-icon-agent--${decoration.phase} tree-icon-agent__badge"
-										aria-hidden="true"
-									></code-icon>`
-								: nothing
-						}
 					</span>
 					<span slot="content">${tooltip}</span>
 				</gl-tooltip>`;

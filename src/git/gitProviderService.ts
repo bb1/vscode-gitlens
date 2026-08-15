@@ -57,9 +57,8 @@ import { Schemes } from '../constants.js';
 import type { Container } from '../container.js';
 import { ProviderNotFoundError, ProviderNotSupportedError } from '../errors.js';
 import { isUriScopedGitCacheReset } from '../eventBus.js';
-import type { FeatureAccess, PlusFeatures, RepoFeatureAccess } from '../features.js';
+import type { LocalAccess } from '../features.js';
 import { showBlameInvalidIgnoreRevsFileWarningMessage } from '../messages.js';
-import { getCommunitySubscription } from '../plus/gk/utils/subscription.utils.js';
 import type { RepoComparisonKey } from '../repositories.js';
 import { asRepoComparisonKey, Repositories } from '../repositories.js';
 import { registerCommand } from '../system/-webview/command.js';
@@ -74,12 +73,7 @@ import { GitRepositoryService } from './gitRepositoryService.js';
 import type { GitUri } from './gitUri.js';
 import type { GlRepository, RepositoryChangeEvent } from './models/repository.js';
 import type { LocalInfoFromRemoteUriResult } from './utils/-webview/remote.utils.js';
-import {
-	getRemoteIntegration,
-	isRemoteMaybeIntegrationConnected,
-	remoteSupportsIntegration,
-	resolveLocalInfoFromRemoteUri,
-} from './utils/-webview/remote.utils.js';
+import { remoteSupportsIntegration, resolveLocalInfoFromRemoteUri } from './utils/-webview/remote.utils.js';
 import { sortRepositories } from './utils/-webview/sorting.js';
 import { BlameSnapshot } from './utils/blameSnapshot.js';
 
@@ -153,8 +147,8 @@ export class GitProviderService implements UnifiedDisposable {
 			});
 		}
 
-		// Pure-add of worktrees whose common repo is already known can't change aggregate visibility
-		// or access (shared remotes), so the cache wipe would be wasted work. See `hasKnownCommonRepo`.
+		// Pure-add of worktrees whose common repo is already known can't change aggregate visibility,
+		// so the cache wipe would be wasted work. See `hasKnownCommonRepo`.
 		let needsInvalidation = false;
 		if (removed?.length) {
 			needsInvalidation = true;
@@ -162,7 +156,6 @@ export class GitProviderService implements UnifiedDisposable {
 			needsInvalidation = !this.allHaveKnownCommonRepo(added);
 		}
 		if (needsInvalidation) {
-			this.clearAccessCache();
 			this._reposVisibilityCache.invalidate('visibility');
 		}
 
@@ -223,9 +216,6 @@ export class GitProviderService implements UnifiedDisposable {
 
 		const repos = [...this._pendingRepositoryOperations.values()];
 		this._pendingRepositoryOperations.clear();
-
-		// Store locations (deferred to allow discovery to settle)
-		void this.container.repositoryIdentity.storeRepositoryLocations(repos);
 
 		// Send telemetry (if enabled)
 		if (this.container.telemetry.enabled) {
@@ -350,14 +340,6 @@ export class GitProviderService implements UnifiedDisposable {
 					this._cache.clearCaches(e.data.repoPath, ...(e.data.types ?? []));
 				}
 			}),
-			container.integrations.onDidChangeConnectionState(e => {
-				if (e.reason === 'connected') {
-					resetAvatarCache('failed');
-				}
-
-				this.resetCaches('providers');
-				this.updateContext();
-			}),
 			!workspace.isTrusted
 				? workspace.onDidGrantWorkspaceTrust(() => {
 						if (workspace.isTrusted && workspace.workspaceFolders?.length) {
@@ -378,7 +360,6 @@ export class GitProviderService implements UnifiedDisposable {
 		if (DEBUG) {
 			void import(/* webpackChunkName: "__debug__" */ './__debug__visibilityDebug.js').then(m => {
 				m.registerVisibilityDebug(this, {
-					clearAccessCache: () => this.clearAccessCache(),
 					invalidateReposVisibilityCache: () => this._reposVisibilityCache.invalidate('visibility'),
 					fireRepositoriesChanged: () =>
 						this._onDidChangeRepositories.fire({ added: [], removed: [], etag: this._etag }),
@@ -454,7 +435,7 @@ export class GitProviderService implements UnifiedDisposable {
 	}
 
 	private registerCommands(): Disposable[] {
-		return [registerCommand('gitlens.plus.refreshRepositoryAccess', () => this.clearAllOpenRepoVisibilityCaches())];
+		return [];
 	}
 
 	@trace({ args: e => ({ e: `focused=${e.focused}` }) })
@@ -942,99 +923,9 @@ export class GitProviderService implements UnifiedDisposable {
 		return provider.discoverRepositories(uri, options);
 	}
 
-	private _accessCache = new Map<PlusFeatures | undefined, Promise<FeatureAccess>>();
-	private _accessCacheByRepo = new Map<string /* path */, Promise<RepoFeatureAccess>>();
-	private clearAccessCache(): void {
-		this._accessCache.clear();
-		this._accessCacheByRepo.clear();
+	getAccess(): Promise<LocalAccess> {
+		return this.container.subscription.getAccess();
 	}
-
-	async access(feature: PlusFeatures | undefined, repoPath: string | Uri): Promise<RepoFeatureAccess>;
-	async access(feature?: PlusFeatures, repoPath?: string | Uri): Promise<FeatureAccess | RepoFeatureAccess>;
-	@trace({ exit: r => `returned allowed=${r.allowed}` })
-	async access(feature?: PlusFeatures, repoPath?: string | Uri): Promise<FeatureAccess | RepoFeatureAccess> {
-		if (repoPath == null) {
-			let access = this._accessCache.get(feature);
-			if (access == null) {
-				access = this.accessCore(feature);
-				this._accessCache.set(feature, access);
-			}
-			return access;
-		}
-
-		const { path } = this.getProvider(repoPath);
-		const cacheKey = path;
-
-		let access = this._accessCacheByRepo.get(cacheKey);
-		if (access == null) {
-			access = this.accessCore(feature, repoPath);
-			this._accessCacheByRepo.set(cacheKey, access);
-		}
-
-		return access;
-	}
-
-	private async accessCore(feature: PlusFeatures | undefined, repoPath: string | Uri): Promise<RepoFeatureAccess>;
-	private async accessCore(
-		_feature?: PlusFeatures,
-		repoPath?: string | Uri,
-	): Promise<FeatureAccess | RepoFeatureAccess>;
-	@trace({ exit: r => `returned allowed=${r.allowed}` })
-	private async accessCore(
-		_feature?: PlusFeatures,
-		repoPath?: string | Uri,
-	): Promise<FeatureAccess | RepoFeatureAccess> {
-		const subscription = getCommunitySubscription();
-
-		if (this.container.telemetry.enabled) {
-			queueMicrotask(() => void this.visibility());
-		}
-
-		function getRepoAccess(
-			this: GitProviderService,
-			repoPath: string | Uri,
-			force: boolean = false,
-		): Promise<RepoFeatureAccess> {
-			const { path: cacheKey } = this.getProvider(repoPath);
-
-			let access = force ? undefined : this._accessCacheByRepo.get(cacheKey);
-			if (access == null) {
-				access = this.visibility(repoPath).then(
-					visibility => {
-						return {
-							allowed: true,
-							subscription: { current: subscription },
-							visibility: visibility,
-						};
-					},
-					// If there is a failure assume access is allowed
-					() => ({ allowed: true, subscription: { current: subscription } }),
-				);
-
-				this._accessCacheByRepo.set(cacheKey, access);
-			}
-
-			return access;
-		}
-
-		if (repoPath == null) {
-			const repositories = this.openRepositories;
-			if (repositories.length === 0) {
-				return { allowed: false, subscription: { current: subscription } };
-			}
-
-			if (repositories.length === 1) {
-				return getRepoAccess.call(this, repositories[0].path);
-			}
-
-			return { allowed: true, subscription: { current: subscription } };
-		}
-
-		// Pass force = true to bypass the cache and avoid a promise loop (where we used the cached promise we just created to try to resolve itself 🤦)
-		return getRepoAccess.call(this, repoPath, true);
-	}
-
-	async ensureAccess(_feature: PlusFeatures, _repoPath?: string): Promise<void> {}
 
 	/** Single-value cache for the aggregate `visibility()` result. Handles coalescing, soft-
 	 * invalidation (in-flight callers ride the same promise; entry self-evicts on settle), and
@@ -1336,20 +1227,6 @@ export class GitProviderService implements UnifiedDisposable {
 						hasSupportedIntegration = true;
 						reposWithHostingIntegrations.add(repo.uri.toString());
 						reposWithHostingIntegrations.add(repo.path);
-
-						let connected = isRemoteMaybeIntegrationConnected(remote);
-						// If we don't know if we are connected, only check if the remote is the default or there is only one
-						// TODO@eamodio is the above still a valid requirement?
-						if (connected == null && (remote.default || remotes.length === 1)) {
-							const integration = await getRemoteIntegration(remote);
-							connected = await integration?.isConnected();
-						}
-
-						if (connected) {
-							hasConnectedIntegration = true;
-							reposWithHostingIntegrationsConnected.add(repo.uri.toString());
-							reposWithHostingIntegrationsConnected.add(repo.path);
-						}
 					}
 				}
 			}
@@ -2456,18 +2333,6 @@ export class GitProviderService implements UnifiedDisposable {
 
 		const { provider } = this.getProvider(uri);
 		return provider.isTracked(uri);
-	}
-
-	@gate(repos => repos.map(r => r.id).join(','))
-	@debug()
-	async storeRepositoriesLocation(repos: GlRepository[]): Promise<void> {
-		const scope = getScopedLogger();
-
-		try {
-			await this.container.repositoryIdentity.storeRepositoryLocations(repos);
-		} catch (ex) {
-			scope?.error(ex);
-		}
 	}
 }
 

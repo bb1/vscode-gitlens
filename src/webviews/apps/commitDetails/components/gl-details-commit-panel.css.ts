@@ -511,14 +511,7 @@ export const detailsCommitPanelStyles = css`
 		opacity: 0.5;
 	}
 
-	/* ── Zone 5: AI input ── */
-	:host([variant='embedded']) gl-ai-input {
-		width: calc(100% - var(--gl-panel-padding-left) - var(--gl-panel-padding-right));
-		max-width: var(--gl-max-input);
-		margin: 0.2rem auto;
-	}
-
-	/* ── Zone 6: Bottom section (split panel end slot) ── */
+	/* ── Zone 5: Bottom section (split panel end slot) ── */
 	:host([variant='embedded']) .bottom-section {
 		display: flex;
 		flex-direction: column;

@@ -14,14 +14,6 @@ import type {
 export const actionCommandPrefix = 'gitlens.action.';
 
 export type GlCommandsDeprecated =
-	/** @deprecated use `gitlens.ai.generateCommitMessage` */
-	| 'gitlens.generateCommitMessage'
-	/** @deprecated use `gitlens.ai.generateCommitMessage:scm` */
-	| 'gitlens.scm.generateCommitMessage'
-	/** @deprecated use `gitlens.ai.generateCommitMessage:scm` */
-	| 'gitlens.scm.ai.generateCommitMessage'
-	/** @deprecated use `gitlens.ai.switchProvider` */
-	| 'gitlens.switchAIModel'
 	| 'gitlens.diffHeadWith'
 	| 'gitlens.diffWorkingWith'
 	| 'gitlens.openBranchesInRemote'
@@ -44,58 +36,7 @@ type InternalGraphWebviewCommands =
 	| 'gitlens.pausedOperation.showConflicts:graph'
 	| 'gitlens.pausedOperation.skip:graph'
 	| 'gitlens.pushBranch:graph'
-	| 'gitlens.rebaseCurrentOnto:graph'
-	| 'gitlens.shareWipAsCloudPatch:graph';
-
-type InternalHomeWebviewCommands =
-	| 'gitlens.git.branch.setMergeTarget:home'
-	| 'gitlens.deleteBranchOrWorktree:home'
-	| 'gitlens.ai.explainBranch:home'
-	| 'gitlens.ai.explainWip:home'
-	| 'gitlens.composeCommits:home'
-	| 'gitlens.createBranch:home'
-	| 'gitlens.createCloudPatch:home'
-	| 'gitlens.createPullRequest:home'
-	| 'gitlens.fetch:home'
-	| 'gitlens.mergeIntoCurrent:home'
-	| 'gitlens.openInView.branch:home'
-	| 'gitlens.openMergeTargetComparison:home'
-	| 'gitlens.openPullRequestChanges:home'
-	| 'gitlens.openPullRequestComparison:home'
-	| 'gitlens.openPullRequestDetails:home'
-	// | 'gitlens.openPullRequestOnRemote:home'
-	| 'gitlens.openWorktree:home'
-	| 'gitlens.pausedOperation.abort:home'
-	| 'gitlens.pausedOperation.continue:home'
-	| 'gitlens.pausedOperation.open:home'
-	| 'gitlens.pausedOperation.showConflicts:home'
-	| 'gitlens.pausedOperation.skip:home'
-	| 'gitlens.publishBranch:home'
-	| 'gitlens.pull:home'
-	| 'gitlens.push:home'
-	| 'gitlens.pushBranch:home'
-	| 'gitlens.rebaseCurrentOnto:home'
-	| 'gitlens.showInCommitGraph:home'
-	| 'gitlens.startWork:home'
-	| 'gitlens.switchToBranch:home'
-	| 'gitlens.visualizeHistory.repo:home'
-	| 'gitlens.visualizeHistory.branch:home';
-
-type InternalAgentCommands =
-	| 'gitlens.agents.resolvePermission'
-	| 'gitlens.agents.openPlanFile'
-	| 'gitlens.agents.resumeSession'
-	| 'gitlens.agents.showResumeSessionPicker'
-	| 'gitlens.agents.archiveSession';
-
-type InternalLaunchPadCommands = 'gitlens.launchpad.indicator.action';
-
-type InternalPlusCommands =
-	| 'gitlens.plus.aiAllAccess.optIn'
-	| 'gitlens.plus.continueFeaturePreview'
-	| 'gitlens.plus.resendVerification'
-	| 'gitlens.plus.showPlans'
-	| 'gitlens.plus.validate';
+	| 'gitlens.rebaseCurrentOnto:graph';
 
 type InternalPullRequestViewCommands = 'gitlens.views.addPullRequestRemote';
 
@@ -107,74 +48,19 @@ type InternalScmGroupedViewCommands =
 
 type InternalGraphWebviewViewCommands = 'gitlens.views.graph.openTimelineInTab';
 
-type InternalTimelineWebviewViewCommands = 'gitlens.views.timeline.openInTab';
-
 type InternalViewCommands = 'gitlens.views.loadMoreChildren';
-
-type InternalWalkthroughCommands =
-	| 'gitlens.walkthrough.enableAiSetting'
-	| 'gitlens.walkthrough.gitlensInspect'
-	| 'gitlens.walkthrough.openAcceleratePrReviews'
-	| 'gitlens.walkthrough.openAiCustomInstructionsSettings'
-	| 'gitlens.walkthrough.openAiSettings'
-	| 'gitlens.walkthrough.openCommunityVsPro'
-	| 'gitlens.walkthrough.openHelpCenter'
-	| 'gitlens.walkthrough.openInteractiveCodeHistory'
-	| 'gitlens.walkthrough.openLearnAboutAiFeatures'
-	| 'gitlens.walkthrough.openWalkthrough'
-	| 'gitlens.walkthrough.plus.login'
-	| 'gitlens.walkthrough.plus.signUp'
-	| 'gitlens.walkthrough.plus.upgrade'
-	| 'gitlens.walkthrough.plus.reactivate'
-	| 'gitlens.walkthrough.showDraftsView'
-	| 'gitlens.walkthrough.showGraph'
-	| 'gitlens.walkthrough.showComposer'
-	| 'gitlens.walkthrough.showLaunchpad'
-	| 'gitlens.walkthrough.switchAIProvider'
-	| 'gitlens.walkthrough.worktree.create'
-	| 'gitlens.walkthrough.openDevExPlatform';
-
-type InternalWelcomeCommands =
-	| 'gitlens.welcome.openCommunityVsPro'
-	| 'gitlens.welcome.openHelpCenter'
-	| 'gitlens.welcome.openKepler'
-	| 'gitlens.welcome.plus.login'
-	| 'gitlens.welcome.plus.reactivate'
-	| 'gitlens.welcome.plus.signUp'
-	| 'gitlens.welcome.plus.upgrade'
-	| 'gitlens.welcome.showComposer'
-	| 'gitlens.welcome.showGraph'
-	| 'gitlens.welcome.showHomeView'
-	| 'gitlens.welcome.showLaunchpad';
 
 type InternalGlCommands =
 	| `gitlens.action.${string}`
-	| 'gitlens.ai.explainCommit:editor'
-	| 'gitlens.ai.explainWip:editor'
-	| 'gitlens.ai.feedback.helpful'
-	| 'gitlens.ai.feedback.unhelpful'
-	| 'gitlens.ai.mcp.authCLI'
-	| 'gitlens.ai.mcp.install'
-	| 'gitlens.ai.mcp.installForAgent'
-	| 'gitlens.ai.mcp.installForAllAgents'
-	| 'gitlens.ai.mcp.reinstall'
-	| 'gitlens.ai.mcp.uninstallForAgent'
 	| 'gitlens.diffWith'
 	| 'gitlens.diffWithPrevious:codelens'
 	| 'gitlens.diffWithPrevious:command'
 	| 'gitlens.diffWithPrevious:views'
 	| 'gitlens.diffWithWorking:command'
 	| 'gitlens.diffWithWorking:views'
-	| 'gitlens.openChatAction'
-	| 'gitlens.openCloudPatch'
 	| 'gitlens.openOnRemote'
-	| 'gitlens.openWalkthrough'
 	| 'gitlens.openWorkingFile:command'
 	| 'gitlens.refreshHover'
-	| 'gitlens.regenerateMarkdownDocument'
-	| 'gitlens.runPromptInAgent'
-	| 'gitlens.sendToChat'
-	| 'gitlens.showInCommitGraphView'
 	| 'gitlens.onboarding.dismiss'
 	| 'gitlens.showQuickCommitDetails'
 	| 'gitlens.toggleFileBlame:codelens'
@@ -187,19 +73,12 @@ type InternalGlCommands =
 	| 'gitlens.toggleFileHeatmap:mode'
 	| 'gitlens.toggleFileHeatmap:statusbar'
 	| 'gitlens.visualizeHistory'
-	| InternalAgentCommands
 	| InternalGraphWebviewCommands
 	| InternalGraphWebviewViewCommands
-	| InternalHomeWebviewCommands
-	| InternalLaunchPadCommands
-	| InternalPlusCommands
 	| InternalPullRequestViewCommands
 	| InternalRebaseEditorCommands
 	| InternalScmGroupedViewCommands
-	| InternalTimelineWebviewViewCommands
-	| InternalViewCommands
-	| InternalWalkthroughCommands
-	| InternalWelcomeCommands;
+	| InternalViewCommands;
 
 export type GlCommands = ContributedCommands | InternalGlCommands; // | GlCommandsDeprecated;
 /** Non-webview commands */
@@ -298,8 +177,6 @@ type FilterCommands<Prefix extends string, U, Suffix extends string = ''> = U ex
 		? U
 		: never
 	: never;
-
-export type GlPlusCommands = FilterCommands<'gitlens.plus.', GlCommands>;
 
 export type GlTreeViewCommands =
 	| FilterCommands<`gitlens.views.${TreeViewTypes}`, GlCommands>

@@ -1,28 +1,21 @@
 import type { ConfigurationChangeEvent, Disposable, Event, ExtensionContext } from 'vscode';
 import { authentication, EventEmitter, ExtensionMode, window } from 'vscode';
 import { fetch } from '@env/fetch.js';
-import { IpcService } from '@env/ipc/ipcService.js';
 import type { LocalMcpService } from '@env/providers.js';
 import { getMcpService } from '@env/providers.js';
-import type { IntegrationManager } from '@gitlens/integrations/index.js';
-import { createIntegrationManager } from '@gitlens/integrations/index.js';
 import { debug } from '@gitlens/utils/decorators/log.js';
 import { memoize } from '@gitlens/utils/decorators/memoize.js';
 import { Logger } from '@gitlens/utils/logger.js';
-import type { AgentService } from './agents/agentService.js';
-import type { AgentStatusService } from './agents/agentStatusService.js';
 import { FileAnnotationController } from './annotations/fileAnnotationController.js';
 import { LineAnnotationController } from './annotations/lineAnnotationController.js';
 import { ActionRunners } from './api/actionRunners.js';
 import { AutolinksProvider } from './autolinks/autolinksProvider.js';
 import { setDefaultGravatarsStyle } from './avatars.js';
-import { CacheProvider } from './cache.js';
 import { GitCodeLensController } from './codelens/codeLensController.js';
 import type { ToggleFileAnnotationCommandArgs } from './commands/toggleFileAnnotations.js';
 import type { DateSource, DateStyle, Mode } from './config.js';
 import type { GlCommands } from './constants.commands.js';
 import { extensionPrefix } from './constants.js';
-import { MarkdownContentProvider } from './documents/markdown.js';
 import { EventBus } from './eventBus.js';
 import type { FeatureFlagService } from './featureFlags/featureFlagService.js';
 import { LocalFeatureFlagService } from './featureFlags/featureFlagService.js';
@@ -38,30 +31,15 @@ import { LineHoverController } from './hovers/lineHoverController.js';
 import { LocalSubscriptionService } from './localSubscriptionService.js';
 import { OnboardingService } from './onboarding/onboardingService.js';
 import { UsageTracker } from './onboarding/usageTracker.js';
-import { WalkthroughStateProvider } from './onboarding/walkthroughStateProvider.js';
-import type { AIProviderService } from './plus/ai/aiProviderService.js';
-import type { AutoRebaseService } from './plus/coretools/conflict/autoRebaseService.js';
-import type { DraftService } from './plus/drafts/draftsService.js';
-import type { AccountAuthenticationProvider } from './plus/gk/authenticationProvider.js';
-import type { OrganizationService } from './plus/gk/organizationService.js';
-import type { ProductConfigProvider } from './plus/gk/productConfigProvider.js';
-import type { UrlsProvider } from './plus/gk/urlsProvider.js';
-import { createIntegrationServiceContext } from './plus/integrations/host/context.js';
-import type { EnrichmentService } from './plus/launchpad/enrichmentService.js';
-import type { LaunchpadProvider } from './plus/launchpad/launchpadProvider.js';
-import type { RepositoryIdentityService } from './plus/repos/repositoryIdentityService.js';
-import type { WorkspacesService } from './plus/workspaces/workspacesService.js';
 import { StatusBarController } from './statusbar/statusBarController.js';
 import { executeCommand } from './system/-webview/command.js';
 import { configuration } from './system/-webview/configuration.js';
 import { Keyboard } from './system/-webview/keyboard.js';
 import type { Storage } from './system/-webview/storage.js';
-import type { AIFeedbackProvider } from './telemetry/aiFeedbackProvider.js';
 import { TelemetryService } from './telemetry/telemetry.js';
 import { GitTerminalLinkProvider } from './terminal/linkProvider.js';
 import { GitDocumentTracker } from './trackers/documentTracker.js';
 import { LineTracker } from './trackers/lineTracker.js';
-import { TreemapAggregatorService } from './treemap/treemapAggregatorService.js';
 import { DeepLinkService } from './uris/deepLinks/deepLinkService.js';
 import { UriService } from './uris/uriService.js';
 import { ViewFileDecorationProvider } from './views/viewDecorationProvider.js';
@@ -183,37 +161,8 @@ export class Container {
 		return this._mcpService;
 	}
 
-	// Compatibility-only declarations keep deferred Plus source type-checkable; none are constructed or registered.
-	declare readonly agents: AgentService;
-	declare readonly agentStatus: AgentStatusService | undefined;
-	declare readonly onDidChangeAgentStatus: Event<void>;
-	declare readonly ai: AIProviderService;
-	declare readonly aiFeedback: AIFeedbackProvider;
-	declare readonly accountAuthentication: AccountAuthenticationProvider;
-	declare readonly organizations: OrganizationService;
-	declare readonly productConfig: ProductConfigProvider;
-	declare readonly urls: UrlsProvider;
-	declare readonly drafts: DraftService;
-	declare readonly enrichments: EnrichmentService;
-	declare readonly launchpad: LaunchpadProvider;
-	declare readonly repositoryIdentity: RepositoryIdentityService;
-	declare readonly workspaces: WorkspacesService;
-	declare readonly autoRebase: AutoRebaseService;
 	declare readonly repositoryLocator: RepositoryLocationProvider | undefined;
 	declare readonly userAgent: string;
-	declare readonly gkCli: { reset(): Promise<void> } | undefined;
-	declare readonly gkMcp:
-		| { isRegistrationAllowed: boolean; isRegistrationCapable: boolean; isRegistrationEnabled: boolean }
-		| undefined;
-
-	private _integrations: IntegrationManager | undefined;
-	get integrations(): IntegrationManager {
-		if (this._integrations == null) {
-			this._disposables.push((this._integrations = createIntegrationManager(this.integrationContext)));
-		}
-
-		return this._integrations;
-	}
 
 	private _disposables: Disposable[];
 	private _terminalLinks: GitTerminalLinkProvider | undefined;
@@ -241,10 +190,8 @@ export class Container {
 		];
 		this._disposables.push((this._uri = new UriService(this)));
 		this._subscription = new LocalSubscriptionService();
-		this._disposables.push((this._walkthrough = new WalkthroughStateProvider(this)));
 
 		this._disposables.push((this._eventBus = new EventBus()));
-		this._disposables.push((this._ipc = new IpcService(this)));
 		this._hostingAuthentication = new HostingAuthenticationService({
 			deleteSecret: key => storage.deleteSecret(key),
 			getAuthenticationSession: (provider, scopes, options) =>
@@ -267,7 +214,6 @@ export class Container {
 		this._disposables.push((this._lineTracker = new LineTracker(this, this._documentTracker)));
 		this._disposables.push((this._keyboard = new Keyboard()));
 		this._disposables.push((this._vsls = new VslsController(this)));
-		this._disposables.push((this._markdownProvider = new MarkdownContentProvider(this)));
 
 		this._disposables.push((this._fileAnnotationController = new FileAnnotationController(this)));
 		this._disposables.push((this._lineAnnotationController = new LineAnnotationController(this)));
@@ -384,15 +330,6 @@ export class Container {
 		return this._autolinks;
 	}
 
-	private _cache: CacheProvider | undefined;
-	get cache(): CacheProvider {
-		if (this._cache == null) {
-			this._disposables.push((this._cache = new CacheProvider(this)));
-		}
-
-		return this._cache;
-	}
-
 	private _featureFlags: FeatureFlagService | undefined;
 	get featureFlags(): FeatureFlagService {
 		if (this._featureFlags == null) {
@@ -418,15 +355,6 @@ export class Container {
 		return this._context;
 	}
 
-	private _integrationContext: ReturnType<typeof createIntegrationServiceContext> | undefined;
-	private get integrationContext(): ReturnType<typeof createIntegrationServiceContext> {
-		if (this._integrationContext == null) {
-			this._disposables.push((this._integrationContext = createIntegrationServiceContext(this)));
-		}
-
-		return this._integrationContext;
-	}
-
 	@memoize()
 	get debugging(): boolean {
 		return this._context.extensionMode === ExtensionMode.Development;
@@ -442,25 +370,13 @@ export class Container {
 		return this._documentTracker;
 	}
 
-	@memoize()
 	get env(): Environment {
-		if (this.prereleaseOrDebugging) {
-			const env = configuration.getAny('gitkraken.env');
-			if (env === 'dev') return 'dev';
-			if (env === 'staging') return 'staging';
-		}
-
 		return 'production';
 	}
 
 	private readonly _eventBus: EventBus;
 	get events(): EventBus {
 		return this._eventBus;
-	}
-
-	private readonly _ipc: IpcService;
-	get ipc(): IpcService {
-		return this._ipc;
 	}
 
 	private readonly _hostingAuthentication: HostingAuthenticationService;
@@ -480,11 +396,6 @@ export class Container {
 	private readonly _fileAnnotationController: FileAnnotationController;
 	get fileAnnotations(): FileAnnotationController {
 		return this._fileAnnotationController;
-	}
-
-	private readonly _markdownProvider: MarkdownContentProvider;
-	get markdown(): MarkdownContentProvider {
-		return this._markdownProvider;
 	}
 
 	private readonly _virtualFs: VirtualFileSystemService;
@@ -568,14 +479,6 @@ export class Container {
 		return this._telemetry;
 	}
 
-	private _treemapAggregator: TreemapAggregatorService | undefined;
-	get treemapAggregator(): TreemapAggregatorService {
-		if (this._treemapAggregator == null) {
-			this._disposables.push((this._treemapAggregator = new TreemapAggregatorService(this)));
-		}
-		return this._treemapAggregator;
-	}
-
 	private readonly _uri: UriService;
 	get uri(): UriService {
 		return this._uri;
@@ -584,11 +487,6 @@ export class Container {
 	private readonly _usage: UsageTracker;
 	get usage(): UsageTracker {
 		return this._usage;
-	}
-
-	private readonly _walkthrough: WalkthroughStateProvider;
-	get walkthrough(): WalkthroughStateProvider {
-		return this._walkthrough;
 	}
 
 	private readonly _version: string;

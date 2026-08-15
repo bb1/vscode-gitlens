@@ -18,8 +18,7 @@ import { getReferenceFromBranch, getReferenceFromTag } from '../git/utils/-webvi
 import { toAbortSignal } from '../system/-webview/cancellation.js';
 import { createTerminalLinkCommand } from '../system/-webview/command.js';
 import { configuration } from '../system/-webview/configuration.js';
-import type { GraphCompareSeed } from '../webviews/plus/graph/protocol.js';
-import type { ShowInCommitGraphCommandArgs } from '../webviews/plus/graph/registration.js';
+type ShowInCommitGraphCommandArgs = { ref?: GitReference; repository?: GlRepository; compare?: unknown };
 
 type TerminalLinkShowIn = 'graph' | 'inspect' | 'quickpick';
 
@@ -99,7 +98,7 @@ function createRangeLinkCommand(
 	rightRefType: 'branch' | 'tag' | 'commit',
 ) {
 	if (showIn === 'graph' && repository != null) {
-		const compare: GraphCompareSeed = {
+		const compare = {
 			leftRef: left,
 			leftRefType: leftRefType,
 			rightRef: right,

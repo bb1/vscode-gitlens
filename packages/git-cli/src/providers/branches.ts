@@ -1736,16 +1736,6 @@ export class BranchesGitSubProvider implements GitBranchesSubProvider {
 		await this.storeBranchMetadata(repoPath, 'gk-last-modified', branch.name, now);
 	}
 
-	/** Updates the agent last activity timestamp for the current branch */
-	@debounce(2.5 * 60 * 1000)
-	@debug()
-	async onCurrentBranchAgentActivity(repoPath: string): Promise<void> {
-		const branch = await this.getBranch(repoPath);
-		if (branch == null || branch.remote || branch.detached) return;
-
-		await this.storeBranchMetadata(repoPath, 'gk-agent-last-activity', branch.name, new Date());
-	}
-
 	@debug()
 	async renameBranch(repoPath: string, oldName: string, newName: string): Promise<void> {
 		const args = ['branch', '-m', oldName, newName];
@@ -1842,7 +1832,7 @@ export class BranchesGitSubProvider implements GitBranchesSubProvider {
 				// Use git config --get-regexp to load all gk-* branch metadata in one call
 				const configMap = await this.provider.config.getGkConfigRegex(
 					commonPath,
-					'^branch\\..*\\.gk-(last-(accessed|modified)|disposition|agent-last-activity)$',
+					'^branch\\..*\\.gk-(last-(accessed|modified)|disposition)$',
 				);
 				if (!configMap.size) return metadataMap;
 
@@ -1867,8 +1857,6 @@ export class BranchesGitSubProvider implements GitBranchesSubProvider {
 						metadata.lastAccessedAt = value;
 					} else if (metaKey === 'gk-last-modified') {
 						metadata.lastModifiedAt = value;
-					} else if (metaKey === 'gk-agent-last-activity') {
-						metadata.agentLastActivityAt = value;
 					} else if (metaKey === 'gk-disposition') {
 						if (value === 'starred' || value === 'archived') {
 							metadata.disposition = value;
@@ -1886,7 +1874,7 @@ export class BranchesGitSubProvider implements GitBranchesSubProvider {
 
 	private async storeBranchMetadata(
 		repoPath: string,
-		key: 'gk-last-accessed' | 'gk-last-modified' | 'gk-agent-last-activity',
+		key: 'gk-last-accessed' | 'gk-last-modified',
 		ref: string,
 		date: Date,
 	): Promise<void> {

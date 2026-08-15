@@ -31,7 +31,6 @@ const viewIcons: Readonly<Record<GroupableTreeViewTypes, string>> = {
 	contributors: 'gl-contributors-view',
 	repositories: 'gl-repositories-view',
 	searchAndCompare: 'gl-search-view',
-	launchpad: 'gl-launchpad-view',
 	fileHistory: 'gl-history-view',
 };
 

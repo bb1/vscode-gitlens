@@ -122,8 +122,7 @@ export interface GitRunOptions {
  * not apply when commands are issued through this object. It does NOT imply command
  * injection risk; the caller still controls the args.
  *
- * Hand instances to libraries that need to issue arbitrary git commands
- * (`@gitkraken/compose-tools`, `@gitkraken/shared-tools` undo). Inside GitLens
+ * Hand instances only to integrations that need arbitrary Git commands. Inside GitLens
  * itself, prefer the typed sub-providers on `RepositoryService` (`branches`,
  * `commits`, `diff`, `staging`, `stash`, `status`, …). Holding an `UnsafeGit`
  * just to call `run(...)` for an ad-hoc command is almost always wrong — the

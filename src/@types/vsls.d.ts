@@ -4,6 +4,8 @@ export interface LiveShareExtension {
 	getApi(version: string): Promise<LiveShare | null>;
 }
 
+export interface ShareOptions {}
+
 export interface LiveShare {
 	readonly session: Session;
 	readonly onDidChangeSession: Event<SessionChangeEvent>;

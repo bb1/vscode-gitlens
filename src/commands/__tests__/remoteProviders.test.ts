@@ -4,7 +4,7 @@ import type { Container } from '../../container.js';
 import { ConnectRemoteProviderCommand, DisconnectRemoteProviderCommand } from '../remoteProviders.js';
 
 suite('ConnectRemoteProviderCommand', () => {
-	test('connects the selected remote provider without reading a GitKraken account', async () => {
+	test('connects the selected remote provider without reading an account', async () => {
 		const connections: unknown[][] = [];
 		const container = {
 			git: {
@@ -13,7 +13,7 @@ suite('ConnectRemoteProviderCommand', () => {
 						getRemotesWithProviders: async () => [
 							{
 								name: 'origin',
-								provider: new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens'),
+								provider: new GitHubRemoteProvider('github.com', 'example-org/example-repo'),
 							},
 						],
 						setRemoteAsDefault: async () => {},
@@ -37,7 +37,7 @@ suite('ConnectRemoteProviderCommand', () => {
 		assert.deepStrictEqual(connections, [['github', 'github.com']]);
 	});
 
-	test('disconnects the selected remote provider without reading a GitKraken account', async () => {
+	test('disconnects the selected remote provider without reading an account', async () => {
 		const disconnections: unknown[][] = [];
 		const container = {
 			git: {
@@ -46,7 +46,7 @@ suite('ConnectRemoteProviderCommand', () => {
 						getRemotesWithProviders: async () => [
 							{
 								name: 'origin',
-								provider: new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens'),
+								provider: new GitHubRemoteProvider('github.com', 'example-org/example-repo'),
 							},
 						],
 					},

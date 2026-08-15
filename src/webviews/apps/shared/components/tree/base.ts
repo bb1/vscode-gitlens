@@ -1,7 +1,8 @@
 import type { TemplateResult } from 'lit';
-import type { AgentSessionPhase } from '@gitlens/agents/types.js';
 import type { GitFileStatus } from '@gitlens/git/models/fileStatus.js';
-import type { DraftPatchFileChange } from '../../../../../plus/drafts/models/drafts.js';
+
+export type AgentSessionPhase = string;
+type DraftPatchFileChange = { path: string };
 
 /** `dataTransfer` type used when a draggable file row (opt-in `draggableFiles`) is dragged; the
  *  payload is the row's file `path`. Consumers key their drop handling off this type. */
@@ -80,16 +81,11 @@ export interface TreeItemDecorationBase {
 	position?: 'before' | 'after';
 }
 
-/** Color treatment for an icon decoration, keyed to the Launchpad indicator colors. */
-export type TreeItemDecorationIconKind = 'launchpad-mergeable' | 'launchpad-blocked' | 'launchpad-attention';
-
 export interface TreeItemDecorationIcon extends TreeItemDecorationBase {
 	type: 'icon';
 	icon: string;
 	/** Renders in the description color — for a glyph that marks state rather than demanding attention. */
 	muted?: boolean;
-	/** When set, colors the icon — rendered as a `decoration-icon--<kind>` class (see `tree.css.ts`). */
-	kind?: TreeItemDecorationIconKind;
 }
 
 export type TreeItemDecorationKind = 'added' | 'deleted' | 'modified' | 'untracked' | 'renamed' | 'conflict' | 'muted';

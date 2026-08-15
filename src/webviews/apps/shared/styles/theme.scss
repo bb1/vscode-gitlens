@@ -10,24 +10,10 @@
 	--editor-font-size: var(--vscode-editor-font-size);
 	--editor-font-weight: var(--vscode-editor-font-weight);
 
-	// Brand accent colors (GitKraken purple → blue) — the stops behind the brand gradient,
-	// plus hero glows and accent sweeps that need the endpoints on their own.
-	--gl-brand-purple: #7900c9;
-	--gl-brand-blue: #196fff;
-
-	// Brand accent gradient (GitKraken purple → blue) — Pro feature gates, promos, etc.
-	--gl-gradient-brand: linear-gradient(to right, var(--gl-brand-purple), var(--gl-brand-blue));
-
-	// Subtle brand wash (magenta → blue @ ~10%) — low-emphasis feature-region backgrounds
-	// (auto-compose container, MCP/hooks buttons, matching promo banner). Static + decorative;
-	// drops out under forced-colors, where these surfaces carry their own border.
-	--gl-gradient-brand-subtle: linear-gradient(135deg, #a100ff1a 0%, #255ed11a 100%);
-
-	// AI accent gradient stops (violet → sky → cyan) — high-emphasis AI affordances
-	// (active-input shimmer borders, AI action buttons). Static + decorative; drop out under forced-colors.
-	--gl-ai-accent-1: #7c3aed;
-	--gl-ai-accent-2: #0ea5e9;
-	--gl-ai-accent-3: #06b6d4;
+	--gl-accent-purple: #7900c9;
+	--gl-accent-blue: #196fff;
+	--gl-gradient-accent: linear-gradient(to right, var(--gl-accent-purple), var(--gl-accent-blue));
+	--gl-gradient-accent-subtle: linear-gradient(135deg, #a100ff1a 0%, #255ed11a 100%);
 
 	--color-background: var(--vscode-editor-background);
 
@@ -125,17 +111,9 @@
 	--gl-stat-modified: var(--vscode-gitDecoration-modifiedResourceForeground, var(--vscode-charts-yellow, #bf8700));
 	--gl-stat-removed: var(--vscode-gitDecoration-deletedResourceForeground, var(--vscode-charts-red, #cf222e));
 
-	/* Agent phase colors — own palette (NOT SCM/gitDecoration tokens, which semantically belong
-	   to file change states). Phase names match the AgentSessionPhase enum so every agent surface
-	   (sidebar leaf, tooltip, pill, details panel card, WIP file decoration) dereferences one set
-	   of variables. `working` uses a hand-picked slate-purple — reads as "AI / in motion" on both
-	   light and dark backgrounds without colliding with chip-filtered blue (`#0099ff`) or the
-	   waiting yellow. Avoids `--vscode-progressBar-background` (often chrome-grey/white per
-	   theme) and `--vscode-button-background` (varies dramatically across themes — some are
-	   near-foreground, defeating the "this stands out" signal). */
-	--gl-agent-working-color: #7b68ee;
-	--gl-agent-waiting-color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow, #bf8700));
-	--gl-agent-idle-color: var(--vscode-descriptionForeground);
+	--gl-activity-active-color: #7b68ee;
+	--gl-activity-waiting-color: var(--vscode-editorWarning-foreground, var(--vscode-charts-yellow, #bf8700));
+	--gl-activity-idle-color: var(--vscode-descriptionForeground);
 
 	/* Unified scope/filter chip indicator colors — bg/border use the *-color (translucent via
 	   color-mix); text uses *-text-color so light themes can pair a vibrant tint with much

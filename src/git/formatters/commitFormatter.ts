@@ -24,8 +24,6 @@ import type { MaybeEnrichedAutolink } from '../../autolinks/models/autolinks.js'
 import { getPresenceDataUri } from '../../avatars.js';
 import { CopyShaToClipboardCommand } from '../../commands/copyShaToClipboard.js';
 import { DiffWithCommand } from '../../commands/diffWith.js';
-import { ExplainCommitCommand } from '../../commands/explainCommit.js';
-import { ExplainWipCommand } from '../../commands/explainWip.js';
 import { InspectCommand } from '../../commands/inspect.js';
 import { OpenCommitOnRemoteCommand } from '../../commands/openCommitOnRemote.js';
 import { OpenFileAtRevisionCommand } from '../../commands/openFileAtRevision.js';
@@ -38,12 +36,10 @@ import { GlyphChars } from '../../constants.js';
 import type { Source } from '../../constants.telemetry.js';
 import { Container } from '../../container.js';
 import { emojify } from '../../emojis.js';
-import { arePlusFeaturesEnabled } from '../../plus/gk/utils/-webview/plus.utils.js';
 import { configuration } from '../../system/-webview/configuration.js';
 import { editorLineToDiffRange } from '../../system/-webview/vscode/range.js';
 import { createMarkdownCommandLink } from '../../system/commands.js';
 import type { ContactPresence } from '../../vsls/vsls.js';
-import type { ShowInCommitGraphCommandArgs } from '../../webviews/plus/graph/registration.js';
 import {
 	formatCommitDate,
 	formatCommitDateFromNow,
@@ -54,14 +50,13 @@ import {
 } from '../utils/-webview/commit.utils.js';
 import { getIssueOrPullRequestMarkdownIcon } from '../utils/-webview/icons.js';
 import { getReferenceFromRevision } from '../utils/-webview/reference.utils.js';
-import { isRemoteMaybeIntegrationConnected, remoteSupportsIntegration } from '../utils/-webview/remote.utils.js';
+import { remoteSupportsIntegration } from '../utils/-webview/remote.utils.js';
 
 const quoteRegex = /"/g;
 const newlineRegex = /\r?\n/g;
 const lineStartRegex = /^/gm;
 
 export interface CommitFormatOptions extends FormatOptions {
-	ai?: { allowed: boolean };
 	avatarSize?: number;
 	dateSource?: DateSource;
 	dateStyle?: DateStyle;
@@ -534,14 +529,6 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 				commands = shaOrInspectLink(shaText);
 			}
 
-			if (this._options.ai?.allowed) {
-				commands += `${separator}[$(sparkle) Explain](${ExplainWipCommand.createMarkdownCommandLink({
-					repoPath: this._item.repoPath,
-					staged: undefined,
-					source: { source: this._options.source.source, context: { type: 'wip' } },
-				})} "Explain Changes")`;
-			}
-
 			return commands;
 		}
 
@@ -579,13 +566,11 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 			{ repoPath: this._item.repoPath, sha: this._item.sha, revealInView: true, source: editorHoverSource },
 		)} "Reveal in Side Bar")`;
 
-		if (arePlusFeaturesEnabled()) {
-			commands += ` &nbsp;[$(gitlens-graph)](${createMarkdownCommandLink<ShowInCommitGraphCommandArgs>(
-				'gitlens.showInCommitGraph',
-				// Avoid including the message here, it just bloats the command url
-				{ ref: getReferenceFromRevision(this._item, { excludeMessage: true }), source: editorHoverSource },
-			)} "Open in Commit Graph")`;
-		}
+		commands += ` &nbsp;[$(gitlens-graph)](${createMarkdownCommandLink(
+			'gitlens.showInCommitGraph',
+			// Avoid including the message here, it just bloats the command url
+			{ ref: getReferenceFromRevision(this._item, { excludeMessage: true }), source: editorHoverSource },
+		)} "Open in Commit Graph")`;
 
 		const { pullRequest: pr, remotes } = this._options;
 
@@ -596,17 +581,6 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 				this._item.sha,
 				editorHoverSource,
 			)} "Open Commit on ${providers?.length ? providers[0].name : 'Remote'}")`;
-		}
-
-		if (this._options.ai?.allowed) {
-			commands += `${separator}[$(sparkle) Explain](${ExplainCommitCommand.createMarkdownCommandLink({
-				repoPath: this._item.repoPath,
-				rev: this._item.sha,
-				source: {
-					source: 'editor:hover',
-					context: { type: GitCommit.isStash(this._item) ? 'stash' : 'commit' },
-				},
-			})} "Explain Changes")`;
 		}
 
 		if (pr != null) {
@@ -631,12 +605,7 @@ export class CommitFormatter extends Formatter<GitCommit, CommitFormatOptions> {
 			}
 		} else if (remotes != null) {
 			const [remote] = remotes;
-			if (
-				remote != null &&
-				remoteSupportsIntegration(remote) &&
-				!isRemoteMaybeIntegrationConnected(remote) &&
-				configuration.get('integrations.enabled')
-			) {
+			if (remote != null && remoteSupportsIntegration(remote)) {
 				commands += `${separator}[$(plug) Connect to ${remote?.provider.name}${
 					GlyphChars.Ellipsis
 				}](${ConnectRemoteProviderCommand.createMarkdownCommandLink(remote, editorHoverSource)} "Connect to ${

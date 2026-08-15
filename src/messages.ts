@@ -6,7 +6,6 @@ import type { GitCommit } from '@gitlens/git/models/commit.js';
 import { filterMap } from '@gitlens/utils/array.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import type { SuppressedMessages } from './config.js';
-import { urls } from './constants.js';
 import { formatIdentityDisplayName, getCommitFormattedDate } from './git/utils/-webview/commit.utils.js';
 import { executeCommand, executeCoreCommand } from './system/-webview/command.js';
 import { configuration } from './system/-webview/configuration.js';
@@ -164,7 +163,7 @@ export async function showBitbucketPRCommitLinksAppNotInstalledWarningMessage(re
 		'warn',
 		`GitLens cannot access Bitbucket PRs for commits.
 		Allow access by visiting [this commit](${revLink}) on Bitbucket and click “Pull requests” under the “Apps” section on the bottom right
-		or [read our docs](https://help.gitkraken.com/gitlens/gitlens-troubleshooting/#enable-showing-bitbucket-pull-request-for-a-commit) for more info.`,
+		for more information, visit the commit on Bitbucket.`,
 		'suppressBitbucketPRCommitLinksAppNotInstalledWarning',
 		{ title: "Don't Show Again" },
 		allowAccess,
@@ -247,30 +246,6 @@ export function showNoRepositoryWarningMessage(message: string): Promise<Message
 	return showMessage('warn', `${message}. No repository could be found.`, 'suppressNoRepositoryWarning');
 }
 
-export function showGkDisconnectedTooManyFailedRequestsWarningMessage(): Promise<MessageItem | undefined> {
-	return showMessage(
-		'error',
-		`Requests to GitKraken have stopped being sent for this session, because of too many failed requests.`,
-		'suppressGkDisconnectedTooManyFailedRequestsWarningMessage',
-		undefined,
-		{
-			title: 'OK',
-		},
-	);
-}
-
-export function showGkRequestFailed500WarningMessage(message: string): Promise<MessageItem | undefined> {
-	return showMessage('error', message, 'suppressGkRequestFailed500Warning', undefined, {
-		title: 'OK',
-	});
-}
-
-export function showGkRequestTimedOutWarningMessage(): Promise<MessageItem | undefined> {
-	return showMessage('error', `GitKraken request timed out.`, 'suppressGkRequestTimedOutWarning', undefined, {
-		title: 'OK',
-	});
-}
-
 export function showIntegrationDisconnectedTooManyFailedRequestsWarningMessage(
 	providerName: string,
 ): Promise<MessageItem | undefined> {
@@ -316,12 +291,10 @@ export async function showWhatsNewMessage(majorVersion: string): Promise<void> {
 				'GitLens 19 is here — the Commit Graph has been rebuilt from the ground up: dramatically faster, lighter, now the heart of GitLens, with new and enhanced workflows from code to merge.';
 			break;
 		case '18':
-			message =
-				'GitLens upgraded to 18 — the Commit Graph is all new with agent integration, multi-worktree WIP rows, AI-powered Review and Compose modes, and more.';
+			message = 'GitLens upgraded to 18 with a rebuilt Commit Graph and improved Git workflows.';
 			break;
 		case '17':
-			message =
-				'GitLens upgraded to 17 with the all new [GitKraken AI](https://gitkraken.com/solutions/gitkraken-ai?source=gitlens&product=gitlens&utm_source=gitlens-extension&utm_medium=in-app-links) access included in GitLens Pro, AI changelog and pull request creation, and Bitbucket integration.';
+			message = 'GitLens upgraded to 17 with improved Git workflows and Bitbucket integration.';
 			break;
 		default:
 			message = `GitLens upgraded to ${majorVersion} — see what's new.`;
@@ -337,9 +310,9 @@ export async function showWhatsNewMessage(majorVersion: string): Promise<void> {
 	const result = await showMessage('info', message, undefined, null, ...actions);
 
 	if (result === releaseNotes) {
-		void openUrl(urls.releaseNotes);
+		void openUrl('https://github.com/bb1/vscode-gitlens/releases');
 	} else if (result === openWalkthrough) {
-		void executeCommand('gitlens.showWelcomeView', { mode: 'graph' });
+		void executeCommand('gitlens.showGraph');
 	} else if (result === openGraph) {
 		void executeCommand('gitlens.showGraphView');
 	}

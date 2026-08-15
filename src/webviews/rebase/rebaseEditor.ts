@@ -38,7 +38,6 @@ const descriptor: CustomEditorDescriptor = {
 	contextKeyPrefix: 'gitlens:webview:rebase',
 	trackingFeature: 'rebaseEditor',
 	type: 'rebase',
-	plusFeature: false,
 	webviewOptions: { enableCommandUris: true, enableScripts: true },
 	webviewHostOptions: { enableFindWidget: true, retainContextWhenHidden: true },
 };

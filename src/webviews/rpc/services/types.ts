@@ -10,8 +10,7 @@ import type { GitDiffFileStats } from '@gitlens/git/models/diff.js';
 import type { GitFileChangeShape, GitFileChangeStats } from '@gitlens/git/models/fileChange.js';
 import type { GitPausedOperationStatus } from '@gitlens/git/models/pausedOperationStatus.js';
 import type { RepositoryChange } from '@gitlens/git/models/repository.js';
-import type { Source, TelemetryEventData, TelemetryEvents } from '../../../constants.telemetry.js';
-import type { AIModelScope } from '../../../plus/ai/aiProviderService.js';
+import type { Source, TelemetryEventData } from '../../../constants.telemetry.js';
 
 // Re-export for webview-side consumers (avoids deep `../../../../git/` imports)
 export type { RepositoryChange } from '@gitlens/git/models/repository.js';
@@ -100,14 +99,6 @@ export interface CommitSelectedEventData {
 }
 
 /**
- * Organization settings relevant to webviews.
- */
-export interface OrgSettings {
-	readonly ai: boolean;
-	readonly drafts: boolean;
-}
-
-/**
  * Aggregate repositories state for webviews.
  */
 export interface RepositoriesState {
@@ -137,86 +128,6 @@ export interface IntegrationStateInfo {
 export interface IntegrationChangeEventData {
 	readonly hasAnyConnected: boolean;
 	readonly integrations: IntegrationStateInfo[];
-}
-
-/**
- * Serializable per-agent info for the Agents settings table.
- * `mcp`/`hooks` are present only for gkcli-provided CLI agents and hook-only editor agents;
- * Chat/Extension agents omit them. `editor` agents are hook-capable IDE agents (cursor, antigravity)
- * that aren't detected CLIs — they render under their own "Editors" section, with no Default radio
- * or MCP action; `detected` gates their dimmed "Not detected" treatment.
- */
-export interface AgentInfo {
-	readonly id: string;
-	readonly label: string;
-	readonly kind: 'ide-chat' | 'claude-extension' | 'cli' | 'editor';
-	readonly detected?: boolean;
-	readonly mcp?: { readonly supported: boolean; readonly installed: boolean };
-	readonly hooks?: { readonly supported: boolean; readonly installed: boolean };
-	/** For an IDE-host row that supports hooks, the gkcli agent name to target for hooks install/uninstall
-	 *  (e.g. `cursor`) — this row's own `id` may be `ide-chat`. Absent when `id` is already the hooks target. */
-	readonly hooksAgentId?: string;
-}
-
-/**
- * Serializable AI model info.
- * A simplified shape that crosses the RPC boundary safely.
- */
-export interface AiModelInfo {
-	readonly id: string;
-	readonly name: string;
-	readonly provider: { readonly id: string; readonly name: string };
-	/** Provider-supplied consumption-rate label (GitKraken AI only); undefined for other providers. */
-	readonly consumptionRateLabel?: string;
-}
-
-/** Per-scope AI model selection for the Settings AI panel. */
-export interface ScopedAiModelInfo {
-	/** The operation this selection applies to. */
-	readonly scope: AIModelScope;
-	/** The model the scope will actually use — the override when set, otherwise the resolved default. */
-	readonly model: AiModelInfo | undefined;
-	/** True only when the scope has its own stored selection AND that selection is what resolved. */
-	readonly isOverride: boolean;
-}
-
-/**
- * AI and MCP state for webview integrations UI.
- *
- * Consolidates AI enablement (setting + org) and MCP installation state
- * into a single object. MCP is nested under AI because MCP requires AI
- * to be enabled.
- */
-export interface AIState {
-	/** Whether AI is enabled via settings (`ai.enabled`). */
-	readonly enabled: boolean;
-	/** Whether AI is enabled by the organization. */
-	readonly orgEnabled: boolean;
-	/** MCP state, nested under AI since MCP requires AI to be enabled. */
-	readonly mcp: {
-		readonly bundled: boolean;
-		/** True iff the running host can register the bundled MCP server (independent of the opt-in). */
-		readonly capable: boolean;
-		readonly settingEnabled: boolean;
-		readonly installed: boolean;
-	};
-	/** AI hooks state — per hook-capable agent from `gk agents list`, plus aggregate flags. */
-	readonly hooks: {
-		/** Detected, hooks-supported agents (`detected && hooksSupported`). Empty when gkcli is missing. */
-		readonly agents: readonly { readonly id: string; readonly displayName: string; readonly installed: boolean }[];
-		/**
-		 * True when at least one agent in `agents` lacks hooks (install action is relevant).
-		 * Banners and the integrations-chip "Install" CTA gate on this; the uninstall CTA gates on `anyInstalled`.
-		 */
-		readonly canInstallHooks: boolean;
-		/** True when at least one agent in `agents` has hooks installed. */
-		readonly anyInstalled: boolean;
-	};
-	/**
-	 * Currently-selected default coding agent (resolved from `gitlens.ai.defaultAgent`).
-	 * Undefined when no default is set or the persisted agent is not currently available.
-	 */
-	readonly defaultAgent: { readonly id: string; readonly label: string } | undefined;
 }
 
 // ============================================================
@@ -416,7 +327,7 @@ export interface WipChange {
 export interface RpcServiceHost {
 	readonly id: string;
 	readonly instanceId: string;
-	sendTelemetryEvent(name: keyof TelemetryEvents, data?: TelemetryEventData, source?: Source): void;
+	sendTelemetryEvent(name: string, data?: TelemetryEventData, source?: Source): void;
 }
 
 // ============================================================

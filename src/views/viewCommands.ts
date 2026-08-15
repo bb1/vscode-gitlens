@@ -1,5 +1,5 @@
 import type { TextDocumentShowOptions } from 'vscode';
-import { Disposable, env, ProgressLocation, Uri, window, workspace } from 'vscode';
+import { Disposable, env, Uri, window, workspace } from 'vscode';
 import { getTempFile } from '@env/platform.js';
 import type { GitBranch } from '@gitlens/git/models/branch.js';
 import { GitCommit } from '@gitlens/git/models/commit.js';
@@ -17,19 +17,14 @@ import { filterMap } from '@gitlens/utils/array.js';
 import { debug } from '@gitlens/utils/decorators/log.js';
 import { runSequentially } from '@gitlens/utils/function.js';
 import { join, map } from '@gitlens/utils/iterable.js';
-import { lazy } from '@gitlens/utils/lazy.js';
 import { basename } from '@gitlens/utils/path.js';
 import { getSettledValue } from '@gitlens/utils/promise.js';
 import type { CreatePullRequestActionContext, OpenPullRequestActionContext } from '../api/gitlens.d.js';
 import type { DiffWithCommandArgs } from '../commands/diffWith.js';
 import type { DiffWithPreviousCommandArgs } from '../commands/diffWithPrevious.js';
 import type { DiffWithWorkingCommandArgs } from '../commands/diffWithWorking.js';
-import type { ExplainBranchCommandArgs } from '../commands/explainBranch.js';
-import type { GenerateChangelogCommandArgs } from '../commands/generateChangelog.js';
-import { generateChangelogAndOpenMarkdownDocument } from '../commands/generateChangelog.js';
 import type { OpenFileAtRevisionCommandArgs } from '../commands/openFileAtRevision.js';
 import type { OpenOnRemoteCommandArgs } from '../commands/openOnRemote.js';
-import type { RecomposeFromCommitCommandArgs } from '../commands/recomposeFromCommit.js';
 import type { ViewShowBranchComparison } from '../config.js';
 import type { GlCommands } from '../constants.commands.js';
 import { GlyphChars } from '../constants.js';
@@ -46,16 +41,9 @@ import * as TagActions from '../git/actions/tag.js';
 import * as WorktreeActions from '../git/actions/worktree.js';
 import { GitUri } from '../git/gitUri.js';
 import type { GlRepository } from '../git/models/repository.js';
-import { getBranchAssociatedPullRequest, getBranchRemote } from '../git/utils/-webview/branch.utils.js';
-import {
-	ensurePullRequestRefs,
-	getOpenedPullRequestRepo,
-	getOrOpenPullRequestRepository,
-} from '../git/utils/-webview/pullRequest.utils.js';
+import { getBranchRemote } from '../git/utils/-webview/branch.utils.js';
+import { ensurePullRequestRefs, getOpenedPullRequestRepo } from '../git/utils/-webview/pullRequest.utils.js';
 import { openRebaseEditor } from '../git/utils/-webview/rebase.utils.js';
-import { showPatchesView } from '../plus/drafts/actions.js';
-import { getPullRequestBranchDeepLink } from '../plus/launchpad/launchpadProvider.js';
-import type { AssociateIssueWithBranchCommandArgs } from '../plus/startWork/associateIssueWithBranch.js';
 import { showContributorsPicker } from '../quickpicks/contributorsPicker.js';
 import {
 	executeActionCommand,
@@ -74,9 +62,7 @@ import { openUrl } from '../system/-webview/vscode/uris.js';
 import type { OpenWorkspaceLocation } from '../system/-webview/vscode/workspaces.js';
 import { openWorkspace } from '../system/-webview/vscode/workspaces.js';
 import { createCommandDecorator } from '../system/decorators/command.js';
-import { DeepLinkActionType } from '../uris/deepLinks/deepLink.js';
-import type { ShowInCommitGraphCommandArgs } from '../webviews/plus/graph/registration.js';
-import type { LaunchpadItemNode } from './launchpadView.js';
+import type { ShowInCommitGraphCommandArgs } from '../webviews/graph/registration.js';
 import type { RepositoryFolderNode } from './nodes/abstract/repositoryFolderNode.js';
 import type { ClipboardType } from './nodes/abstract/viewNode.js';
 import {
@@ -96,7 +82,6 @@ import type { CommitNode } from './nodes/commitNode.js';
 import type { PagerNode } from './nodes/common.js';
 import type { CompareResultsNode } from './nodes/compareResultsNode.js';
 import type { ContributorNode } from './nodes/contributorNode.js';
-import type { DraftNode } from './nodes/draftNode.js';
 import type { FileHistoryNode } from './nodes/fileHistoryNode.js';
 import type { FileRevisionAsCommitNode } from './nodes/fileRevisionAsCommitNode.js';
 import type { FolderNode } from './nodes/folderNode.js';
@@ -693,8 +678,8 @@ export class ViewCommands implements Disposable {
 
 	@command('gitlens.openPullRequestChanges:views')
 	@debug()
-	private async openPullRequestChanges(node: PullRequestNode | LaunchpadItemNode) {
-		if (!node.is('pullrequest') && !node.is('launchpad-item')) return Promise.resolve();
+	private async openPullRequestChanges(node: PullRequestNode) {
+		if (!node.is('pullrequest')) return Promise.resolve();
 
 		const pr = node.pullRequest;
 		if (pr?.refs?.base == null || pr?.refs.head == null) return Promise.resolve();
@@ -726,8 +711,8 @@ export class ViewCommands implements Disposable {
 
 	@command('gitlens.openPullRequestComparison:views')
 	@debug()
-	private async openPullRequestComparison(node: PullRequestNode | LaunchpadItemNode) {
-		if (!node.is('pullrequest') && !node.is('launchpad-item')) return Promise.resolve();
+	private async openPullRequestComparison(node: PullRequestNode) {
+		if (!node.is('pullrequest')) return Promise.resolve();
 
 		const pr = node.pullRequest;
 		if (pr?.refs?.base == null || pr?.refs.head == null) return Promise.resolve();
@@ -745,19 +730,6 @@ export class ViewCommands implements Disposable {
 		if (counts == null) return Promise.resolve();
 
 		return this.container.views.searchAndCompare.compare(refs.repoPath, refs.head, refs.base);
-	}
-
-	@command('gitlens.views.draft.open')
-	@debug()
-	private async openDraft(node: DraftNode) {
-		await showPatchesView({ mode: 'view', draft: node.draft });
-	}
-
-	@command('gitlens.views.draft.openOnWeb')
-	@debug()
-	private async openDraftOnWeb(node: DraftNode) {
-		const url = await this.container.drafts.generateWebUrl(node.draft);
-		await openUrl(url);
 	}
 
 	@command('gitlens.openWorktree:views')
@@ -801,28 +773,8 @@ export class ViewCommands implements Disposable {
 
 	@command('gitlens.views.openInWorktree')
 	@debug()
-	private async openInWorktree(node: BranchNode | PullRequestNode | LaunchpadItemNode) {
-		if (!node.is('branch') && !node.is('pullrequest') && !node.is('launchpad-item')) return;
-
+	private async openInWorktree(node: BranchNode | PullRequestNode) {
 		if (node.is('branch')) {
-			const pr = await getBranchAssociatedPullRequest(this.container, node.branch);
-			if (pr != null) {
-				const remoteUrl =
-					(await getBranchRemote(this.container, node.branch))?.url ??
-					getRepositoryIdentityForPullRequest(pr).remote.url;
-				if (remoteUrl != null) {
-					const deepLink = getPullRequestBranchDeepLink(
-						this.container,
-						pr,
-						node.branch.nameWithoutRemote,
-						remoteUrl,
-						DeepLinkActionType.SwitchToPullRequestWorktree,
-					);
-
-					return this.container.deepLinks.processDeepLinkUri(deepLink, false, node.repo);
-				}
-			}
-
 			return executeGitCommand({
 				command: 'switch',
 				state: {
@@ -833,26 +785,7 @@ export class ViewCommands implements Disposable {
 			});
 		}
 
-		if (node.is('pullrequest') || node.is('launchpad-item')) {
-			const pr = node.pullRequest;
-			if (pr?.refs?.head == null) return Promise.resolve();
-
-			const repoIdentity = getRepositoryIdentityForPullRequest(pr);
-			if (repoIdentity.remote.url == null) return Promise.resolve();
-
-			const deepLink = getPullRequestBranchDeepLink(
-				this.container,
-				pr,
-				pr.refs.head.branch,
-				repoIdentity.remote.url,
-				DeepLinkActionType.SwitchToPullRequestWorktree,
-			);
-
-			const prRepo = await getOrOpenPullRequestRepository(this.container, pr, {
-				skipVirtual: true,
-			});
-			return this.container.deepLinks.processDeepLinkUri(deepLink, false, prRepo);
-		}
+		return Promise.resolve();
 	}
 
 	@command('gitlens.pruneRemote:views')
@@ -963,20 +896,6 @@ export class ViewCommands implements Disposable {
 		}
 
 		return RepoActions.rebase(node.repoPath, node.ref);
-	}
-
-	@command('gitlens.ai.explainUnpushed:views')
-	@debug()
-	private async explainUnpushed(node: BranchNode | WorktreeNode) {
-		const branch = node.isAny('branch', 'worktree') ? node.branch : undefined;
-		if (branch?.upstream == null) return Promise.resolve();
-
-		await executeCommand<ExplainBranchCommandArgs>('gitlens.ai.explainBranch', {
-			repoPath: node.repoPath,
-			ref: branch.ref,
-			baseBranch: branch.upstream.name,
-			source: { source: 'view', context: { type: 'branch' } },
-		});
 	}
 
 	@command('gitlens.views.rebaseOntoUpstream')
@@ -1181,40 +1100,6 @@ export class ViewCommands implements Disposable {
 		if (!node.isAny('commit', 'file-commit')) return;
 
 		await CommitActions.undoCommit(this.container, node.ref);
-	}
-
-	@command('gitlens.composeCommits:views')
-	@debug()
-	private composeCommits(node: UncommittedFileNode) {
-		void executeCommand('gitlens.composeCommits', {
-			repoPath: node.repoPath,
-			source: 'view',
-		});
-	}
-
-	@command('gitlens.ai.recomposeFromCommit:views')
-	@debug()
-	private recomposeFromCommit(node: CommitNode | FileRevisionAsCommitNode) {
-		if (!node.isAny('commit', 'file-commit')) return;
-
-		let branch: GitBranch | undefined;
-		if (node.is('commit')) {
-			branch = node.branch;
-		} else if (node.is('file-commit')) {
-			branch = (node as any)._options?.branch;
-		}
-
-		if (branch == null) {
-			void window.showErrorMessage('Unable to determine branch for commit');
-			return;
-		}
-
-		void executeCommand<RecomposeFromCommitCommandArgs>('gitlens.ai.recomposeFromCommit', {
-			repoPath: node.repoPath,
-			commitSha: node.commit.sha,
-			branchName: branch.name,
-			source: 'view',
-		});
 	}
 
 	@command('gitlens.unsetRemoteAsDefault:views')
@@ -1927,45 +1812,6 @@ export class ViewCommands implements Disposable {
 		if (!node.is('results-files')) return;
 
 		node.filter = filter;
-	}
-
-	@command('gitlens.associateIssueWithBranch:views')
-	@debug()
-	private async associateIssueWithBranch(node: BranchNode | WorktreeNode) {
-		const branch = node.isAny('branch', 'worktree') ? node.branch : undefined;
-		if (branch == null) return Promise.resolve();
-
-		executeCommand<AssociateIssueWithBranchCommandArgs>('gitlens.associateIssueWithBranch', {
-			command: 'associateIssueWithBranch',
-			branch: branch,
-			source: 'view',
-		});
-	}
-
-	@command('gitlens.ai.generateChangelog:views')
-	@debug()
-	private async generateChangelog(node: ResultsCommitsNode) {
-		if (!node.is('results-commits')) return;
-
-		await generateChangelogAndOpenMarkdownDocument(
-			this.container,
-			lazy(() => node.getChangesForChangelog()),
-			{ source: 'view', detail: 'comparison' },
-			{ progress: { location: ProgressLocation.Notification } },
-		);
-	}
-
-	@command('gitlens.ai.generateChangelogFrom:views')
-	@debug()
-	private async generateChangelogFrom(node: BranchNode | TagNode | WorktreeNode) {
-		const head = node.is('branch') || node.is('tag') ? node.ref : node.is('worktree') ? node.branch : undefined;
-		if (head == null) return;
-
-		await executeCommand<GenerateChangelogCommandArgs>('gitlens.ai.generateChangelog', {
-			repoPath: node.repoPath,
-			head: head,
-			source: { source: 'view', detail: node.is('tag') ? 'tag' : 'branch' },
-		});
 	}
 
 	@command('gitlens.copyWorkingChangesToWorktree:views')

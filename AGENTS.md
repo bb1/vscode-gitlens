@@ -55,7 +55,6 @@ Most of the layout is self-describing — browse `packages/`, `src/`, and `tests
 
 - **`packages/` (`@gitlens/*`) vs `src/`** — `packages/git` holds the git domain (models, parsers, per-operation providers) and `packages/git-cli` runs the CLI; `src/git` is the orchestration layer over them (`gitProviderService.ts`, actions, formatters). `packages/utils` is the only utility layer webviews may import; `src/system` is host-only, and `src/system/-webview/` is extension-host-specific.
 - **`src/env/node/` vs `src/env/browser/`** — the same feature must work in desktop VS Code and VS Code for Web. Shared code imports through the `@env/` alias, which resolves per build target. Changing one path means checking the other.
-- **`src/plus/` and `packages/plus/` are non-OSS** — licensed separately, see `LICENSE.plus`.
 - **`src/container.ts`** — the service locator; nearly every service is reached through it.
 - **`src/commands/git/`** — sub-commands of the git wizard, not standalone commands.
 - **`src/trackers/`** — tracks document state and blame, not git refs.

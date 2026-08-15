@@ -4,16 +4,14 @@ import { annotationsCategories } from './annotations.js';
 import { editorCategories } from './editor.js';
 import { generalCategories } from './general.js';
 import { integrationsCategories } from './integrations.js';
-import { setupCategories } from './setup.js';
 import { viewsCategories } from './views.js';
 
 /**
- * All categories, in nav order (group order: Setup, Integrations, Editor, Views, General).
+ * All categories, in nav order (group order: Integrations, Editor, Views, General).
  * `annotationsCategories` + `editorCategories` are both `group: 'Editor'` — two
  * source files for one merged nav group (former "Annotations" + "In-editor").
  */
 export const settingsCategories: readonly SettingsCategory[] = [
-	...setupCategories,
 	...integrationsCategories,
 	...viewsCategories,
 	...annotationsCategories,
@@ -22,11 +20,9 @@ export const settingsCategories: readonly SettingsCategory[] = [
 ];
 
 /**
- * Category the app lands on when there's no persisted selection — the Get Started
- * launchpad, deliberately not the top of the rail (Account), so a first open leads
- * with setup rather than billing.
+ * Category the app lands on when there's no persisted selection.
  */
-export const defaultSettingsCategoryId = 'setup';
+export const defaultSettingsCategoryId = 'remotes';
 
 /** The `defaultSettingsCategoryId` category, or the top of the rail if it ever goes missing. */
 export const defaultSettingsCategory: SettingsCategory =

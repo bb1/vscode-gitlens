@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
 suite('Offline runtime boundaries', () => {
-	test('does not construct GitKraken product services or agents during activation', async () => {
+	test('does not construct removed product services during activation', async () => {
 		const container = await readSource('src/container.ts');
 		const extension = await readSource('src/extension.ts');
 
@@ -15,7 +15,7 @@ suite('Offline runtime boundaries', () => {
 		}
 	});
 
-	test('keeps local MCP activation without GitKraken CLI or MCP registration', async () => {
+	test('keeps local MCP activation without remote CLI registration', async () => {
 		const container = await readSource('src/container.ts');
 		const nodeProviders = await readSource('src/env/node/providers.ts');
 		const browserProviders = await readSource('src/env/browser/providers.ts');

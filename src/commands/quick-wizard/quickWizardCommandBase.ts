@@ -723,13 +723,6 @@ export abstract class QuickWizardCommandBase extends GlCommandBase {
 
 									case Directive.Noop:
 										return;
-
-									case Directive.SignIn:
-									case Directive.RequiresVerification:
-									case Directive.StartProTrial:
-									case Directive.RequiresPaidSubscription:
-										resolve(undefined);
-										return;
 								}
 							}
 						}

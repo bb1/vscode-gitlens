@@ -14,6 +14,7 @@ import { maybeStopWatch, Stopwatch } from '@gitlens/utils/stopwatch.js';
 import type { GlWebviewCommands } from '../constants.commands.js';
 import type {
 	Source,
+	TelemetryEventData,
 	TelemetryEvents,
 	WebviewTelemetryContext,
 	WebviewTelemetryEvents,
@@ -29,13 +30,8 @@ import type {
 	WebviewViewTypes,
 } from '../constants.views.js';
 import type { Container } from '../container.js';
-import { getSubscriptionNextPaidPlanId } from '../plus/gk/utils/subscription.utils.js';
 import { executeCommand, executeCoreCommand } from '../system/-webview/command.js';
-import {
-	includesContextDelimitedString,
-	removeFromContextDelimitedString,
-	setContext,
-} from '../system/-webview/context.js';
+import { setContext } from '../system/-webview/context.js';
 import { getViewFocusCommand } from '../system/-webview/vscode/views.js';
 import { serializeIpcData } from '../system/ipcSerialize.js';
 import type { WebviewContext } from '../system/webview.js';
@@ -51,7 +47,6 @@ import type {
 } from './ipc/models/ipc.js';
 import type { WebviewFocusChangedParams, WebviewState } from './protocol.js';
 import {
-	ApplicablePromoRequest,
 	DidChangeHostWindowFocusNotification,
 	DidChangeWebviewFocusNotification,
 	DidChangeWebviewVisibilityNotification,
@@ -329,28 +324,6 @@ export class WebviewController<
 		});
 	}
 
-	private async removePlusFeatureOverride() {
-		if (!this.descriptor.plusFeature) {
-			return;
-		}
-
-		if (includesContextDelimitedString('gitlens:plus:disabled:view:overrides', this.descriptor.id)) {
-			const action = 'Enable Pro Features';
-			void window
-				.showInformationMessage(
-					`${this.descriptor.title} was closed as Pro features have been disabled.`,
-					action,
-				)
-				.then(selection => {
-					if (selection === action) {
-						void executeCommand('gitlens.plus.restore');
-					}
-				});
-		}
-
-		return removeFromContextDelimitedString('gitlens:plus:disabled:view:overrides', [this.descriptor.id]);
-	}
-
 	private _disposed: boolean = false;
 	dispose(): void {
 		this._disposed = true;
@@ -363,8 +336,6 @@ export class WebviewController<
 		this._replayEnabled = false;
 		this._replayBuffer.length = 0;
 		resetContextKeys(this.descriptor.contextKeyPrefix);
-
-		void this.removePlusFeatureOverride();
 
 		this.provider?.onFocusChanged?.(false);
 		this.provider?.onVisibilityChanged?.(false);
@@ -438,12 +409,7 @@ export class WebviewController<
 		};
 	}
 
-	sendTelemetryEvent<T extends keyof TelemetryEvents>(
-		name: T,
-		...args: [keyof WebviewTelemetryEvents[T]] extends [never]
-			? [data?: never, source?: Source]
-			: [data: WebviewTelemetryEvents[T], source?: Source]
-	): void {
+	sendTelemetryEvent(name: string, data?: TelemetryEventData, source?: Source): void {
 		if (!this.container.telemetry.enabled) return;
 
 		this.container.telemetry.sendEvent(
@@ -451,9 +417,9 @@ export class WebviewController<
 			{
 				...this.getTelemetryContext(),
 				...this.provider.getTelemetryContext?.(),
-				...(args[0] as any),
+				...data,
 			},
-			args[1],
+			source,
 		);
 	}
 
@@ -816,17 +782,6 @@ export class WebviewController<
 				}
 				break;
 
-			case ApplicablePromoRequest.is(e): {
-				const subscription = await this.container.subscription.getSubscription();
-				const promo = await this.container.productConfig.getApplicablePromo(
-					subscription.state,
-					e.params.plan ?? getSubscriptionNextPaidPlanId(subscription),
-					e.params.location,
-					e.params.expiringOnly,
-				);
-				void this.respond(ApplicablePromoRequest, e, { promo: promo });
-				break;
-			}
 			case TelemetrySendEventCommand.is(e):
 				this.sendTelemetryEvent(
 					e.params.name,
@@ -880,14 +835,10 @@ export class WebviewController<
 				this.provider.onActiveChanged?.(active);
 				if (!active) {
 					this.handleFocusChanged(false);
-
-					void this.removePlusFeatureOverride();
 				}
 			}
 		} else {
 			resetContextKeys(this.descriptor.contextKeyPrefix);
-
-			void this.removePlusFeatureOverride();
 
 			if (active != null) {
 				this.provider.onActiveChanged?.(false);

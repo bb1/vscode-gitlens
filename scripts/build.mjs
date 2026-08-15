@@ -183,14 +183,12 @@ if (isFullBuild && !watch) {
 	bundleCmds = [cmd];
 }
 
-// Run the bundle process(es) and, for one-shot builds, a single whole-project oxlint (lint +
-// type-check) pass concurrently. tsgo-backed type checking and Rust-native linting both run inside
-// oxlint, so a single pass covers both. Watch builds lint incrementally via
-// the inline OxLintWebpackPlugin (added whenever not in quick mode), so they skip this standalone pass.
+// Run bundles and validate the explicit active projects. Deferred product trees are intentionally
+// excluded from this offline runtime and must not participate in its build validation.
 const tasks = bundleCmds.map(c => run(c));
 if (!quick && !watch) {
-	tasks.push(run(`oxlint --type-aware --type-check`));
 	tasks.push(run(`node ./scripts/check-deps.mjs`));
+	tasks.push(run(`node ./scripts/checkCleanroom.mjs`));
 }
 
 // allSettled (not all) so a failure in one process never abandons the others mid-flight — every

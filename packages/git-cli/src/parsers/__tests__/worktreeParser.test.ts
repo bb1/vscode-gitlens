@@ -13,13 +13,13 @@ suite('Worktree Parser Test Suite', () => {
 		test('parses a locked worktree with a single-word lock reason', () => {
 			const data = buildPorcelain(
 				mainWorktree,
-				'worktree /repo/wt\nHEAD 2222222222222222222222222222222222222222\nbranch refs/heads/wt\nlocked kepler:task:cb600cca-949d-4dd4-8148-3d48da0079f8',
+				'worktree /repo/wt\nHEAD 2222222222222222222222222222222222222222\nbranch refs/heads/wt\nlocked task:cb600cca-949d-4dd4-8148-3d48da0079f8',
 			);
 
 			const worktrees = parseGitWorktrees(data, '/repo', []);
 
 			assert.strictEqual(worktrees.length, 2);
-			assert.strictEqual(worktrees[1].locked, 'kepler:task:cb600cca-949d-4dd4-8148-3d48da0079f8');
+			assert.strictEqual(worktrees[1].locked, 'task:cb600cca-949d-4dd4-8148-3d48da0079f8');
 		});
 
 		test('parses a locked worktree with a multi-word lock reason', () => {

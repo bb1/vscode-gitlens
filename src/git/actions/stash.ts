@@ -35,7 +35,7 @@ export function pop(repo?: string | GlRepository, ref?: GitStashReference): Prom
 	});
 }
 
-export function push(
+export async function push(
 	repo?: string | GlRepository,
 	uris?: Uri[],
 	message?: string,
@@ -45,21 +45,19 @@ export function push(
 	onlyStagedUris?: Uri[],
 	reducedConfirm?: boolean,
 ): Promise<void> {
-	return executeGitCommand({
-		command: 'stash',
-		state: {
-			subcommand: 'push',
-			repo: repo,
-			uris: uris,
-			onlyStagedUris: onlyStagedUris,
-			message: message,
-			flags: [
-				...(includeUntracked ? ['--include-untracked' as const] : []),
-				...(keepStaged ? ['--keep-index' as const] : []),
-				...(onlyStaged ? ['--staged' as const] : []),
-			],
-			reducedConfirm: reducedConfirm,
-		},
+	void onlyStagedUris;
+	void reducedConfirm;
+
+	const repository =
+		typeof repo === 'string'
+			? Container.instance.git.getRepository(repo)
+			: (repo ?? Container.instance.git.getBestRepository());
+	if (repository == null) return;
+
+	await repository.git.stash?.saveStash(message, uris, {
+		includeUntracked: includeUntracked,
+		keepIndex: keepStaged,
+		onlyStaged: onlyStaged,
 	});
 }
 

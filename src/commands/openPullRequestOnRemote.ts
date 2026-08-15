@@ -21,7 +21,7 @@ export class OpenPullRequestOnRemoteCommand extends GlCommandBase {
 	}
 
 	protected override preExecute(context: CommandContext, args?: OpenPullRequestOnRemoteCommandArgs): Promise<void> {
-		if (context.type === 'viewItem' && (context.node.is('pullrequest') || context.node.is('launchpad-item'))) {
+		if (context.type === 'viewItem' && context.node.is('pullrequest')) {
 			args = {
 				...args,
 				pr: context.node.pullRequest != null ? { url: context.node.pullRequest.url } : undefined,

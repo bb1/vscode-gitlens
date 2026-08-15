@@ -46,15 +46,10 @@ const pkgMgr = useNpm ? 'npm' : 'pnpm';
 function getLibraryAliases() {
 	return {
 		'@gitlens/utils': path.resolve(__dirname, 'packages', 'utils', 'src'),
-		'@gitlens/ipc': path.resolve(__dirname, 'packages', 'ipc', 'src'),
 		'@gitlens/git': path.resolve(__dirname, 'packages', 'git', 'src'),
 		'@gitlens/git-cli': path.resolve(__dirname, 'packages', 'git-cli', 'src'),
 		'@gitlens/hosting-integrations': path.resolve(__dirname, 'packages', 'integrations', 'src'),
 		'@gitlens/hosting-github': path.resolve(__dirname, 'packages', 'git-github', 'src'),
-		'@gitlens/git-github': path.resolve(__dirname, 'packages', 'plus', 'git-github', 'src'),
-		'@gitlens/integrations': path.resolve(__dirname, 'packages', 'plus', 'integrations', 'src'),
-		'@gitlens/ai': path.resolve(__dirname, 'packages', 'plus', 'ai', 'src'),
-		'@gitlens/agents': path.resolve(__dirname, 'packages', 'plus', 'agents', 'src'),
 	};
 }
 
@@ -358,19 +353,6 @@ function getExtensionConfig(target, mode, env) {
 								// `defaultVendors` (minChunks 1) extracts every async dep into numeric vendor chunks.
 								default: false,
 								defaultVendors: false,
-								// zod + compose-tools (+ all first-party compose code: the webview compose
-								// integrations, the coretools compose backend, and the env-node composer
-								// factory) are the AI/compose feature family, lazily imported by both the
-								// composer and graph controllers. Emit one shared chunk instead of duplicating
-								// it (and a per-controller wrapper) across them.
-								compose: {
-									test: /([\\/]node_modules[\\/](zod|@gitkraken[\\/](compose-tools|shared-tools))[\\/]|[\\/]src[\\/](webviews[\\/].*[\\/]compose[\\/]|plus[\\/]coretools[\\/]compose[\\/]|env[\\/]node[\\/]coretools[\\/]composer))/,
-									name: 'compose',
-									minChunks: 2,
-									priority: 20,
-									reuseExistingChunk: true,
-									enforce: true,
-								},
 								// The webview RPC service layer + shared webview infra are copied into every
 								// webview controller (commitDetails, timeline, graph, home, …); emit them once.
 								webviewShared: {
@@ -411,8 +393,6 @@ function getExtensionConfig(target, mode, env) {
 				'signal-polyfill': path.resolve(__dirname, 'node_modules', 'signal-polyfill'),
 				...getLibraryAliases(),
 				...getUtilsEnvAliases(target),
-				// Stupid dependency that is used by `http[s]-proxy-agent` (via @gitkraken/provider-apis)
-				debug: path.resolve(__dirname, 'patches', 'debug.js'),
 				// This dependency is very large, and isn't needed for our use-case
 				tr46: path.resolve(__dirname, 'patches', 'tr46.js'),
 				// This dependency is unnecessary for our use-case
@@ -485,12 +465,8 @@ function getWebviewsConfigs(mode, env) {
 		allowedSigners: { entry: './allowedSigners/allowedSigners.ts' },
 		commitDetails: { entry: './commitDetails/commitDetails.ts' },
 		graph: { entry: './graph/graph.ts' },
-		home: { entry: './home/home.ts' },
 		rebase: { entry: './rebase/rebase.ts' },
 		settings: { entry: './settings/settings.ts' },
-		timeline: { entry: './plus/timeline/timeline.ts', plus: true },
-		patchDetails: { entry: './plus/patchDetails/patchDetails.ts', plus: true },
-		welcome: { entry: './welcome/welcome.ts' },
 	};
 
 	if (env.webviews) {

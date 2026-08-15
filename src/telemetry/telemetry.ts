@@ -1,5 +1,5 @@
 import type { Disposable } from 'vscode';
-import type { Source, TelemetryEvents, TelemetryGlobalContext } from '../constants.telemetry.js';
+import type { Source, TelemetryEventData, TelemetryGlobalContext } from '../constants.telemetry.js';
 
 type TimeInput = number | Date | [number, number];
 
@@ -14,18 +14,14 @@ export class TelemetryService implements Disposable {
 
 	dispose(): void {}
 
-	sendEvent<T extends keyof TelemetryEvents>(
-		_name: T,
-		..._args: TelemetryEvents[T] extends void
-			? [data?: never, source?: Source, startTime?: TimeInput, endTime?: TimeInput]
-			: [data: TelemetryEvents[T], source?: Source, startTime?: TimeInput, endTime?: TimeInput]
+	sendEvent(
+		_name: string,
+		..._args: [data?: TelemetryEventData, source?: Source, startTime?: TimeInput, endTime?: TimeInput]
 	): void {}
 
-	startEvent<T extends keyof TelemetryEvents>(
-		_name: T,
-		..._args: TelemetryEvents[T] extends void
-			? [data?: never, source?: Source, startTime?: TimeInput]
-			: [data: TelemetryEvents[T], source?: Source, startTime?: TimeInput]
+	startEvent(
+		_name: string,
+		..._args: [data?: TelemetryEventData, source?: Source, startTime?: TimeInput]
 	): Disposable | undefined {
 		return undefined;
 	}

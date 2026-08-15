@@ -45,4 +45,37 @@ suite('RebaseWebviewProvider', () => {
 			applyEdit.restore();
 		}
 	});
+
+	test('does not write the todo document after aborting the paused operation', async () => {
+		const disposable = { dispose: () => {} };
+		const save = sinon.stub().resolves(true);
+		const document = {
+			lineCount: 1,
+			save: save,
+			uri: Uri.file('/repo/.git/rebase-merge/git-rebase-todo'),
+		} as unknown as TextDocument;
+		const svc = {
+			pausedOps: { abortPausedOperation: sinon.stub().resolves() },
+		} as unknown as GitRepositoryService;
+		const container = {
+			git: {
+				getRepository: () => undefined,
+				getRepositoryService: () => svc,
+			},
+			onboarding: { onDidChange: () => disposable },
+		} as unknown as Container;
+		const host = { sendTelemetryEvent: () => {} } as unknown as WebviewHost<'gitlens.rebase'>;
+		const applyEdit = sinon.stub(workspace, 'applyEdit').resolves(true);
+		const provider = new RebaseWebviewProvider(container, host, document, '/repo');
+
+		try {
+			await provider['onAbort']();
+
+			assert.strictEqual(applyEdit.called, false);
+			assert.strictEqual(save.called, false);
+		} finally {
+			provider.dispose();
+			applyEdit.restore();
+		}
+	});
 });

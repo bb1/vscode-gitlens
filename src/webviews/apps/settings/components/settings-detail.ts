@@ -13,10 +13,7 @@ import type { SettingsState } from '../state.js';
 import { settingsStateContext } from '../state.js';
 import './setting-control.js';
 import './settings-preview.js';
-import './settings-setup.js';
-import '../../plus/shared/components/account-chip.js';
 import '../../shared/components/code-icon.js';
-import '../../shared/components/feature-badge.js';
 import '../../shared/components/icons/icon-cube.js';
 import '../../shared/components/switch/switch.js';
 
@@ -230,11 +227,6 @@ export class GlSettingsDetail extends SignalWatcher(LitElement) {
 		return Boolean(this._state.getSettingValue<unknown>(master.key));
 	}
 
-	/** Org-disabled AI forces the feature off — the master switch must not offer a toggle with no effect. */
-	private get masterDisabledByOrg(): boolean {
-		return this.category.controls.some(c => c.kind === 'ai') && this._state.aiState.get()?.orgEnabled === false;
-	}
-
 	/**
 	 * Whether a matched control should render highlighted (and so force-reveal
 	 * itself if `visibleWhen`-hidden). Some settings are deliberately authored
@@ -290,33 +282,8 @@ export class GlSettingsDetail extends SignalWatcher(LitElement) {
 
 		const category = this.category;
 
-		// The Get Started launchpad owns the whole pane — its own brand hero replaces the
-		// standard category header, so it renders full-bleed (the rows self-cap their width).
-		if (category.controls.length === 1 && category.controls[0].kind === 'setup') {
-			return html`
-				<section aria-label=${category.name}>
-					<gl-settings-setup .actions=${this.actions}></gl-settings-setup>
-					${category.learnMoreUrl != null ? html`<p class="footer">${this.renderLearnMore(category)}</p>` : nothing}
-				</section>
-			`;
-		}
-
-		// The account section renders the shared account chip inline: it carries its own header
-		// (plan title + actions) and swaps to a sign-in / create-account screen when signed out,
-		// so it replaces the standard category header the same way the launchpad does.
-		if (category.controls.length === 1 && category.controls[0].kind === 'account') {
-			return html`
-				<section aria-label=${category.name}>
-					<div class="account">
-						<gl-account-chip display="panel"></gl-account-chip>
-					</div>
-					${category.learnMoreUrl != null ? html`<p class="footer">${this.renderLearnMore(category)}</p>` : nothing}
-				</section>
-			`;
-		}
-
 		const masterOn = this.masterOn;
-		const masterDisabledByOrg = this.masterDisabledByOrg;
+		const masterDisabledByOrg = false;
 		const highlighted = new Set(this._state.highlightedKeys.get());
 
 		return html`
@@ -325,17 +292,7 @@ export class GlSettingsDetail extends SignalWatcher(LitElement) {
 					<div class="header__row">
 						<gl-icon-cube class="header__icon" icon=${category.icon} aria-hidden="true"></gl-icon-cube>
 						<div class="header__text">
-							<h2 class="header__title" id="category-title">
-								${category.name}
-								${
-									category.pro
-										? html`<gl-feature-badge
-												.source=${{ source: 'settings', detail: 'header' } as const}
-												.subscription=${this._state.subscription.get()}
-											></gl-feature-badge>`
-										: nothing
-								}
-							</h2>
+							<h2 class="header__title" id="category-title">${category.name}</h2>
 							<p class="header__hint">${linkify(category.hint)}</p>
 						</div>
 						${
@@ -347,7 +304,7 @@ export class GlSettingsDetail extends SignalWatcher(LitElement) {
 										label="Enable ${category.name}"
 										hint=${ifDefined(
 											masterDisabledByOrg
-												? 'AI features have been disabled by your GitKraken admin.'
+												? 'This setting is managed by your organization.'
 												: undefined,
 										)}
 										@gl-change-value=${(e: Event) => {
@@ -430,7 +387,7 @@ export class GlSettingsDetail extends SignalWatcher(LitElement) {
 
 	/**
 	 * Whether the category maps to any GitLens config the native Settings UI can
-	 * search for — so a pure-navigation category (the Setup launchpad) doesn't
+	 * search for — so a pure-navigation category doesn't
 	 * fabricate a `gitlens.<id>` footer that resolves to nothing.
 	 */
 	private get hasSettingsSearch(): boolean {

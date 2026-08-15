@@ -40,7 +40,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"
@@ -159,7 +159,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"
@@ -263,7 +263,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"

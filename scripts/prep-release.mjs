@@ -19,7 +19,7 @@ let data = await readFile(changelogPath, 'utf8');
 
 // Find the current version number (accepts either old `v` or new `releases/ext/v` form during the migration window)
 const match =
-	/\[unreleased\]: https:\/\/github\.com\/gitkraken\/vscode-gitlens\/compare\/(?:releases\/ext\/v|v)(.+)\.\.\.HEAD/.exec(
+	/\[unreleased\]: https:\/\/github\.com\/bb1\/vscode-gitlens\/compare\/(?:releases\/ext\/v|v)(.+)\.\.\.HEAD/.exec(
 		data,
 	);
 let currentVersion = match?.[1];
@@ -83,14 +83,14 @@ rl.question(`Enter the new version number (format x.x.x, current is ${currentVer
 	const dd = String(today.getDate()).padStart(2, '0');
 
 	const newVersionHeader = `## [Unreleased]\n\n## [${version}] - ${yyyy}-${mm}-${dd}`;
-	const newVersionLink = `[${version}]: https://github.com/gitkraken/vscode-gitlens/compare/${tagPrefix}${currentVersion}...gitkraken:${tagPrefix}${version}`;
+	const newVersionLink = `[${version}]: https://github.com/bb1/vscode-gitlens/compare/${tagPrefix}${currentVersion}...${tagPrefix}${version}`;
 
 	// Add the new version header below the ## [Unreleased] header
 	data = data.replace('## [Unreleased]', newVersionHeader);
 
 	if (match == null) {
 		// Add the [unreleased]: line
-		data += `\n[unreleased]: https://github.com/gitkraken/vscode-gitlens/compare/${tagPrefix}${version}...HEAD`;
+		data += `\n[unreleased]: https://github.com/bb1/vscode-gitlens/compare/${tagPrefix}${version}...HEAD`;
 	} else {
 		const unreleasedLink = match[0].replace(
 			/\/compare\/(?:releases\/ext\/v|v)(.+?)\.\.\.HEAD/,

@@ -93,7 +93,7 @@ export const bannerStyles = css`
 
 	/* Gradient purple display mode - matches the auto-composer container styling */
 	.banner--gradient-purple {
-		background: var(--gl-gradient-brand-subtle);
+		background: var(--gl-gradient-accent-subtle);
 		border: var(--gl-border-width) solid var(--vscode-panel-border);
 		border-radius: var(--gl-radius-md);
 	}

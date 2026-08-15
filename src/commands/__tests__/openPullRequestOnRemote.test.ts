@@ -13,7 +13,7 @@ suite('OpenPullRequestOnRemoteCommand', () => {
 				getRepositoryService: () => ({
 					remotes: {
 						getBestRemoteWithProvider: async () => ({
-							provider: new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens'),
+							provider: new GitHubRemoteProvider('github.com', 'example-org/example-repo'),
 						}),
 					},
 				}),
@@ -26,7 +26,7 @@ suite('OpenPullRequestOnRemoteCommand', () => {
 							id: '1',
 							number: 1,
 							title: 'Direct provider PR',
-							url: 'https://github.com/gitkraken/vscode-gitlens/pull/1',
+							url: 'https://github.com/example-org/example-repo/pull/1',
 							state: 'open',
 						};
 					},
@@ -49,7 +49,7 @@ suite('OpenPullRequestOnRemoteCommand', () => {
 				getRepositoryService: () => ({
 					remotes: {
 						getBestRemoteWithProvider: async () => ({
-							provider: new GitHubRemoteProvider('github.com', 'gitkraken/vscode-gitlens'),
+							provider: new GitHubRemoteProvider('github.com', 'example-org/example-repo'),
 						}),
 					},
 				}),

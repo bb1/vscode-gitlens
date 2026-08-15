@@ -24,14 +24,14 @@ import { createHostEndpoint } from './hostEndpoint.js';
 export interface RpcHostOptions {
 	/**
 	 * Webview identifier used to tag log lines produced by this RPC channel.
-	 * Example: `gitlens.views.home`.
+	 * Example: `gitlens.views.graph`.
 	 */
 	webviewId?: WebviewIds;
 
 	/**
 	 * Webview instance identifier appended to the log tag, matching the existing
 	 * `WebviewController(id|instance)` convention. Helpful when multiple instances
-	 * of the same webview (e.g. multiple Timeline panels) are active at once.
+	 * of the same webview are active at once.
 	 */
 	webviewInstanceId?: string;
 

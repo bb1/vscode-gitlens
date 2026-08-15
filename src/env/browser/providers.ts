@@ -34,18 +34,6 @@ export function getSupportedGitProviders(
 	}).then(provider => (provider == null ? [] : [provider]));
 }
 
-export function getSharedGKStorageLocationProvider(_container: Container): undefined {
-	return undefined;
-}
-
-export function getSupportedRepositoryLocationProvider(_container: Container, _sharedStorage: unknown): undefined {
-	return undefined;
-}
-
-export function getSupportedWorkspacesStorageProvider(_container: Container, _sharedStorage: unknown): undefined {
-	return undefined;
-}
-
 export type LocalMcpService = never;
 
 export function getMcpService(_container: Container | undefined): undefined {

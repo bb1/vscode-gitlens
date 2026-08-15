@@ -1,11 +1,9 @@
 import type { Uri } from 'vscode';
-import { InputBoxValidationSeverity, QuickInputButtons, window } from 'vscode';
-import type { AIModel } from '@gitlens/ai/models/model.js';
+import { QuickInputButtons, window } from 'vscode';
 import { StashPushError } from '@gitlens/git/errors.js';
 import { uncommitted, uncommittedStaged } from '@gitlens/git/models/revision.js';
 import { getLoggableName, Logger } from '@gitlens/utils/logger.js';
 import { maybeStartScopedLogger } from '@gitlens/utils/logger.scoped.js';
-import { defer } from '@gitlens/utils/promise.js';
 import { pad } from '@gitlens/utils/string.js';
 import { GlyphChars } from '../../../constants.js';
 import type { Container } from '../../../container.js';
@@ -24,7 +22,6 @@ import type {
 	StepState,
 } from '../../quick-wizard/models/steps.js';
 import { StepResultBreak } from '../../quick-wizard/models/steps.js';
-import { GenerateStashMessageQuickInputButton } from '../../quick-wizard/quickButtons.js';
 import { QuickCommand } from '../../quick-wizard/quickCommand.js';
 import { canSkipRepositoryPick, pickRepositoryStep } from '../../quick-wizard/steps/repositories.js';
 import { StepsController } from '../../quick-wizard/stepsController.js';
@@ -248,78 +245,8 @@ export class StashPushGitCommand extends QuickCommand<State> {
 			placeholder: 'Stash message',
 			value: state.message,
 			prompt: 'Please provide a stash message',
-			buttons: this.container.ai.allowed
-				? [QuickInputButtons.Back, GenerateStashMessageQuickInputButton]
-				: [QuickInputButtons.Back],
+			buttons: [QuickInputButtons.Back],
 			validate: (_value: string | undefined): [boolean, string | undefined] => [true, undefined],
-			onDidClickButton: async (input, button) => {
-				if (button === GenerateStashMessageQuickInputButton) {
-					using resume = step.freeze?.();
-
-					try {
-						const uris = state.uris?.length ? { uris: state.uris } : undefined;
-
-						let contents: string | undefined;
-						if (state.flags.includes('--staged')) {
-							const diff = await state.repo.git.diff.getDiff?.(uncommittedStaged, undefined, uris);
-							contents = diff?.contents;
-						} else {
-							// `git stash push` (without --staged) captures both staged and unstaged tracked changes
-							const [stagedDiff, unstagedDiff] = await Promise.all([
-								state.repo.git.diff.getDiff?.(uncommittedStaged, undefined, uris),
-								state.repo.git.diff.getDiff?.(uncommitted, undefined, uris),
-							]);
-							const parts: string[] = [];
-							if (stagedDiff?.contents) {
-								parts.push(stagedDiff.contents);
-							}
-							if (unstagedDiff?.contents) {
-								parts.push(unstagedDiff.contents);
-							}
-							contents = parts.length ? parts.join('\n') : undefined;
-						}
-
-						if (!contents) {
-							void window.showInformationMessage('No changes to generate a stash message from.');
-							return;
-						}
-
-						const generating = defer<AIModel>();
-						generating.promise.then(
-							m =>
-								(input.validationMessage = {
-									severity: InputBoxValidationSeverity.Info,
-									message: `$(loading~spin) Generating stash message with ${m.name}...`,
-								}),
-							() => (input.validationMessage = undefined),
-						);
-
-						const result = await this.container.ai.actions.generateStashMessage(
-							contents,
-							{ source: 'quick-wizard' },
-							{ generating: generating },
-						);
-
-						resume?.dispose();
-						input.validationMessage = undefined;
-
-						if (result === 'cancelled') return;
-
-						const message = result?.result.summary;
-						if (message != null) {
-							state.message = message;
-							input.value = message;
-						}
-					} catch (ex) {
-						scope?.error(ex, 'generateStashMessage');
-
-						input.validationMessage = {
-							severity: InputBoxValidationSeverity.Error,
-							message: ex.message,
-						};
-					}
-				}
-			},
 		});
 		const value: StepSelection<typeof step> = yield step;
 		if (!canStepContinue(step, state, value) || !(await canInputStepContinue(step, state, value))) {

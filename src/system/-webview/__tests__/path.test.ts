@@ -19,150 +19,150 @@ suite('Path Test Suite', () => {
 		}
 
 		test('splitPath: no repoPath', () => {
-			assertSplitPath(splitPath('C:\\User\\Name\\code\\gitkraken\\vscode-gitlens', ''), [
-				'C:/User/Name/code/gitkraken/vscode-gitlens',
+			assertSplitPath(splitPath('C:\\User\\Name\\code\\example-org\\example-repo', ''), [
+				'C:/User/Name/code/example-org/example-repo',
 				'',
 			]);
 
-			assertSplitPath(splitPath('C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\', ''), [
-				'C:/User/Name/code/gitkraken/vscode-gitlens',
+			assertSplitPath(splitPath('C:\\User\\Name\\code\\example-org\\example-repo\\', ''), [
+				'C:/User/Name/code/example-org/example-repo',
 				'',
 			]);
 
-			assertSplitPath(splitPath('C:/User/Name/code/gitkraken/vscode-gitlens', ''), [
-				'C:/User/Name/code/gitkraken/vscode-gitlens',
+			assertSplitPath(splitPath('C:/User/Name/code/example-org/example-repo', ''), [
+				'C:/User/Name/code/example-org/example-repo',
 				'',
 			]);
 
-			assertSplitPath(splitPath('C:/User/Name/code/gitkraken/vscode-gitlens/', ''), [
-				'C:/User/Name/code/gitkraken/vscode-gitlens',
+			assertSplitPath(splitPath('C:/User/Name/code/example-org/example-repo/', ''), [
+				'C:/User/Name/code/example-org/example-repo',
 				'',
 			]);
 		});
 
 		test('splitPath: no repoPath (split base)', () => {
-			assertSplitPath(splitPath('C:\\User\\Name\\code\\gitkraken\\vscode-gitlens', '', true), [
-				'vscode-gitlens',
-				'C:/User/Name/code/gitkraken',
+			assertSplitPath(splitPath('C:\\User\\Name\\code\\example-org\\example-repo', '', true), [
+				'example-repo',
+				'C:/User/Name/code/example-org',
 			]);
 
-			assertSplitPath(splitPath('C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\', '', true), [
-				'vscode-gitlens',
-				'C:/User/Name/code/gitkraken',
+			assertSplitPath(splitPath('C:\\User\\Name\\code\\example-org\\example-repo\\', '', true), [
+				'example-repo',
+				'C:/User/Name/code/example-org',
 			]);
 
-			assertSplitPath(splitPath('C:/User/Name/code/gitkraken/vscode-gitlens', '', true), [
-				'vscode-gitlens',
-				'C:/User/Name/code/gitkraken',
+			assertSplitPath(splitPath('C:/User/Name/code/example-org/example-repo', '', true), [
+				'example-repo',
+				'C:/User/Name/code/example-org',
 			]);
 
-			assertSplitPath(splitPath('C:/User/Name/code/gitkraken/vscode-gitlens/', '', true), [
-				'vscode-gitlens',
-				'C:/User/Name/code/gitkraken',
+			assertSplitPath(splitPath('C:/User/Name/code/example-org/example-repo/', '', true), [
+				'example-repo',
+				'C:/User/Name/code/example-org',
 			]);
 		});
 
 		test('splitPath: match', () => {
 			assertSplitPath(
 				splitPath(
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\foo\\bar\\baz.ts',
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens',
+					'C:\\User\\Name\\code\\example-org\\example-repo\\foo\\bar\\baz.ts',
+					'C:\\User\\Name\\code\\example-org\\example-repo',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\foo\\bar\\baz.ts',
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\',
+					'C:\\User\\Name\\code\\example-org\\example-repo\\foo\\bar\\baz.ts',
+					'C:\\User\\Name\\code\\example-org\\example-repo\\',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\foo\\bar\\baz.ts',
-					'C:/User/Name/code/gitkraken/vscode-gitlens',
+					'C:\\User\\Name\\code\\example-org\\example-repo\\foo\\bar\\baz.ts',
+					'C:/User/Name/code/example-org/example-repo',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:\\User\\Name\\code\\gitkraken\\vscode-gitlens\\foo\\bar\\baz.ts',
-					'C:/User/Name/code/gitkraken/vscode-gitlens/',
+					'C:\\User\\Name\\code\\example-org\\example-repo\\foo\\bar\\baz.ts',
+					'C:/User/Name/code/example-org/example-repo/',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:/User/Name/code/gitkraken/vscode-gitlens/foo/bar/baz.ts',
-					'C:/User/Name/code/gitkraken/vscode-gitlens',
+					'C:/User/Name/code/example-org/example-repo/foo/bar/baz.ts',
+					'C:/User/Name/code/example-org/example-repo',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:/User/Name/code/gitkraken/vscode-gitlens/foo/bar/baz.ts',
-					'C:/User/Name/code/gitkraken/vscode-gitlens/',
+					'C:/User/Name/code/example-org/example-repo/foo/bar/baz.ts',
+					'C:/User/Name/code/example-org/example-repo/',
 				),
-				['foo/bar/baz.ts', 'C:/User/Name/code/gitkraken/vscode-gitlens'],
+				['foo/bar/baz.ts', 'C:/User/Name/code/example-org/example-repo'],
 			);
 		});
 
 		test.skip('splitPath: match (casing)', () => {
 			assertSplitPath(
 				splitPath(
-					'C:/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS',
-					'C:/User/Name/code/gitkraken/vscode-gitlens/',
+					'C:/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS',
+					'C:/User/Name/code/example-org/example-repo/',
 					undefined,
 					true,
 				),
-				['FOO/BAR/BAZ.TS', 'C:/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS'],
+				['FOO/BAR/BAZ.TS', 'C:/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'C:/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS',
-					'C:/User/Name/code/gitkraken/vscode-gitlens/',
+					'C:/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS',
+					'C:/User/Name/code/example-org/example-repo/',
 					undefined,
 					false,
 				),
-				['USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS', 'C:'],
+				['USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS', 'C:'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS',
-					'/User/Name/code/gitkraken/vscode-gitlens/',
+					'/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS',
+					'/User/Name/code/example-org/example-repo/',
 					undefined,
 					true,
 				),
-				['FOO/BAR/BAZ.TS', '/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS'],
+				['FOO/BAR/BAZ.TS', '/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO'],
 			);
 
 			assertSplitPath(
 				splitPath(
-					'/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS',
-					'/User/Name/code/gitkraken/vscode-gitlens/',
+					'/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS',
+					'/User/Name/code/example-org/example-repo/',
 					undefined,
 					false,
 				),
-				['/USER/NAME/CODE/GITKRAKEN/VSCODE-GITLENS/FOO/BAR/BAZ.TS', '/User/Name/code/gitkraken/vscode-gitlens'],
+				['/USER/NAME/CODE/EXAMPLE-ORG/EXAMPLE-REPO/FOO/BAR/BAZ.TS', '/User/Name/code/example-org/example-repo'],
 			);
 		});
 
 		test.skip('splitPath: no match', () => {
 			assertSplitPath(
 				splitPath(
-					'/foo/User/Name/code/gitkraken/vscode-gitlens/foo/bar/baz.ts',
-					'/User/Name/code/gitkraken/vscode-gitlens',
+					'/foo/User/Name/code/example-org/example-repo/foo/bar/baz.ts',
+					'/User/Name/code/example-org/example-repo',
 				),
 				[
-					'/foo/User/Name/code/gitkraken/vscode-gitlens/foo/bar/baz.ts',
-					'/User/Name/code/gitkraken/vscode-gitlens',
+					'/foo/User/Name/code/example-org/example-repo/foo/bar/baz.ts',
+					'/User/Name/code/example-org/example-repo',
 				],
 			);
 		});

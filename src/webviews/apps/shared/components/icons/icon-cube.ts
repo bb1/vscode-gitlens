@@ -28,7 +28,7 @@ export class GlIconCube extends LitElement {
 
 			:host([appearance='brand']) {
 				--gl-icon-cube-color: #fff;
-				--gl-icon-cube-background: var(--gl-gradient-brand);
+				--gl-icon-cube-background: var(--gl-gradient-accent);
 			}
 
 			code-icon {

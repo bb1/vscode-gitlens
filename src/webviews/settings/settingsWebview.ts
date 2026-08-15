@@ -21,7 +21,6 @@ import type { EventVisibilityBuffer, SubscriptionTracker } from '../rpc/eventVis
 import { createRpcEventSubscription } from '../rpc/eventVisibilityBuffer.js';
 import { createSharedServices } from '../rpc/services/common.js';
 import { proxyServices } from '../rpc/services/proxy.js';
-import { WalkthroughService } from '../rpc/walkthroughService.js';
 import type { WebviewHost, WebviewProvider } from '../webviewProvider.js';
 import type { State } from './protocol.js';
 import type { SettingsWebviewShowingArgs } from './registration.js';
@@ -111,8 +110,6 @@ export class SettingsWebviewProvider implements WebviewProvider<State, State, Se
 
 		return proxyServices({
 			...shared,
-
-			walkthrough: new WalkthroughService(this.container, buffer, tracker),
 
 			settings: {
 				// ── Events ──
@@ -282,8 +279,8 @@ export class SettingsWebviewProvider implements WebviewProvider<State, State, Se
 				'1',
 				undefined,
 				'Supercharged',
-				'https://github.com/gitkraken/vscode-gitlens/pulls/1',
-				{ owner: 'gitkraken', repo: 'vscode-gitlens' },
+				'https://github.com/bb1/vscode-gitlens/pulls/1',
+				{ owner: 'bb1', repo: 'vscode-gitlens' },
 				'merged',
 				new Date('Sat, 12 Nov 2016 19:41:00 GMT'),
 				new Date('Sat, 12 Nov 2016 19:41:00 GMT'),

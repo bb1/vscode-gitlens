@@ -1,0 +1,13 @@
+diff --git a/dist/components/slider/slider.d.ts b/dist/components/slider/slider.d.ts
+index 10ed01ac132d42f94f96eae35f7bd3393307d487..1a21c6e03bdfb4c23e17e0d27e84d5cec0ca2010 100644
+--- a/dist/components/slider/slider.d.ts
++++ b/dist/components/slider/slider.d.ts
+@@ -55,7 +55,7 @@ export default class WaSlider extends WebAwesomeFormAssociatedElement {
+     static formAssociated: boolean;
+     static observeSlots: boolean;
+     static css: import("lit").CSSResult[];
+-    static get validators(): (import("../../internal/webawesome-form-associated-element.js").Validator<WebAwesomeFormAssociatedElement> | import("../../internal/webawesome-form-associated-element.js").Validator<WaSlider>)[];
++    static get validators(): import("../../internal/webawesome-form-associated-element.js").Validator<WebAwesomeFormAssociatedElement>[];
+     private draggableTrack;
+     private draggableThumbMin;
+     private draggableThumbMax;

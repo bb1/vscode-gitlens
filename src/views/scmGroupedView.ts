@@ -15,7 +15,6 @@ import { BranchesView } from './branchesView.js';
 import { CommitsView } from './commitsView.js';
 import { ContributorsView } from './contributorsView.js';
 import { FileHistoryView } from './fileHistoryView.js';
-import { LaunchpadView } from './launchpadView.js';
 import type { ViewNode } from './nodes/abstract/viewNode.js';
 import { RemotesView } from './remotesView.js';
 import { RepositoriesView } from './repositoriesView.js';
@@ -84,7 +83,7 @@ export class ScmGroupedView implements Disposable {
 				parents.unshift(parent);
 			}
 
-			this._lastSelectedByView.set(this._view.type, {
+			this._lastSelectedByView.set(this._view.type as GroupableTreeViewTypes, {
 				node: node,
 				parents: parents,
 				expanded: this._view.isNodeExpanded(node),
@@ -204,14 +203,14 @@ export class ScmGroupedView implements Disposable {
 			this._view = this.getView(type);
 
 			if (!destroyTree) {
-				this._view.triggerNodeChange();
+				this._view?.triggerNodeChange();
 			}
 		}
 
 		this.views.lastSelectedScmGroupedView = type;
 
 		if (!options?.preventReveal && !wasVisible) {
-			void this._view.show({ preserveFocus: !options?.focus });
+			void this._view?.show({ preserveFocus: !options?.focus });
 		}
 
 		return this._view as TreeViewByType[T];
@@ -325,7 +324,7 @@ export class ScmGroupedView implements Disposable {
 		};
 	}
 
-	private getView(type: GroupableTreeViewTypes) {
+	private getView(type: GroupableTreeViewTypes): TreeViewByType[GroupableTreeViewTypes] {
 		const grouped = this.ensureGroupedContext();
 
 		switch (type) {
@@ -337,8 +336,6 @@ export class ScmGroupedView implements Disposable {
 				return new ContributorsView(this.container, grouped);
 			case 'fileHistory':
 				return new FileHistoryView(this.container, grouped);
-			case 'launchpad':
-				return new LaunchpadView(this.container, grouped);
 			case 'remotes':
 				return new RemotesView(this.container, grouped);
 			case 'repositories':

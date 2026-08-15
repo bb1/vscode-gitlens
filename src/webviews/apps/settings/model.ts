@@ -189,7 +189,7 @@ export interface IntegrationsPanelDescriptor extends DescriptorBase {
 }
 
 /**
- * The AI integrations panel — provider/model, GitKraken MCP, default coding
+ * The integrations panel — provider/model, local MCP, default coding
  * agent, and Claude Code hooks rows (driven by the shared AI RPC service; the
  * rows act through commands rather than config writes).
  */
@@ -198,7 +198,7 @@ export interface AIPanelDescriptor extends DescriptorBase {
 }
 
 /**
- * The getting-started launchpad panel — live-status cards (integrations
+ * The getting-started panel — live-status cards (integrations
  * connected, AI model, agent MCP/hooks) whose actions navigate in-app to the
  * owning category. State comes from the shared subscription/integrations/AI RPC
  * signals; `label`/`hint` exist for search.
@@ -384,14 +384,10 @@ export function descriptorKeys(d: SettingDescriptor): string[] {
 			return ['remotes'];
 		case 'scm-views':
 			return ['views.scm.grouped.views', 'views.scm.grouped.hiddenViews', 'views.scm.grouped.default'];
-		// The AI panel reflects these settings (read-only or via commands), so a
-		// pasted setting name still lands on the category
-		case 'ai':
-			return ['ai.model'];
-		case 'agents':
-			return ['ai.defaultAgent'];
 		case 'setup':
 		case 'account':
+		case 'agents':
+		case 'ai':
 		case 'integrations':
 		case 'info':
 			return [];

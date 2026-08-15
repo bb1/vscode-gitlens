@@ -9,9 +9,8 @@ import { getRepositoryKey } from '@gitlens/utils/uri.js';
 import type { Source } from '../constants.telemetry.js';
 import type { Container } from '../container.js';
 import { configuration } from '../system/-webview/configuration.js';
-import { loadChunk } from '../system/-webview/loadChunk.js';
 import { buildRemoteProviderConfigs } from './remotes/remoteProviderConfigs.js';
-import { getIntegrationRepositoryInfo, sortRemotes } from './utils/-webview/remote.utils.js';
+import { sortRemotes } from './utils/-webview/remote.utils.js';
 
 /**
  * Creates a {@link GitServiceContext} — config, hooks, workspace resolution,
@@ -125,24 +124,10 @@ export function createGitProviderContext(container: Container): GitServiceContex
 			getCustomProviders: (repoPath: string) => {
 				const repo = container.git.getRepository(repoPath);
 				const configuredRemotes = configuration.get('remotes', repo?.folder?.uri ?? null);
-				const configuredIntegrations = container.integrations.getConfigured();
-				// `getConfigured` is synchronous; the RemotesProvider port is Promise-typed, so bridge here.
-				return Promise.resolve(buildRemoteProviderConfigs(configuredRemotes, configuredIntegrations));
+				return Promise.resolve(buildRemoteProviderConfigs(configuredRemotes));
 			},
-
-			getRepositoryInfo: (providerId, targetDesc) =>
-				getIntegrationRepositoryInfo(container, providerId, targetDesc),
 
 			sort: (remotes, cancellation) => sortRemotes(container, remotes, cancellation),
-		},
-
-		searchQuery: {
-			preprocessQuery: async (search, source) => {
-				const { processNaturalLanguageToSearchQuery } = await loadChunk(
-					() => import(/* webpackChunkName: "ai" */ './search.naturalLanguage.js'),
-				);
-				return processNaturalLanguageToSearchQuery(container, search, source as Source);
-			},
 		},
 
 		workspace: {

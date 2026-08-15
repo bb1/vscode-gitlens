@@ -37,7 +37,7 @@ export interface GitGraphRowHead {
 	 * treat `undefined` as unknown rather than folding it into the negative case.
 	 */
 	upstream?: { name: string; id: string; missing?: boolean; state?: { ahead: number; behind: number } };
-	/** Starred (a GitKraken branch disposition). Structured so `+starred` stops being baked into the
+	/** Starred branch disposition. Structured so `+starred` stops being baked into the
 	 *  serialized context at row-build time, where starring a branch left the label stale. */
 	starred?: boolean;
 	/** Set when this branch is checked out in ANY worktree, including the default one. Grouped so

@@ -410,7 +410,7 @@ export function addWorktree(repoPath: string, dir: string, branch: string): void
 	execFileSync('git', ['worktree', 'add', dir, branch], { cwd: repoPath, stdio: 'pipe' });
 }
 
-/** Set a branch's GitKraken disposition directly in `.git/gk/config` — a metadata-only change (no tip moves). */
+/** Set a branch disposition directly in `.git/gk/config` — a metadata-only change (no tip moves). */
 export function setBranchGkDisposition(repoPath: string, branch: string, disposition: 'starred' | 'archived'): void {
 	const gkDir = join(repoPath, '.git', 'gk');
 	mkdirSync(gkDir, { recursive: true });
