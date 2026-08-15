@@ -40,8 +40,48 @@ export type GraphReplaceMessage = {
 	readonly paging: GraphPaging;
 };
 
+export type GraphWorkspaceRef = {
+	readonly type: 'head' | 'branch' | 'remote' | 'tag';
+	readonly name: string;
+};
+
+export type GraphWorkspaceContext = {
+	readonly repository: {
+		readonly name: string;
+		readonly branch?: string;
+	};
+	readonly refs: readonly GraphWorkspaceRef[];
+};
+
+export type GraphContextMessage = GraphWorkspaceContext & {
+	readonly type: 'graph/context';
+};
+
+export type GraphCommitFile = {
+	readonly path: string;
+	readonly status: string;
+};
+
+export type GraphCommitDetails = {
+	readonly sha: string;
+	readonly author: string;
+	readonly date: number;
+	readonly message: string;
+	readonly refs: readonly GraphWorkspaceRef[];
+	readonly files?: readonly GraphCommitFile[];
+};
+
+export type GraphDetailsMessage = GraphCommitDetails & {
+	readonly type: 'graph/details';
+};
+
 /** Host-to-webview graph data messages. */
-export type GraphHostMessage = GraphBootstrapMessage | GraphAppendMessage | GraphReplaceMessage;
+export type GraphHostMessage =
+	| GraphBootstrapMessage
+	| GraphAppendMessage
+	| GraphReplaceMessage
+	| GraphContextMessage
+	| GraphDetailsMessage;
 export const GraphDidChangeNotification = new IpcNotification<GraphHostMessage>(scope, 'didChange');
 
 export type GraphMoreRequest = {
@@ -61,40 +101,78 @@ export type GraphRowAction = {
 	readonly sha: string;
 };
 
+export type GraphFilterRequest = {
+	readonly type: 'graph/filter';
+	readonly query: string;
+};
+
+export type GraphDetailsRequest = {
+	readonly type: 'graph/details';
+	readonly sha: string;
+	readonly includeFiles: boolean;
+};
+
+export type GraphColumn = 'graph' | 'message' | 'refs' | 'author' | 'date' | 'sha';
+
+export type GraphDisplayPreferences = {
+	readonly columns: readonly GraphColumn[];
+	readonly compact: boolean;
+	readonly minimap: boolean;
+};
+
 /** Webview-to-host interaction messages. */
-export type GraphWebviewMessage = GraphMoreRequest | GraphSelectionUpdate | GraphRowAction;
+export type GraphWebviewMessage =
+	| GraphMoreRequest
+	| GraphSelectionUpdate
+	| GraphRowAction
+	| GraphFilterRequest
+	| GraphDetailsRequest;
 
 const graphPageSizeMax = 5000;
 const graphSelectionMax = 1000;
 const graphParentsMax = 64;
 const graphRefsMax = 64;
+const graphDetailFilesMax = 1000;
+const graphDisplayColumnsMax = 6;
 const graphAuthorMaxLength = 256;
 const graphEmailMaxLength = 320;
 const graphMessageMaxLength = 10000;
+const graphQueryMaxLength = 10000;
 const graphRefNameMaxLength = 1024;
+const graphFilePathMaxLength = 4096;
+const graphFileStatusMaxLength = 16;
 const shaRegex = /^[0-9a-f]{5,64}$/i;
 const rowActions = new Set<GraphRowAction['action']>(['copy-sha', 'open-local', 'open-remote']);
+const graphColumns = new Set<GraphColumn>(['graph', 'message', 'refs', 'author', 'date', 'sha']);
 
 export function parseGraphHostMessage(value: unknown): GraphHostMessage | undefined {
 	if (!isRecord(value) || typeof value.type !== 'string') return undefined;
-	if (value.type !== 'graph/bootstrap' && value.type !== 'graph/append' && value.type !== 'graph/replace') {
-		return undefined;
-	}
-
-	const rows = parseGraphRows(value.rows);
-	const paging = parseGraphPaging(value.paging);
-	if (rows == null || paging == null) return undefined;
 
 	switch (value.type) {
+		case 'graph/context':
+			return parseGraphWorkspaceContext(value);
+		case 'graph/details':
+			return parseGraphCommitDetails(value);
 		case 'graph/bootstrap': {
+			const rows = parseGraphRows(value.rows);
+			const paging = parseGraphPaging(value.paging);
+			if (rows == null || paging == null) return undefined;
+
 			const selection = value.selection;
 			if (selection !== undefined && !isSha(selection)) return undefined;
 
 			return { type: 'graph/bootstrap', rows: rows, paging: paging, selection: selection };
 		}
 		case 'graph/append':
-		case 'graph/replace':
+		case 'graph/replace': {
+			const rows = parseGraphRows(value.rows);
+			const paging = parseGraphPaging(value.paging);
+			if (rows == null || paging == null) return undefined;
+
 			return { type: value.type, rows: rows, paging: paging };
+		}
+		default:
+			return undefined;
 	}
 }
 
@@ -102,6 +180,10 @@ export function parseGraphWebviewMessage(value: unknown): GraphWebviewMessage | 
 	if (!isRecord(value) || typeof value.type !== 'string') return undefined;
 
 	switch (value.type) {
+		case 'graph/details':
+			return parseGraphDetailsRequest(value);
+		case 'graph/filter':
+			return parseGraphFilterRequest(value);
 		case 'graph/more':
 			return parseGraphMoreRequest(value);
 		case 'graph/row/action':
@@ -111,6 +193,22 @@ export function parseGraphWebviewMessage(value: unknown): GraphWebviewMessage | 
 		default:
 			return undefined;
 	}
+}
+
+export function parseGraphDisplayPreferences(value: unknown): GraphDisplayPreferences | undefined {
+	if (
+		!isRecord(value) ||
+		!Array.isArray(value.columns) ||
+		value.columns.length > graphDisplayColumnsMax ||
+		!value.columns.every(isGraphColumn) ||
+		new Set(value.columns).size !== value.columns.length ||
+		typeof value.compact !== 'boolean' ||
+		typeof value.minimap !== 'boolean'
+	) {
+		return undefined;
+	}
+
+	return { columns: value.columns, compact: value.compact, minimap: value.minimap };
 }
 
 export function parseGraphRowAction(value: unknown): GraphRowAction | undefined {
@@ -148,6 +246,18 @@ function parseGraphMoreRequest(value: Record<string, unknown>): GraphMoreRequest
 	};
 }
 
+function parseGraphFilterRequest(value: Record<string, unknown>): GraphFilterRequest | undefined {
+	if (!isString(value.query, graphQueryMaxLength)) return undefined;
+
+	return { type: 'graph/filter', query: value.query };
+}
+
+function parseGraphDetailsRequest(value: Record<string, unknown>): GraphDetailsRequest | undefined {
+	if (!isSha(value.sha) || typeof value.includeFiles !== 'boolean') return undefined;
+
+	return { type: 'graph/details', sha: value.sha, includeFiles: value.includeFiles };
+}
+
 function parseGraphSelectionUpdate(value: Record<string, unknown>): GraphSelectionUpdate | undefined {
 	if (
 		!Array.isArray(value.selection) ||
@@ -167,6 +277,52 @@ function parseGraphPaging(value: unknown): GraphPaging | undefined {
 	if (!isRecord(value) || typeof value.hasMore !== 'boolean') return undefined;
 
 	return { hasMore: value.hasMore };
+}
+
+function parseGraphWorkspaceContext(value: Record<string, unknown>): GraphContextMessage | undefined {
+	if (!isRecord(value.repository) || !isString(value.repository.name, graphRefNameMaxLength)) return undefined;
+	if (value.repository.branch !== undefined && !isString(value.repository.branch, graphRefNameMaxLength)) {
+		return undefined;
+	}
+
+	const refs = parseGraphWorkspaceRefs(value.refs);
+	if (refs == null) return undefined;
+
+	return {
+		type: 'graph/context',
+		repository: {
+			name: value.repository.name,
+			...(value.repository.branch === undefined ? {} : { branch: value.repository.branch }),
+		},
+		refs: refs,
+	};
+}
+
+function parseGraphCommitDetails(value: Record<string, unknown>): GraphDetailsMessage | undefined {
+	if (
+		!isSha(value.sha) ||
+		!isString(value.author, graphAuthorMaxLength) ||
+		!isFiniteNumber(value.date) ||
+		!isString(value.message, graphMessageMaxLength)
+	) {
+		return undefined;
+	}
+
+	const refs = parseGraphWorkspaceRefs(value.refs);
+	if (refs == null) return undefined;
+
+	const files = parseGraphCommitFiles(value.files);
+	if (files === false) return undefined;
+
+	return {
+		type: 'graph/details',
+		sha: value.sha,
+		author: value.author,
+		date: value.date,
+		message: value.message,
+		refs: refs,
+		...(files == null ? {} : { files: files }),
+	};
 }
 
 function parseGraphRows(value: unknown): readonly GraphWebviewRow[] | undefined {
@@ -260,6 +416,41 @@ function parseGraphRemotes(
 	return remotes;
 }
 
+function parseGraphWorkspaceRefs(value: unknown): readonly GraphWorkspaceRef[] | undefined {
+	if (!Array.isArray(value) || value.length > graphRefsMax) return undefined;
+
+	const refs: GraphWorkspaceRef[] = [];
+	for (const ref of value) {
+		if (!isRecord(ref) || !isGraphWorkspaceRefType(ref.type) || !isString(ref.name, graphRefNameMaxLength)) {
+			return undefined;
+		}
+
+		refs.push({ type: ref.type, name: ref.name });
+	}
+
+	return refs;
+}
+
+function parseGraphCommitFiles(value: unknown): readonly GraphCommitFile[] | undefined | false {
+	if (value === undefined) return undefined;
+	if (!Array.isArray(value) || value.length > graphDetailFilesMax) return false;
+
+	const files: GraphCommitFile[] = [];
+	for (const file of value) {
+		if (
+			!isRecord(file) ||
+			!isString(file.path, graphFilePathMaxLength) ||
+			!isString(file.status, graphFileStatusMaxLength)
+		) {
+			return false;
+		}
+
+		files.push({ path: file.path, status: file.status });
+	}
+
+	return files;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value != null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -270,6 +461,14 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isGraphRowKind(value: unknown): value is GraphWebviewRow['kind'] {
 	return value === 'commit' || value === 'merge' || value === 'stash' || value === 'workdir';
+}
+
+function isGraphWorkspaceRefType(value: unknown): value is GraphWorkspaceRef['type'] {
+	return value === 'head' || value === 'branch' || value === 'remote' || value === 'tag';
+}
+
+function isGraphColumn(value: unknown): value is GraphColumn {
+	return typeof value === 'string' && graphColumns.has(value as GraphColumn);
 }
 
 function isSha(value: unknown): value is string {

@@ -62,6 +62,9 @@ export function applyGraphMessage(
 				deriveLayout,
 			);
 		}
+		case 'graph/context':
+		case 'graph/details':
+			return state;
 	}
 }
 

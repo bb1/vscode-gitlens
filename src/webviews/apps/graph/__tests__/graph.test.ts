@@ -1,6 +1,10 @@
 import * as assert from 'assert';
 import type { GitGraphRow } from '@gitlens/git/models/graph.js';
-import { parseGraphHostMessage } from '../../../graph/protocol.js';
+import {
+	parseGraphDisplayPreferences,
+	parseGraphHostMessage,
+	parseGraphWebviewMessage,
+} from '../../../graph/protocol.js';
 import {
 	applyGraphMessage,
 	createGraphState,
@@ -198,6 +202,109 @@ suite('Graph app', () => {
 			{ ...valid, selection: 'nope!' },
 		]) {
 			assert.strictEqual(parseGraphHostMessage(message), undefined);
+		}
+	});
+
+	test('parses bounded workspace context and details messages', () => {
+		assert.deepStrictEqual(
+			parseGraphHostMessage({
+				type: 'graph/context',
+				repository: { name: 'vscode-gitlens', branch: 'main', ignored: true },
+				refs: [
+					{ type: 'head', name: 'main', ignored: true },
+					{ type: 'remote', name: 'origin/main', ignored: true },
+				],
+			}),
+			{
+				type: 'graph/context',
+				repository: { name: 'vscode-gitlens', branch: 'main' },
+				refs: [
+					{ type: 'head', name: 'main' },
+					{ type: 'remote', name: 'origin/main' },
+				],
+			},
+		);
+		assert.deepStrictEqual(
+			parseGraphHostMessage({
+				type: 'graph/details',
+				sha: 'abcdef',
+				author: 'Ada Lovelace',
+				date: Date.UTC(2026, 7, 14),
+				message: 'Add graph workspace',
+				refs: [{ type: 'head', name: 'main', ignored: true }],
+				files: [{ path: 'src/webviews/graph/protocol.ts', status: 'M', ignored: true }],
+			}),
+			{
+				type: 'graph/details',
+				sha: 'abcdef',
+				author: 'Ada Lovelace',
+				date: Date.UTC(2026, 7, 14),
+				message: 'Add graph workspace',
+				refs: [{ type: 'head', name: 'main' }],
+				files: [{ path: 'src/webviews/graph/protocol.ts', status: 'M' }],
+			},
+		);
+	});
+
+	test('parses only bounded workspace requests and display preferences', () => {
+		assert.deepStrictEqual(parseGraphWebviewMessage({ type: 'graph/filter', query: 'author:ada' }), {
+			type: 'graph/filter',
+			query: 'author:ada',
+		});
+		assert.deepStrictEqual(
+			parseGraphWebviewMessage({ type: 'graph/details', sha: 'abcdef', includeFiles: false }),
+			{
+				type: 'graph/details',
+				sha: 'abcdef',
+				includeFiles: false,
+			},
+		);
+		assert.deepStrictEqual(
+			parseGraphDisplayPreferences({
+				columns: ['graph', 'message', 'refs', 'author', 'date', 'sha'],
+				compact: false,
+				minimap: true,
+				ignored: true,
+			}),
+			{
+				columns: ['graph', 'message', 'refs', 'author', 'date', 'sha'],
+				compact: false,
+				minimap: true,
+			},
+		);
+
+		for (const message of [
+			{ type: 'graph/filter', query: 'x'.repeat(10001) },
+			{ type: 'graph/details', sha: 'not a sha', includeFiles: false },
+			{ type: 'graph/details', sha: 'abcdef', includeFiles: 'false' },
+		]) {
+			assert.strictEqual(parseGraphWebviewMessage(message), undefined);
+		}
+
+		for (const message of [
+			{
+				type: 'graph/context',
+				repository: { name: 'repo' },
+				refs: Array(65).fill({ type: 'head', name: 'main' }),
+			},
+			{
+				type: 'graph/details',
+				sha: 'abcdef',
+				author: 'Ada Lovelace',
+				date: Date.UTC(2026, 7, 14),
+				message: 'Add graph workspace',
+				refs: [],
+				files: Array(1001).fill({ path: 'src/webviews/graph/protocol.ts', status: 'M' }),
+			},
+		]) {
+			assert.strictEqual(parseGraphHostMessage(message), undefined);
+		}
+
+		for (const preferences of [
+			{ columns: Array(7).fill('graph'), compact: false, minimap: true },
+			{ columns: ['graph', 'graph'], compact: false, minimap: true },
+		]) {
+			assert.strictEqual(parseGraphDisplayPreferences(preferences), undefined);
 		}
 	});
 
