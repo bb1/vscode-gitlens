@@ -33,6 +33,7 @@ tests/**
 .mailmap
 .mcp.json
 .superpowers/**
+.worktree/**
 .oxfmtrc.json
 .vscode-agent.json
 .vscode-test.mjs
