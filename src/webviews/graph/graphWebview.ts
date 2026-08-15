@@ -117,7 +117,7 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		}
 
 		await this.controller?.open();
-		void this.sendWorkspaceContext(repository);
+		void this.sendWorkspaceContext(repository).catch(() => undefined);
 		return [true, undefined];
 	}
 
@@ -129,10 +129,10 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 
 		switch (request.type) {
 			case 'graph/filter':
-				void this.controller?.filter(request.query);
+				void this.controller?.filter(request.query).catch(() => undefined);
 				break;
 			case 'graph/details':
-				void this.sendCommitDetails(request);
+				void this.sendCommitDetails(request).catch(() => undefined);
 				break;
 			case 'graph/more':
 				void this.controller?.more(request.limit, request.targetId);
@@ -148,9 +148,10 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 	private async sendWorkspaceContext(repository: GlRepository): Promise<void> {
 		const request = ++this.contextRequest;
 		const [branches, tags] = await Promise.all([
-			repository.git.branches.getBranches(),
-			repository.git.tags.getTags(),
+			repository.git.branches.getBranches().catch(() => undefined),
+			repository.git.tags.getTags().catch(() => undefined),
 		]);
+		if (branches == null || tags == null) return;
 		if (this.repository !== repository || request !== this.contextRequest) return;
 
 		const refs: GraphWorkspaceRef[] = [];
@@ -167,14 +168,18 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			refs.push({ type: 'tag', name: tag.name });
 		}
 
-		await this.host.notify(GraphDidChangeNotification, {
-			type: 'graph/context',
-			repository: {
-				name: truncate(repository.name, graphRefNameMaxLength),
-				...(branch == null ? {} : { branch: truncate(branch, graphRefNameMaxLength) }),
-			},
-			refs: refs.slice(0, graphRefsMax).map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
-		});
+		await this.host
+			.notify(GraphDidChangeNotification, {
+				type: 'graph/context',
+				repository: {
+					name: truncate(repository.name, graphRefNameMaxLength),
+					...(branch == null ? {} : { branch: truncate(branch, graphRefNameMaxLength) }),
+				},
+				refs: refs
+					.slice(0, graphRefsMax)
+					.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+			})
+			.catch(() => undefined);
 	}
 
 	private async sendCommitDetails(request: GraphDetailsRequest): Promise<void> {
@@ -182,39 +187,49 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		if (repository == null) return;
 
 		const generation = ++this.detailsRequest;
-		const commit = await repository.git.commits.getCommit(request.sha);
+		const commit = await repository.git.commits.getCommit(request.sha).catch(() => undefined);
 		if (commit == null || this.repository !== repository || generation !== this.detailsRequest) return;
 
 		const tips = commit.tips?.join(' ').split(', ') ?? [];
-		const remoteNames = tips.some(tip => tip.includes('/'))
-			? new Set((await repository.git.remotes.getRemotes()).map(remote => remote.name))
-			: new Set<string>();
+		let remoteNames = new Set<string>();
+		if (tips.some(tip => tip.includes('/'))) {
+			const remotes = await repository.git.remotes.getRemotes().catch(() => undefined);
+			if (remotes == null) return;
+
+			remoteNames = new Set(remotes.map(remote => remote.name));
+		}
 		if (this.repository !== repository || generation !== this.detailsRequest) return;
 
 		if (request.includeFiles) {
-			await GitCommit.ensureFullDetails(commit);
+			try {
+				await GitCommit.ensureFullDetails(commit);
+			} catch {
+				return;
+			}
 			if (this.repository !== repository || generation !== this.detailsRequest) return;
 		}
 
-		await this.host.notify(GraphDidChangeNotification, {
-			type: 'graph/details',
-			sha: commit.sha,
-			author: truncate(commit.author.name, graphAuthorMaxLength),
-			date: commit.author.date.getTime(),
-			message: truncate(commit.message ?? commit.summary, graphMessageMaxLength),
-			refs: tips
-				.flatMap(tip => asWorkspaceRef(tip, remoteNames))
-				.slice(0, graphRefsMax)
-				.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
-			...(request.includeFiles && commit.fileset?.files != null
-				? {
-						files: commit.fileset.files.slice(0, graphDetailFilesMax).map(file => ({
-							path: truncate(file.path, graphFilePathMaxLength),
-							status: truncate(file.status, graphFileStatusMaxLength),
-						})),
-					}
-				: {}),
-		});
+		await this.host
+			.notify(GraphDidChangeNotification, {
+				type: 'graph/details',
+				sha: commit.sha,
+				author: truncate(commit.author.name, graphAuthorMaxLength),
+				date: commit.author.date.getTime(),
+				message: truncate(commit.message ?? commit.summary, graphMessageMaxLength),
+				refs: tips
+					.flatMap(tip => asWorkspaceRef(tip, remoteNames))
+					.slice(0, graphRefsMax)
+					.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+				...(request.includeFiles && commit.fileset?.files != null
+					? {
+							files: commit.fileset.files.slice(0, graphDetailFilesMax).map(file => ({
+								path: truncate(file.path, graphFilePathMaxLength),
+								status: truncate(file.status, graphFileStatusMaxLength),
+							})),
+						}
+					: {}),
+			})
+			.catch(() => undefined);
 	}
 
 	private executeRowAction(request: unknown): void {
