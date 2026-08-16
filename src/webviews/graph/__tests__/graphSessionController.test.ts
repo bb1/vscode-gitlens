@@ -115,6 +115,30 @@ suite('GraphSessionController', () => {
 		]);
 	});
 
+	test('replays the current bootstrap without reopening the session', async () => {
+		const session = new FakeGraphSession([row('first')]);
+		const sent: unknown[] = [];
+		let openCalls = 0;
+		const controller = new GraphSessionController({
+			open: async () => {
+				openCalls++;
+				return session;
+			},
+			postMessage: async message => {
+				sent.push(message);
+			},
+		});
+
+		await controller.open();
+		await controller.open();
+
+		assert.strictEqual(openCalls, 1);
+		assert.deepStrictEqual(sent, [
+			{ type: 'graph/bootstrap', rows: [row('first')], paging: { hasMore: true }, selection: undefined },
+			{ type: 'graph/bootstrap', rows: [row('first')], paging: { hasMore: true }, selection: undefined },
+		]);
+	});
+
 	test('retries opening after the session opener rejects', async () => {
 		const session = new FakeGraphSession([row('second')]);
 		const sent: unknown[] = [];
@@ -280,20 +304,14 @@ suite('GraphSessionController', () => {
 	});
 
 	test('serializes filtering after an active graph operation', async () => {
-		const session = new FakeGraphSession([row('first'), row('second')]);
+		const session = new FakeGraphSession([row('first')]);
 		const pendingMore = deferred<boolean>();
-		const filterResults = deferred<ReadonlySet<string>>();
-		const queries: string[] = [];
 		const sent: unknown[] = [];
 		session.moreResults = [pendingMore.promise];
 		const options = {
 			open: async () => session,
 			postMessage: async (message: GraphHostMessage) => {
 				sent.push(message);
-			},
-			filter: async (query: string) => {
-				queries.push(query);
-				return filterResults.promise;
 			},
 		};
 		const controller = new GraphSessionController(options);
@@ -304,40 +322,65 @@ suite('GraphSessionController', () => {
 		const filter = controller.filter('author:ada');
 		await flush();
 
-		assert.deepStrictEqual(queries, []);
+		assert.deepStrictEqual(sent, [
+			{ type: 'graph/bootstrap', rows: [row('first')], paging: { hasMore: true }, selection: undefined },
+		]);
+		session.window = [row('first'), row('second')];
 		pendingMore.resolve(false);
 		await more;
-		await flush();
-		assert.deepStrictEqual(queries, ['author:ada']);
-		filterResults.resolve(new Set(['second']));
 		await filter;
 
 		assert.deepStrictEqual(sent.at(-1), {
 			type: 'graph/replace',
-			rows: [row('second')],
+			rows: [],
 			paging: { hasMore: true },
 		});
 	});
 
-	test('preserves prior rows when filtering fails', async () => {
-		const session = new FakeGraphSession([row('first')]);
+	test('restores the loaded window when filtering is cleared', async () => {
+		const session = new FakeGraphSession([row('first'), row('second')]);
 		const sent: unknown[] = [];
-		const options = {
+		const controller = new GraphSessionController({
 			open: async () => session,
 			postMessage: async (message: GraphHostMessage) => {
 				sent.push(message);
 			},
-			filter: async () => {
-				throw new Error('filter failed');
-			},
-		};
-		const controller = new GraphSessionController(options);
+		});
 		await controller.open();
 
-		await assert.rejects(controller.filter('author:ada'), { message: 'filter failed' });
+		await controller.filter('second');
+		await controller.filter('');
 
 		assert.deepStrictEqual(sent, [
-			{ type: 'graph/bootstrap', rows: [row('first')], paging: { hasMore: true }, selection: undefined },
+			{
+				type: 'graph/bootstrap',
+				rows: [row('first'), row('second')],
+				paging: { hasMore: true },
+				selection: undefined,
+			},
+			{ type: 'graph/replace', rows: [row('second')], paging: { hasMore: true } },
+			{ type: 'graph/replace', rows: [row('first'), row('second')], paging: { hasMore: true } },
+		]);
+	});
+
+	test('filters loaded rows and keeps subsequent pages filtered', async () => {
+		const session = new FakeGraphSession([row('match-first'), row('other')]);
+		const sent: unknown[] = [];
+		const controller = new GraphSessionController({
+			open: async () => session,
+			postMessage: async message => {
+				sent.push(message);
+			},
+		});
+		await controller.open();
+
+		await controller.filter('match');
+		session.current = graph([row('other-page'), row('match-second')], { hasMore: false });
+		await controller.more();
+
+		assert.deepStrictEqual(sent.slice(1), [
+			{ type: 'graph/replace', rows: [row('match-first')], paging: { hasMore: true } },
+			{ type: 'graph/append', rows: [row('match-second')], paging: { hasMore: false } },
 		]);
 	});
 

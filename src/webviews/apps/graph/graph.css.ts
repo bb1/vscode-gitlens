@@ -28,9 +28,9 @@ export const graphStyles = css`
 		display: grid;
 		grid-template-areas:
 			'command-deck command-deck command-deck'
-			'reference-rail canvas inspector'
-			'reference-rail minimap inspector';
-		grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr) minmax(20rem, 30rem);
+			'reference-rail canvas minimap'
+			'inspector inspector inspector';
+		grid-template-columns: minmax(14rem, 20rem) minmax(0, 1fr) minmax(4rem, 6rem);
 		grid-template-rows: auto minmax(0, 1fr) auto;
 		block-size: 100%;
 		min-block-size: 0;
@@ -293,32 +293,65 @@ export const graphStyles = css`
 	.minimap {
 		grid-area: minimap;
 		padding: var(--gl-space-8);
-		border-block-start: var(--gl-border-width) solid var(--vscode-panel-border);
+		border-inline-start: var(--gl-border-width) solid var(--vscode-panel-border);
 		background: var(--vscode-editor-background);
 	}
 
 	.minimap button {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-		gap: var(--gl-space-2);
+		position: relative;
+		display: block;
 		inline-size: 100%;
-		min-block-size: 2.4rem;
+		block-size: 100%;
+		min-block-size: 8rem;
 		padding: var(--gl-space-4);
 		background: color-mix(in srgb, var(--vscode-editorWidget-background) 85%, transparent);
 	}
 
-	.minimap span {
-		min-inline-size: 0.2rem;
+	.minimap button > span:not(.minimap-viewport, .minimap-selection) {
+		position: absolute;
+		inset-inline: 25%;
+		block-size: var(--gl-border-width);
 		background: var(--graph-lane-muted-color);
 	}
 
-	.minimap span[data-lane='0'] {
+	.minimap button > span[data-lane='0'] {
 		background: var(--graph-lane-color);
 	}
 
 	.inspector {
 		grid-area: inspector;
-		border-inline-start: var(--gl-border-width) solid var(--vscode-sideBar-border);
+		max-block-size: min(30rem, 35%);
+		border-block-start: var(--gl-border-width) solid var(--vscode-sideBar-border);
+		background: var(--vscode-editorWidget-background);
+	}
+
+	.minimap-viewport,
+	.minimap-selection {
+		position: absolute;
+		inset-inline: var(--gl-space-2);
+		pointer-events: none;
+	}
+
+	.minimap-viewport {
+		min-block-size: var(--gl-border-width);
+		border: var(--gl-border-width) solid var(--vscode-focusBorder);
+	}
+
+	.minimap-selection {
+		block-size: var(--gl-space-4);
+		background: var(--vscode-list-activeSelectionBackground);
+		transform: translateY(-50%);
+	}
+
+	.filter-status,
+	.error {
+		margin: 0;
+		color: var(--vscode-descriptionForeground);
+		font-size: var(--gl-font-sm);
+	}
+
+	.error {
+		color: var(--vscode-errorForeground);
 	}
 
 	:where(
@@ -337,10 +370,9 @@ export const graphStyles = css`
 			grid-template-areas:
 				'command-deck'
 				'canvas'
-				'minimap'
 				'inspector';
 			grid-template-columns: minmax(0, 1fr);
-			grid-template-rows: auto minmax(0, 1fr) auto minmax(0, auto);
+			grid-template-rows: auto minmax(0, 1fr) auto;
 		}
 
 		.reference-rail {
@@ -348,6 +380,12 @@ export const graphStyles = css`
 		}
 
 		.column-header {
+			grid-template-columns: minmax(0, max-content) minmax(12rem, 1fr) minmax(0, max-content);
+		}
+
+		.column--author,
+		.column--date,
+		.column--sha {
 			display: none;
 		}
 
@@ -362,8 +400,10 @@ export const graphStyles = css`
 
 		.inspector {
 			max-block-size: 18rem;
-			border-block-start: var(--gl-border-width) solid var(--vscode-sideBar-border);
-			border-inline-start: 0;
+		}
+
+		.minimap {
+			display: none;
 		}
 	}
 
@@ -376,12 +416,13 @@ export const graphStyles = css`
 			grid-column: 1 / -1;
 		}
 
-		.refs {
-			display: none;
+		.row {
+			grid-template-columns: minmax(0, max-content) minmax(0, 1fr) minmax(0, max-content);
 		}
 
-		.row {
-			grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
+		.refs {
+			max-inline-size: min(30ch, 40cqi);
+			overflow: hidden;
 		}
 	}
 

@@ -1,4 +1,6 @@
-export type GraphColumn = string;
+import type { GraphColumn } from '../../graph/protocol.js';
+
+export type { GraphColumn } from '../../graph/protocol.js';
 
 export type GraphDisplayPreferences = {
 	readonly columns: readonly GraphColumn[];

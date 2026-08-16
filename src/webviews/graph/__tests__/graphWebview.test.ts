@@ -27,13 +27,20 @@ function flush(): Promise<void> {
 }
 
 function getProviderMethod(
-	name: 'executeRowAction' | 'onMessageReceived' | 'onReady' | 'sendCommitDetails' | 'sendWorkspaceContext',
+	name:
+		| 'executeRowAction'
+		| 'onMessageReceived'
+		| 'onReady'
+		| 'onReconnect'
+		| 'sendCommitDetails'
+		| 'sendError'
+		| 'sendWorkspaceContext',
 ): (...args: unknown[]) => unknown {
 	return (GraphWebviewProvider.prototype as unknown as Record<string, (...args: unknown[]) => unknown>)[name];
 }
 
 function getProviderAsyncMethod(
-	name: 'sendCommitDetails' | 'sendWorkspaceContext',
+	name: 'sendCommitDetails' | 'sendError' | 'sendWorkspaceContext',
 ): (...args: unknown[]) => Promise<void> {
 	return (GraphWebviewProvider.prototype as unknown as Record<string, (...args: unknown[]) => Promise<void>>)[name];
 }
@@ -85,11 +92,14 @@ suite('GraphWebviewProvider', () => {
 		const actionCalls: unknown[][] = [];
 		const receiver = {
 			controller: {
-				more: (...args: unknown[]) => moreCalls.push(args),
+				more: async (...args: unknown[]) => {
+					moreCalls.push(args);
+				},
 				filter: async (...args: unknown[]) => {
 					filterCalls.push(args);
 				},
 			},
+			detailsRequest: 0,
 			sendCommitDetails: async (...args: unknown[]) => {
 				detailCalls.push(args);
 			},
@@ -120,20 +130,27 @@ suite('GraphWebviewProvider', () => {
 
 		assert.deepStrictEqual(moreCalls, [[1, 'abcdef']]);
 		assert.deepStrictEqual(filterCalls, [['author:ada']]);
-		assert.deepStrictEqual(detailCalls, [[{ type: 'graph/details', sha: 'abcdef', includeFiles: false }]]);
+		assert.deepStrictEqual(detailCalls, [[{ type: 'graph/details', sha: 'abcdef', includeFiles: false }, 1]]);
 		assert.deepStrictEqual(actionCalls, [[{ type: 'graph/row/action', action: 'copy-sha', sha: 'abcdef' }]]);
 	});
 
-	test('observes rejected filter operations from the webview', async () => {
+	test('publishes rejected filter operations from the webview as retryable errors', async () => {
 		const unhandled: unknown[] = [];
 		const onUnhandled = (reason: unknown) => unhandled.push(reason);
-		const receiver = {
+		const notifications: unknown[] = [];
+		const receiver: {
+			controller: { filter(): Promise<never> };
+			host: { notify(notification: unknown, payload: unknown): Promise<number> };
+			sendError?: (...args: unknown[]) => Promise<void>;
+		} = {
 			controller: {
 				filter: async () => {
 					throw new Error('filter failed');
 				},
 			},
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
 		};
+		receiver.sendError = getProviderAsyncMethod('sendError');
 
 		process.on('unhandledRejection', onUnhandled);
 		try {
@@ -144,6 +161,9 @@ suite('GraphWebviewProvider', () => {
 			await flush();
 
 			assert.deepStrictEqual(unhandled, []);
+			assert.deepStrictEqual(notifications, [
+				{ type: 'graph/error', operation: 'filter', message: 'filter failed' },
+			]);
 		} finally {
 			process.off('unhandledRejection', onUnhandled);
 		}
@@ -199,7 +219,7 @@ suite('GraphWebviewProvider', () => {
 		]);
 	});
 
-	test('publishes workspace context after the bootstrap snapshot reaches the webview', () => {
+	test('publishes workspace context after the initial bootstrap reaches the webview', () => {
 		const repository = { name: 'active-repository' };
 		const contextCalls: unknown[][] = [];
 		const receiver = {
@@ -212,6 +232,35 @@ suite('GraphWebviewProvider', () => {
 		getProviderMethod('onReady').call(receiver);
 
 		assert.deepStrictEqual(contextCalls, [[repository]]);
+	});
+
+	test('initializes the graph when a repository is discovered after the webview is ready', () => {
+		const repository = { name: 'active-repository' };
+		const initialization: unknown[][] = [];
+		const receiver = {
+			repository: undefined,
+			container: { git: { getBestRepositoryOrFirst: () => repository } },
+			initializeBestRepository: async (...args: unknown[]) => {
+				initialization.push(args);
+			},
+		};
+
+		getProviderMethod('onReady').call(receiver);
+
+		assert.deepStrictEqual(initialization, [[]]);
+	});
+
+	test('replays graph data after the webview reconnects', () => {
+		let republished = 0;
+		const receiver = {
+			republish: async () => {
+				republished++;
+			},
+		};
+
+		getProviderMethod('onReconnect').call(receiver);
+
+		assert.strictEqual(republished, 1);
 	});
 
 	test('bounds workspace context refs to the protocol limit', async () => {
@@ -242,7 +291,7 @@ suite('GraphWebviewProvider', () => {
 		assert.strictEqual((notifications[0] as { refs: unknown[] }).refs.length, 64);
 	});
 
-	test('absorbs rejected workspace context provider calls', async () => {
+	test('returns workspace context provider failures to the caller for error publication', async () => {
 		const repository = {
 			name: 'active-repository',
 			git: {
@@ -256,10 +305,12 @@ suite('GraphWebviewProvider', () => {
 			host: { notify: async () => {} },
 		};
 
-		await assert.doesNotReject(getProviderAsyncMethod('sendWorkspaceContext').call(receiver, repository));
+		await assert.rejects(getProviderAsyncMethod('sendWorkspaceContext').call(receiver, repository), {
+			message: 'branches failed',
+		});
 	});
 
-	test('absorbs rejected workspace context notifications', async () => {
+	test('returns workspace context notification failures to the caller for error publication', async () => {
 		const repository = {
 			name: 'active-repository',
 			git: {
@@ -273,7 +324,9 @@ suite('GraphWebviewProvider', () => {
 			host: { notify: async () => Promise.reject(new Error('context notification failed')) },
 		};
 
-		await assert.doesNotReject(getProviderAsyncMethod('sendWorkspaceContext').call(receiver, repository));
+		await assert.rejects(getProviderAsyncMethod('sendWorkspaceContext').call(receiver, repository), {
+			message: 'context notification failed',
+		});
 	});
 
 	test('sends selected commit details from the active repository and ignores stale results', async () => {
@@ -326,7 +379,44 @@ suite('GraphWebviewProvider', () => {
 		]);
 	});
 
-	test('absorbs rejected commit details provider calls', async () => {
+	test('ignores a stale commit detail failure after selection changes', async () => {
+		let rejectFirstCommit!: (reason: Error) => void;
+		const firstCommit = new Promise<object>((_resolve, reject) => {
+			rejectFirstCommit = reject;
+		});
+		const notifications: unknown[] = [];
+		const repository = {
+			git: {
+				commits: {
+					getCommit: async (sha: string) => (sha === 'abcdef' ? firstCommit : commit(sha, 'Current commit')),
+				},
+			},
+		};
+		const receiver = {
+			repository: repository,
+			detailsRequest: 0,
+			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
+		};
+		const sendCommitDetails = getProviderAsyncMethod('sendCommitDetails');
+
+		const stale = sendCommitDetails.call(receiver, { type: 'graph/details', sha: 'abcdef', includeFiles: false });
+		await sendCommitDetails.call(receiver, { type: 'graph/details', sha: '123456', includeFiles: false });
+		rejectFirstCommit(new Error('stale detail failed'));
+		await stale;
+
+		assert.deepStrictEqual(notifications, [
+			{
+				type: 'graph/details',
+				sha: '123456',
+				author: 'Ada Lovelace',
+				date: Date.UTC(2026, 7, 15),
+				message: 'Current commit',
+				refs: [],
+			},
+		]);
+	});
+
+	test('returns commit detail provider failures to the caller for error publication', async () => {
 		const repository = {
 			git: {
 				commits: { getCommit: async () => Promise.reject(new Error('commit failed')) },
@@ -338,16 +428,17 @@ suite('GraphWebviewProvider', () => {
 			host: { notify: async () => {} },
 		};
 
-		await assert.doesNotReject(
+		await assert.rejects(
 			getProviderAsyncMethod('sendCommitDetails').call(receiver, {
 				type: 'graph/details',
 				sha: 'abcdef',
 				includeFiles: false,
 			}),
+			{ message: 'commit failed' },
 		);
 	});
 
-	test('absorbs rejected commit details notifications', async () => {
+	test('returns commit detail notification failures to the caller for error publication', async () => {
 		const repository = {
 			git: {
 				commits: { getCommit: async () => commit('abcdef', 'Current commit') },
@@ -359,16 +450,17 @@ suite('GraphWebviewProvider', () => {
 			host: { notify: async () => Promise.reject(new Error('details notification failed')) },
 		};
 
-		await assert.doesNotReject(
+		await assert.rejects(
 			getProviderAsyncMethod('sendCommitDetails').call(receiver, {
 				type: 'graph/details',
 				sha: 'abcdef',
 				includeFiles: false,
 			}),
+			{ message: 'details notification failed' },
 		);
 	});
 
-	test('does not publish details with unresolved remote refs', async () => {
+	test('returns unresolved remote ref failures to the caller for error publication', async () => {
 		const notifications: unknown[] = [];
 		const repository = {
 			git: {
@@ -382,12 +474,13 @@ suite('GraphWebviewProvider', () => {
 			host: { notify: async (_notification: unknown, payload: unknown) => notifications.push(payload) },
 		};
 
-		await assert.doesNotReject(
+		await assert.rejects(
 			getProviderAsyncMethod('sendCommitDetails').call(receiver, {
 				type: 'graph/details',
 				sha: 'abcdef',
 				includeFiles: false,
 			}),
+			{ message: 'remotes failed' },
 		);
 
 		assert.deepStrictEqual(notifications, []);

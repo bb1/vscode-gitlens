@@ -43,7 +43,7 @@ test('shows the command deck, filters commits, and restores focus after closing 
 
 	const graph = await vscode.gitlens.getCommitGraphWebview(30000);
 	const commandDeck = graph.getByRole('region', { name: 'Commit graph commands' });
-	const search = graph.getByRole('searchbox', { name: 'Filter commits' });
+	const search = graph.getByRole('searchbox', { name: 'Filter loaded commits using plain text' });
 	const commits = graph.getByRole('listbox', { name: 'Commit graph' });
 	const inspector = graph.getByRole('region', { name: 'Commit details' });
 	const firstCommit = commits.getByRole('option').first();
@@ -64,7 +64,7 @@ test('shows the command deck, filters commits, and restores focus after closing 
 });
 
 test('shows commit rows and commands in the Graph panel', async ({ vscode }) => {
-	await vscode.gitlens.executeCommand('gitlens.showGraph');
+	await vscode.gitlens.executeCommand('gitlens.showGraphPage');
 
 	const graph = await vscode.gitlens.getCommitGraphPanel(30000);
 	await expect(graph.getByRole('region', { name: 'Commit graph commands' })).toBeVisible();
@@ -76,7 +76,7 @@ test('keeps command controls and commit rows usable in a narrow viewport', async
 	await vscode.gitlens.showCommitGraphView();
 
 	const graph = await vscode.gitlens.getCommitGraphWebview(30000);
-	await expect(graph.getByRole('searchbox', { name: 'Filter commits' })).toBeVisible();
+	await expect(graph.getByRole('searchbox', { name: 'Filter loaded commits using plain text' })).toBeVisible();
 	await expect(graph.getByRole('complementary', { name: 'Repository references' })).toBeHidden();
 	await expect(graph.getByRole('listbox', { name: 'Commit graph' }).getByRole('option').first()).toBeVisible();
 });

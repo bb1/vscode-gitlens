@@ -1,10 +1,10 @@
+import type { GitGraphRow } from '@gitlens/git/models/graph.js';
 import type { GitGraphSession, GitGraphSessionRefreshOptions } from '@gitlens/git/models/graphSession.js';
 import type { GraphHostMessage } from './protocol.js';
 
 export type GraphSessionControllerOptions = {
 	readonly open: (cancellation: AbortSignal) => Promise<GitGraphSession>;
 	readonly postMessage: (message: GraphHostMessage) => Promise<void>;
-	readonly filter?: (query: string, cancellation: AbortSignal) => Promise<ReadonlySet<string>>;
 	readonly selection?: string;
 };
 
@@ -14,26 +14,26 @@ export type GraphSessionControllerOptions = {
  */
 export class GraphSessionController {
 	private readonly cancellation = new AbortController();
-	private readonly filterSession:
-		| ((query: string, cancellation: AbortSignal) => Promise<ReadonlySet<string>>)
-		| undefined;
 	private readonly openSession: (cancellation: AbortSignal) => Promise<GitGraphSession>;
 	private readonly postMessage: (message: GraphHostMessage) => Promise<void>;
 	private session: GitGraphSession | undefined;
 	private opening: Promise<void> | undefined;
 	private operations: Promise<void> = Promise.resolve();
 	private disposed = false;
+	private filterQuery = '';
 	private selection: string | undefined;
 
 	constructor(options: GraphSessionControllerOptions) {
 		this.openSession = options.open;
 		this.postMessage = options.postMessage;
-		this.filterSession = options.filter;
 		this.selection = options.selection;
 	}
 
 	open(): Promise<void> {
 		if (this.disposed) return Promise.reject(disposedError());
+		if (this.session != null) {
+			return this.enqueue(() => this.sendBootstrap(this.getSession()));
+		}
 
 		if (this.opening != null) return this.opening;
 
@@ -67,7 +67,7 @@ export class GraphSessionController {
 
 			await this.send({
 				type: 'graph/append',
-				rows: session.current.rows,
+				rows: this.filterRows(session.current.rows),
 				paging: pagingOf(session),
 			});
 		});
@@ -92,7 +92,7 @@ export class GraphSessionController {
 
 			await this.send({
 				type: 'graph/replace',
-				rows: session.window,
+				rows: this.filterRows(session.window),
 				paging: pagingOf(session),
 			});
 		});
@@ -106,22 +106,12 @@ export class GraphSessionController {
 			if (this.disposed) return;
 
 			const session = this.getSession();
-			const filter = this.filterSession;
-			if (filter == null) return;
-
-			let matches: ReadonlySet<string>;
-			try {
-				matches = await filter(query, this.cancellation.signal);
-			} catch (error) {
-				if (this.disposed) return;
-
-				throw error;
-			}
+			this.filterQuery = query.trim().toLocaleLowerCase();
 			if (this.disposed || this.session !== session) return;
 
 			await this.send({
 				type: 'graph/replace',
-				rows: session.window.filter(row => matches.has(row.sha)),
+				rows: this.filterRows(session.window),
 				paging: pagingOf(session),
 			});
 		});
@@ -152,12 +142,7 @@ export class GraphSessionController {
 
 		this.session = session;
 		try {
-			await this.send({
-				type: 'graph/bootstrap',
-				rows: session.window,
-				paging: pagingOf(session),
-				selection: this.selection,
-			});
+			await this.sendBootstrap(session);
 		} catch (error) {
 			if (this.session === session) {
 				this.session = undefined;
@@ -181,6 +166,8 @@ export class GraphSessionController {
 	}
 
 	private async ensureOpen(): Promise<void> {
+		if (this.session != null) return;
+
 		await this.open().catch((error: unknown) => {
 			if (!this.disposed) throw error;
 		});
@@ -190,6 +177,31 @@ export class GraphSessionController {
 		if (this.disposed) return;
 
 		await this.postMessage(message);
+	}
+
+	private async sendBootstrap(session: GitGraphSession): Promise<void> {
+		await this.send({
+			type: 'graph/bootstrap',
+			rows: this.filterRows(session.window),
+			paging: pagingOf(session),
+			selection: this.selection,
+		});
+	}
+
+	private filterRows(rows: readonly GitGraphRow[]): readonly GitGraphRow[] {
+		const query = this.filterQuery;
+		if (!query) return rows;
+
+		return rows.filter(row => {
+			const refs = [
+				...(row.heads?.map(ref => ref.name) ?? []),
+				...(row.remotes?.map(ref => `${ref.owner}/${ref.name}`) ?? []),
+				...(row.tags?.map(ref => ref.name) ?? []),
+			];
+			return [row.sha, row.message, row.author, row.email, ...refs].some(value =>
+				value.toLocaleLowerCase().includes(query),
+			);
+		});
 	}
 }
 

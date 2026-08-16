@@ -1,8 +1,10 @@
 import type { Disposable } from 'vscode';
 import { GitCommit } from '@gitlens/git/models/commit.js';
 import { RemoteResourceType } from '@gitlens/git/models/remoteResource.js';
+import { createReference } from '@gitlens/git/utils/reference.utils.js';
 import type { WebviewTelemetryContext } from '../../constants.telemetry.js';
 import type { Container } from '../../container.js';
+import * as RepoActions from '../../git/actions/repository.js';
 import { GlGraphRowProcessor } from '../../git/graphRowProcessor.js';
 import { GlRepository } from '../../git/models/repository.js';
 import { executeCommand, registerCommand } from '../../system/-webview/command.js';
@@ -15,6 +17,7 @@ import { GraphSessionController } from './graphSessionController.js';
 import {
 	GraphDidChangeNotification,
 	type GraphDetailsRequest,
+	type GraphErrorMessage,
 	type GraphWorkspaceRef,
 	isGraphRowAction,
 	parseGraphWebviewMessage,
@@ -38,13 +41,21 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 	private contextRequest = 0;
 	private detailsRequest = 0;
 	private repository: GlRepository | undefined;
+	private readonly repositorySubscription: Disposable;
 
 	constructor(
 		private readonly container: Container,
 		private readonly host: WebviewHost<'gitlens.graph' | 'gitlens.views.graph'>,
-	) {}
+	) {
+		this.repositorySubscription = this.container.git.onDidChangeRepositories(() => {
+			if (this.repository != null) return;
+
+			void this.initializeBestRepository().catch(error => this.sendError('graph', error));
+		});
+	}
 
 	dispose(): void {
+		this.repositorySubscription.dispose();
 		this.controller?.dispose();
 		this.controller = undefined;
 	}
@@ -62,6 +73,21 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 				if (sha != null) {
 					this.executeRowAction({ action: 'open-remote', sha: sha });
 				}
+			}),
+			this.host.registerWebviewCommand('gitlens.graph.cherryPick', item => {
+				this.cherryPick(getContextShas(item));
+			}),
+			this.host.registerWebviewCommand('gitlens.graph.cherryPick.multi', item => {
+				this.cherryPick(getContextShas(item));
+			}),
+			this.host.registerWebviewCommand('gitlens.graph.compareSelectedCommits.multi', item => {
+				this.compareSelectedCommits(getContextShas(item));
+			}),
+			this.host.registerWebviewCommand('gitlens.graph.copyRemoteCommitUrl.multi', item => {
+				this.openCommitsOnRemote(getContextShas(item), true);
+			}),
+			this.host.registerWebviewCommand('gitlens.graph.openCommitOnRemote.multi', item => {
+				this.openCommitsOnRemote(getContextShas(item), false);
 			}),
 		];
 		if (this.host.is('view')) {
@@ -88,46 +114,23 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		_options: WebviewShowOptions,
 		...args: GraphWebviewShowingArgs
 	): Promise<[boolean, undefined]> {
-		const repository = getRepository(this.container, args[0]);
+		const repository = await this.initializeRepository(await getRepository(this.container, args[0]));
 		if (repository == null) return [true, undefined];
 
-		if (this.repository?.path !== repository.path) {
-			this.controller?.dispose();
-			this.repository = repository;
-			this.controller = new GraphSessionController({
-				open: cancellation =>
-					repository.git.graph.openGraphSession(
-						{
-							rowProcessor: new GlGraphRowProcessor(this.container, uri => this.host.asWebviewUri(uri)),
-							limit: configuration.get('graph').defaultItemLimit,
-						},
-						cancellation,
-					),
-				postMessage: message => this.host.notify(GraphDidChangeNotification, message).then(() => {}),
-				filter: async (query, cancellation) => {
-					const search = repository.git.graph.searchGraph({ query: query }, undefined, cancellation);
-					let result = await search.next();
-					while (!result.done) {
-						result = await search.next();
-					}
-
-					return new Set(result.value.results.keys());
-				},
-			});
-		}
-
-		await this.controller?.open();
-		if (this.host.ready) {
-			void this.sendWorkspaceContext(repository).catch(() => undefined);
-		}
 		return [true, undefined];
 	}
 
 	onReady(): void {
 		const repository = this.repository;
 		if (repository != null) {
-			void this.sendWorkspaceContext(repository).catch(() => undefined);
+			void this.sendWorkspaceContext(repository).catch(error => this.sendError('graph', error));
+		} else {
+			void this.initializeBestRepository().catch(error => this.sendError('graph', error));
 		}
+	}
+
+	onReconnect(): void {
+		void this.republish().catch(error => this.sendError('graph', error));
 	}
 
 	onMessageReceived(message: IpcMessage): void {
@@ -137,14 +140,24 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		if (request == null) return;
 
 		switch (request.type) {
+			case 'graph/refresh':
+				void this.refresh().catch(error => this.sendError('graph', error));
+				break;
 			case 'graph/filter':
-				void this.controller?.filter(request.query)?.catch(() => undefined);
+				void this.controller?.filter(request.query).catch(error => this.sendError('filter', error));
 				break;
 			case 'graph/details':
-				void this.sendCommitDetails(request).catch(() => undefined);
+				const requestId = ++this.detailsRequest;
+				void this.sendCommitDetails(request, requestId).catch(error => {
+					if (this.detailsRequest === requestId) {
+						void this.sendError('details', error);
+					}
+				});
 				break;
 			case 'graph/more':
-				void this.controller?.more(request.limit, request.targetId);
+				void this.controller
+					?.more(request.limit, request.targetId)
+					.catch(error => this.sendError('graph', error));
 				break;
 			case 'graph/row/action':
 				this.executeRowAction(request);
@@ -157,10 +170,9 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 	private async sendWorkspaceContext(repository: GlRepository): Promise<void> {
 		const request = ++this.contextRequest;
 		const [branches, tags] = await Promise.all([
-			repository.git.branches.getBranches().catch(() => undefined),
-			repository.git.tags.getTags().catch(() => undefined),
+			repository.git.branches.getBranches(),
+			repository.git.tags.getTags(),
 		]);
-		if (branches == null || tags == null) return;
 		if (this.repository !== repository || request !== this.contextRequest) return;
 
 		const refs: GraphWorkspaceRef[] = [];
@@ -177,33 +189,44 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 			refs.push({ type: 'tag', name: tag.name });
 		}
 
-		await this.host
-			.notify(GraphDidChangeNotification, {
-				type: 'graph/context',
-				repository: {
-					name: truncate(repository.name, graphRefNameMaxLength),
-					...(branch == null ? {} : { branch: truncate(branch, graphRefNameMaxLength) }),
-				},
-				refs: refs
-					.slice(0, graphRefsMax)
-					.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
-			})
-			.catch(() => undefined);
+		await this.host.notify(GraphDidChangeNotification, {
+			type: 'graph/context',
+			repository: {
+				name: truncate(repository.name, graphRefNameMaxLength),
+				...(branch == null ? {} : { branch: truncate(branch, graphRefNameMaxLength) }),
+			},
+			refs: refs.slice(0, graphRefsMax).map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+		});
 	}
 
-	private async sendCommitDetails(request: GraphDetailsRequest): Promise<void> {
+	private async sendCommitDetails(
+		request: GraphDetailsRequest,
+		generation: number = ++this.detailsRequest,
+	): Promise<void> {
 		const repository = this.repository;
 		if (repository == null) return;
 
-		const generation = ++this.detailsRequest;
-		const commit = await repository.git.commits.getCommit(request.sha).catch(() => undefined);
+		let commit: Awaited<ReturnType<typeof repository.git.commits.getCommit>>;
+		try {
+			commit = await repository.git.commits.getCommit(request.sha);
+		} catch (error) {
+			if (this.repository !== repository || generation !== this.detailsRequest) return;
+
+			throw error;
+		}
 		if (commit == null || this.repository !== repository || generation !== this.detailsRequest) return;
 
 		const tips = commit.tips?.join(' ').split(', ') ?? [];
 		let remoteNames = new Set<string>();
 		if (tips.some(tip => tip.includes('/'))) {
-			const remotes = await repository.git.remotes.getRemotes().catch(() => undefined);
-			if (remotes == null) return;
+			let remotes: Awaited<ReturnType<typeof repository.git.remotes.getRemotes>>;
+			try {
+				remotes = await repository.git.remotes.getRemotes();
+			} catch (error) {
+				if (this.repository !== repository || generation !== this.detailsRequest) return;
+
+				throw error;
+			}
 
 			remoteNames = new Set(remotes.map(remote => remote.name));
 		}
@@ -212,33 +235,33 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 		if (request.includeFiles) {
 			try {
 				await GitCommit.ensureFullDetails(commit);
-			} catch {
-				return;
+			} catch (error) {
+				if (this.repository !== repository || generation !== this.detailsRequest) return;
+
+				throw error;
 			}
 			if (this.repository !== repository || generation !== this.detailsRequest) return;
 		}
 
-		await this.host
-			.notify(GraphDidChangeNotification, {
-				type: 'graph/details',
-				sha: commit.sha,
-				author: truncate(commit.author.name, graphAuthorMaxLength),
-				date: commit.author.date.getTime(),
-				message: truncate(commit.message ?? commit.summary, graphMessageMaxLength),
-				refs: tips
-					.flatMap(tip => asWorkspaceRef(tip, remoteNames))
-					.slice(0, graphRefsMax)
-					.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
-				...(request.includeFiles && commit.fileset?.files != null
-					? {
-							files: commit.fileset.files.slice(0, graphDetailFilesMax).map(file => ({
-								path: truncate(file.path, graphFilePathMaxLength),
-								status: truncate(file.status, graphFileStatusMaxLength),
-							})),
-						}
-					: {}),
-			})
-			.catch(() => undefined);
+		await this.host.notify(GraphDidChangeNotification, {
+			type: 'graph/details',
+			sha: commit.sha,
+			author: truncate(commit.author.name, graphAuthorMaxLength),
+			date: commit.author.date.getTime(),
+			message: truncate(commit.message ?? commit.summary, graphMessageMaxLength),
+			refs: tips
+				.flatMap(tip => asWorkspaceRef(tip, remoteNames))
+				.slice(0, graphRefsMax)
+				.map(ref => ({ ...ref, name: truncate(ref.name, graphRefNameMaxLength) })),
+			...(request.includeFiles && commit.fileset?.files != null
+				? {
+						files: commit.fileset.files.slice(0, graphDetailFilesMax).map(file => ({
+							path: truncate(file.path, graphFilePathMaxLength),
+							status: truncate(file.status, graphFileStatusMaxLength),
+						})),
+					}
+				: {}),
+		});
 	}
 
 	private executeRowAction(request: unknown): void {
@@ -267,6 +290,93 @@ export class GraphWebviewProvider implements WebviewProvider<State, State, Graph
 				break;
 		}
 	}
+
+	private async republish(): Promise<void> {
+		await this.controller?.open();
+		const repository = this.repository;
+		if (repository != null) {
+			await this.sendWorkspaceContext(repository);
+		}
+	}
+
+	private async initializeRepository(repository: GlRepository | undefined): Promise<GlRepository | undefined> {
+		if (repository == null) return undefined;
+
+		if (this.repository?.path !== repository.path) {
+			this.controller?.dispose();
+			this.repository = repository;
+			this.controller = new GraphSessionController({
+				open: cancellation =>
+					repository.git.graph.openGraphSession(
+						{
+							rowProcessor: new GlGraphRowProcessor(this.container, uri => this.host.asWebviewUri(uri)),
+							limit: configuration.get('graph').defaultItemLimit,
+						},
+						cancellation,
+					),
+				postMessage: message => this.host.notify(GraphDidChangeNotification, message).then(() => {}),
+			});
+		}
+
+		await this.controller?.open();
+		if (this.host.ready) {
+			await this.sendWorkspaceContext(repository);
+		}
+
+		return repository;
+	}
+
+	private async initializeBestRepository(): Promise<GlRepository | undefined> {
+		return this.initializeRepository(await getRepository(this.container));
+	}
+
+	private async refresh(): Promise<void> {
+		await this.controller?.refresh();
+		const repository = this.repository;
+		if (repository != null) {
+			await this.sendWorkspaceContext(repository);
+		}
+	}
+
+	private sendError(operation: GraphErrorMessage['operation'], error: unknown): Promise<void> {
+		const message = error instanceof Error ? error.message : String(error);
+		return this.host
+			.notify(GraphDidChangeNotification, {
+				type: 'graph/error',
+				operation: operation,
+				message: message.slice(0, 512),
+			})
+			.then(
+				() => {},
+				() => {},
+			);
+	}
+
+	private cherryPick(shas: readonly string[]): void {
+		const repository = this.repository;
+		if (repository == null || shas.length === 0) return;
+
+		void RepoActions.cherryPick(
+			repository.path,
+			shas.map(sha => createReference(sha, repository.path, { refType: 'revision' })),
+		);
+	}
+
+	private compareSelectedCommits(shas: readonly string[]): void {
+		if (this.repository == null || shas.length !== 2) return;
+
+		void this.container.views.searchAndCompare.compare(this.repository.path, shas[0], shas[1]);
+	}
+
+	private openCommitsOnRemote(shas: readonly string[], clipboard: boolean): void {
+		if (this.repository == null || shas.length === 0) return;
+
+		void executeCommand('gitlens.openOnRemote', {
+			repoPath: this.repository.path,
+			resource: shas.map(sha => ({ type: RemoteResourceType.Commit, sha: sha })),
+			clipboard: clipboard,
+		});
+	}
 }
 
 function asWorkspaceRef(tip: string, remoteNames: ReadonlySet<string>): readonly GraphWorkspaceRef[] {
@@ -283,15 +393,26 @@ function truncate(value: string, maxLength: number): string {
 	return value.slice(0, maxLength);
 }
 
-function getRepository(container: Container, arg: unknown): GlRepository | undefined {
+async function getRepository(container: Container, arg?: unknown): Promise<GlRepository | undefined> {
 	if (GlRepository.is(arg)) return arg;
-	if (arg == null || typeof arg !== 'object') return container.git.getBestRepository();
+	if (arg == null || typeof arg !== 'object') return getBestRepositoryOrFirst(container);
 
 	const value = arg as { repository?: unknown; ref?: { repoPath?: unknown } };
 	if (GlRepository.is(value.repository)) return value.repository;
 	if (typeof value.ref?.repoPath === 'string') return container.git.getRepository(value.ref.repoPath);
 
-	return container.git.getBestRepository();
+	return getBestRepositoryOrFirst(container);
+}
+
+async function getBestRepositoryOrFirst(container: Container): Promise<GlRepository | undefined> {
+	let repository = container.git.getBestRepositoryOrFirst();
+	if (repository == null) {
+		await container.git.isDiscoveringRepositories;
+
+		repository = container.git.getBestRepositoryOrFirst();
+	}
+
+	return repository;
 }
 
 function getContextSha(item: unknown): string | undefined {
@@ -299,4 +420,22 @@ function getContextSha(item: unknown): string | undefined {
 
 	const ref = item.webviewItemValue?.ref;
 	return typeof ref === 'string' ? ref : undefined;
+}
+
+function getContextShas(item: unknown): readonly string[] {
+	if (item == null || typeof item !== 'object') return [];
+
+	const context = item as {
+		webviewItem?: string;
+		webviewItemValue?: { ref?: unknown };
+		webviewItemsValues?: { webviewItem?: string; webviewItemValue: { ref?: unknown } }[];
+	};
+	const values =
+		context.webviewItemsValues ??
+		(context.webviewItemValue == null
+			? []
+			: [{ webviewItem: context.webviewItem, webviewItemValue: context.webviewItemValue }]);
+	return values
+		.map(value => value.webviewItemValue.ref)
+		.filter((ref): ref is string => isGraphRowAction({ action: 'copy-sha', sha: ref }));
 }

@@ -5,6 +5,7 @@ import {
 	parseGraphHostMessage,
 	parseGraphWebviewMessage,
 } from '../../../graph/protocol.js';
+import type { IpcMessage } from '../../../ipc/models/ipc.js';
 import {
 	applyGraphMessage,
 	createGraphState,
@@ -14,6 +15,7 @@ import {
 	getGraphKeyboardAction,
 	getGraphNavigationIndex,
 	getGraphRowAction,
+	getVisibleGraphColumns,
 	getGraphRowView,
 	shouldPageGraph,
 	updateGraphSelection,
@@ -27,11 +29,18 @@ type Deferred<T> = {
 };
 
 type GraphAppTestView = {
+	getRowContext(row: GitGraphRow): string;
 	focusSelectedRow(): void;
 	graph: GraphState;
+	inspectorDismissed: boolean;
+	inspectorOpen: boolean;
+	onMessageReceived(message: IpcMessage): void;
+	onRangeChanged(event: CustomEvent<{ first: number; last: number }>): void;
 	onRowKeyDown(event: KeyboardEvent): void;
 	post(message: unknown): void;
+	requestUpdate(): void;
 	renderRoot: { querySelector<T extends HTMLElement>(selectors: string): T | null };
+	restoreSelectedRow(): void;
 	selected: readonly string[];
 };
 
@@ -61,6 +70,17 @@ suite('Graph app', () => {
 	test('posts a validated filter request after committed search input', () => {
 		assert.deepStrictEqual(getGraphFilterRequest('author:ada'), { type: 'graph/filter', query: 'author:ada' });
 		assert.strictEqual(getGraphFilterRequest('x'.repeat(10001)), undefined);
+	});
+
+	test('keeps only visible graph, message, and refs columns in compact mode', () => {
+		assert.deepStrictEqual(
+			getVisibleGraphColumns({
+				columns: ['graph', 'message', 'refs', 'author', 'date', 'sha'],
+				compact: true,
+				minimap: true,
+			}),
+			['graph', 'message', 'refs'],
+		);
 	});
 
 	test('maps Space to toggling the focused row without discarding other selected rows', () => {
@@ -96,6 +116,71 @@ suite('Graph app', () => {
 			{ type: 'graph/selection/update', selection: ['aaaaa', 'bbbbb'] },
 			{ type: 'graph/details', sha: 'bbbbb', includeFiles: false },
 		]);
+	});
+
+	test('provides native multi-selection context for graph commands', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		app.selected = ['aaaaa', 'bbbbb'];
+
+		assert.deepStrictEqual(JSON.parse(app.getRowContext(row('aaaaa'))), {
+			webviewItemValue: { type: 'commit', ref: 'aaaaa' },
+			listMultiSelection: true,
+			listDoubleSelection: true,
+			webviewItems: 'gitlens:commit',
+			webviewItemsUnion: 'gitlens:commit',
+			webviewItemsValues: [
+				{ webviewItem: 'gitlens:commit', webviewItemValue: { type: 'commit', ref: 'aaaaa' } },
+				{ webviewItem: 'gitlens:commit', webviewItemValue: { type: 'commit', ref: 'bbbbb' } },
+			],
+		});
+	});
+
+	test('keeps an Escape-closed inspector closed across graph replacement', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		app.graph = createGraphState();
+		app.selected = [];
+		app.inspectorDismissed = true;
+		app.inspectorOpen = false;
+		app.details = undefined;
+		app.post = () => {};
+		app.restoreSelectedRow = () => {};
+
+		app.onMessageReceived({
+			params: {
+				type: 'graph/replace',
+				rows: [row('aaaaa')],
+				paging: { hasMore: false },
+			},
+		} as IpcMessage);
+
+		assert.strictEqual(app.inspectorOpen, false);
+	});
+
+	test('ignores a virtualizer range event without bounds', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+
+		assert.doesNotThrow(() =>
+			app.onRangeChanged({ detail: undefined } as unknown as CustomEvent<{ first: number; last: number }>),
+		);
+	});
+
+	test('updates after the graph message task completes', async () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		let updates = 0;
+		app.requestUpdate = () => {
+			updates++;
+		};
+
+		app.onMessageReceived({
+			params: {
+				type: 'graph/context',
+				repository: { name: 'repo' },
+				refs: [],
+			},
+		} as IpcMessage);
+		await new Promise(resolve => setTimeout(resolve, 0));
+
+		assert.strictEqual(updates, 1);
 	});
 
 	test('restores focus to the rendered active row without waiting for the virtualizer', () => {
@@ -296,6 +381,10 @@ suite('Graph app', () => {
 			},
 		);
 		assert.deepStrictEqual(
+			parseGraphHostMessage({ type: 'graph/error', operation: 'details', message: 'Could not load commit' }),
+			{ type: 'graph/error', operation: 'details', message: 'Could not load commit' },
+		);
+		assert.deepStrictEqual(
 			parseGraphHostMessage({
 				type: 'graph/details',
 				sha: 'abcdef',
@@ -348,6 +437,8 @@ suite('Graph app', () => {
 			{ type: 'graph/filter', query: 'x'.repeat(10001) },
 			{ type: 'graph/details', sha: 'not a sha', includeFiles: false },
 			{ type: 'graph/details', sha: 'abcdef', includeFiles: 'false' },
+			{ type: 'graph/error', operation: 'unknown', message: 'failed' },
+			{ type: 'graph/error', operation: 'graph', message: 'x'.repeat(513) },
 		]) {
 			assert.strictEqual(parseGraphWebviewMessage(message), undefined);
 		}

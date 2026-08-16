@@ -75,19 +75,30 @@ export type GraphDetailsMessage = GraphCommitDetails & {
 	readonly type: 'graph/details';
 };
 
+export type GraphErrorMessage = {
+	readonly type: 'graph/error';
+	readonly operation: 'details' | 'filter' | 'graph';
+	readonly message: string;
+};
+
 /** Host-to-webview graph data messages. */
 export type GraphHostMessage =
 	| GraphBootstrapMessage
 	| GraphAppendMessage
 	| GraphReplaceMessage
 	| GraphContextMessage
-	| GraphDetailsMessage;
+	| GraphDetailsMessage
+	| GraphErrorMessage;
 export const GraphDidChangeNotification = new IpcNotification<GraphHostMessage>(scope, 'didChange');
 
 export type GraphMoreRequest = {
 	readonly type: 'graph/more';
 	readonly limit: number;
 	readonly targetId?: string;
+};
+
+export type GraphRefreshRequest = {
+	readonly type: 'graph/refresh';
 };
 
 export type GraphSelectionUpdate = {
@@ -123,6 +134,7 @@ export type GraphDisplayPreferences = {
 /** Webview-to-host interaction messages. */
 export type GraphWebviewMessage =
 	| GraphMoreRequest
+	| GraphRefreshRequest
 	| GraphSelectionUpdate
 	| GraphRowAction
 	| GraphFilterRequest
@@ -141,6 +153,7 @@ const graphQueryMaxLength = 10000;
 const graphRefNameMaxLength = 1024;
 const graphFilePathMaxLength = 4096;
 const graphFileStatusMaxLength = 16;
+const graphErrorMessageMaxLength = 512;
 const shaRegex = /^[0-9a-f]{5,64}$/i;
 const rowActions = new Set<GraphRowAction['action']>(['copy-sha', 'open-local', 'open-remote']);
 const graphColumns = new Set<GraphColumn>(['graph', 'message', 'refs', 'author', 'date', 'sha']);
@@ -153,6 +166,8 @@ export function parseGraphHostMessage(value: unknown): GraphHostMessage | undefi
 			return parseGraphWorkspaceContext(value);
 		case 'graph/details':
 			return parseGraphCommitDetails(value);
+		case 'graph/error':
+			return parseGraphError(value);
 		case 'graph/bootstrap': {
 			const rows = parseGraphRows(value.rows);
 			const paging = parseGraphPaging(value.paging);
@@ -186,6 +201,8 @@ export function parseGraphWebviewMessage(value: unknown): GraphWebviewMessage | 
 			return parseGraphFilterRequest(value);
 		case 'graph/more':
 			return parseGraphMoreRequest(value);
+		case 'graph/refresh':
+			return { type: 'graph/refresh' };
 		case 'graph/row/action':
 			return parseGraphRowAction(value);
 		case 'graph/selection/update':
@@ -323,6 +340,17 @@ function parseGraphCommitDetails(value: Record<string, unknown>): GraphDetailsMe
 		refs: refs,
 		...(files == null ? {} : { files: files }),
 	};
+}
+
+function parseGraphError(value: Record<string, unknown>): GraphErrorMessage | undefined {
+	if (
+		(value.operation !== 'details' && value.operation !== 'filter' && value.operation !== 'graph') ||
+		!isString(value.message, graphErrorMessageMaxLength)
+	) {
+		return undefined;
+	}
+
+	return { type: 'graph/error', operation: value.operation, message: value.message };
 }
 
 function parseGraphRows(value: unknown): readonly GraphWebviewRow[] | undefined {
