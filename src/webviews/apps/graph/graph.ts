@@ -1,7 +1,7 @@
 import type { LitVirtualizer } from '@lit-labs/virtualizer';
 import { flow } from '@lit-labs/virtualizer/layouts/flow.js';
 import { html, nothing } from 'lit';
-import { customElement, query } from 'lit/decorators.js';
+import { customElement, query, state } from 'lit/decorators.js';
 import { debounce } from '@gitlens/utils/debounce.js';
 import { mergeWebviewItems, mergeWebviewItemsUnion, serializeWebviewItemContext } from '../../../system/webview.js';
 import type {
@@ -226,26 +226,37 @@ export class GlGraphApp extends GlWebviewApp {
 	@query('lit-virtualizer')
 	private readonly virtualizer?: LitVirtualizer;
 
+	@state()
 	private graph = createGraphState();
 
+	@state()
 	private workspace: GraphWorkspaceState = { display: defaultGraphDisplay };
 
+	@state()
 	private selected: readonly string[] = [];
 
+	@state()
 	private context: GraphWorkspaceContext | undefined;
 
+	@state()
 	private details: GraphCommitDetails | undefined;
 
+	@state()
 	private filterQuery = '';
 
+	@state()
 	private inspectorOpen = false;
 
+	@state()
 	private inspectorDismissed = false;
 
+	@state()
 	private error: GraphErrorMessage | undefined;
 
+	@state()
 	private minimapRange = { first: 0, last: 0 };
 
+	@state()
 	private paging = false;
 	private messageId = 0;
 	private readonly contextMenuProxy = new ContextMenuProxyController(this);

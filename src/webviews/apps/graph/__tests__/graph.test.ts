@@ -6,6 +6,7 @@ import {
 	parseGraphWebviewMessage,
 } from '../../../graph/protocol.js';
 import type { IpcMessage } from '../../../ipc/models/ipc.js';
+import { setHostIpcFactory } from '../../shared/ipc.js';
 import {
 	applyGraphMessage,
 	createGraphState,
@@ -34,15 +35,46 @@ type GraphAppTestView = {
 	graph: GraphState;
 	inspectorDismissed: boolean;
 	inspectorOpen: boolean;
+	isUpdatePending: boolean;
+	minimapRange: { first: number; last: number };
+	onKeyDown(event: KeyboardEvent): void;
 	onMessageReceived(message: IpcMessage): void;
 	onRangeChanged(event: CustomEvent<{ first: number; last: number }>): void;
 	onRowKeyDown(event: KeyboardEvent): void;
 	post(message: unknown): void;
+	paging: boolean;
 	requestUpdate(): void;
 	renderRoot: { querySelector<T extends HTMLElement>(selectors: string): T | null };
 	restoreSelectedRow(): void;
 	selected: readonly string[];
+	toggleCompact(event: Event): void;
+	workspace: { display: { columns: readonly string[]; compact: boolean; minimap: boolean } };
 };
+
+const reactiveGraphProperties = [
+	'graph',
+	'workspace',
+	'selected',
+	'context',
+	'details',
+	'filterQuery',
+	'inspectorOpen',
+	'inspectorDismissed',
+	'error',
+	'minimapRange',
+	'paging',
+] as const;
+
+function activateReactiveGraphState(app: GraphAppTestView): void {
+	const instance = app as unknown as Record<string, unknown>;
+	for (const property of reactiveGraphProperties) {
+		const value = instance[property];
+		Reflect.deleteProperty(instance, property);
+		instance[property] = value;
+	}
+
+	app.isUpdatePending = false;
+}
 
 function deferred<T>(): Deferred<T> {
 	let resolve!: (value: T) => void;
@@ -67,6 +99,10 @@ function row(sha: string, overrides?: Partial<GitGraphRow>): GitGraphRow {
 }
 
 suite('Graph app', () => {
+	setup(() => {
+		setHostIpcFactory(() => ({ getState: () => undefined, postMessage: () => {}, setState: () => {} }));
+	});
+
 	test('posts a validated filter request after committed search input', () => {
 		assert.deepStrictEqual(getGraphFilterRequest('author:ada'), { type: 'graph/filter', query: 'author:ada' });
 		assert.strictEqual(getGraphFilterRequest('x'.repeat(10001)), undefined);
@@ -93,10 +129,13 @@ suite('Graph app', () => {
 
 	test('toggles the focused row on Space and posts the multi-selection', () => {
 		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		activateReactiveGraphState(app);
 		app.graph = { layout: [], rows: [row('aaaaa'), row('bbbbb')], hasMore: false, selection: 'aaaaa' };
 		app.selected = ['aaaaa'];
+		app.inspectorDismissed = true;
 		const posted: unknown[] = [];
 		app.post = message => posted.push(message);
+		app.isUpdatePending = false;
 		let prevented = false;
 
 		app.onRowKeyDown({
@@ -112,10 +151,71 @@ suite('Graph app', () => {
 		assert.strictEqual(prevented, true);
 		assert.strictEqual(app.graph.selection, 'bbbbb');
 		assert.deepStrictEqual(app.selected, ['aaaaa', 'bbbbb']);
+		assert.strictEqual(app.inspectorOpen, true);
+		assert.strictEqual(app.inspectorDismissed, false);
+		assert.strictEqual(app.isUpdatePending, true);
 		assert.deepStrictEqual(posted, [
 			{ type: 'graph/selection/update', selection: ['aaaaa', 'bbbbb'] },
 			{ type: 'graph/details', sha: 'bbbbb', includeFiles: false },
 		]);
+	});
+
+	test('updates the visible inspector state when Escape closes it', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		activateReactiveGraphState(app);
+		app.inspectorOpen = true;
+		app.isUpdatePending = false;
+		app.focusSelectedRow = () => {};
+		let prevented = false;
+
+		app.onKeyDown({
+			key: 'Escape',
+			preventDefault: () => {
+				prevented = true;
+			},
+		} as KeyboardEvent);
+
+		assert.strictEqual(prevented, true);
+		assert.strictEqual(app.inspectorOpen, false);
+		assert.strictEqual(app.inspectorDismissed, true);
+		assert.strictEqual(app.isUpdatePending, true);
+	});
+
+	test('updates the compact column header state after its display toggle', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		activateReactiveGraphState(app);
+		class Input {
+			checked = true;
+		}
+		const htmlInputElement = Object.getOwnPropertyDescriptor(globalThis, 'HTMLInputElement');
+		Object.defineProperty(globalThis, 'HTMLInputElement', { configurable: true, value: Input });
+
+		try {
+			app.toggleCompact({ target: new Input() } as unknown as Event);
+
+			assert.strictEqual(app.workspace.display.compact, true);
+			assert.deepStrictEqual(getVisibleGraphColumns(app.workspace.display), ['graph', 'message', 'refs']);
+			assert.strictEqual(app.isUpdatePending, true);
+		} finally {
+			if (htmlInputElement == null) {
+				delete (globalThis as { HTMLInputElement?: typeof Input }).HTMLInputElement;
+			} else {
+				Object.defineProperty(globalThis, 'HTMLInputElement', htmlInputElement);
+			}
+		}
+	});
+
+	test('updates the minimap viewport range after a virtualizer range event', () => {
+		const app = new GlGraphApp() as unknown as GraphAppTestView;
+		activateReactiveGraphState(app);
+		app.graph = { layout: [], rows: [row('aaaaa'), row('bbbbb')], hasMore: true, selection: 'aaaaa' };
+		app.isUpdatePending = false;
+
+		app.onRangeChanged({ detail: { first: 1, last: 1 } } as CustomEvent<{ first: number; last: number }>);
+
+		assert.deepStrictEqual(app.minimapRange, { first: 1, last: 1 });
+		assert.strictEqual(app.paging, true);
+		assert.strictEqual(app.isUpdatePending, true);
 	});
 
 	test('provides native multi-selection context for graph commands', () => {
