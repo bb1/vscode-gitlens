@@ -12,13 +12,9 @@ import { evaluateStateExpression } from '../model.js';
 import type { SettingsState } from '../state.js';
 import { settingsStateContext } from '../state.js';
 import './format-input.js';
-import './settings-agents.js';
-import './settings-ai.js';
 import './settings-autolinks.js';
-import './settings-integrations.js';
 import './settings-remotes.js';
 import './settings-scm-views.js';
-import './settings-setup.js';
 import '../../shared/components/checkbox/checkbox.js';
 import '../../shared/components/code-icon.js';
 import '../../shared/components/segmented/segmented.js';
@@ -351,19 +347,9 @@ export class GlSettingControl extends SignalWatcher(LitElement) {
 				return html`<gl-settings-scm-views .actions=${this.actions}></gl-settings-scm-views>`;
 
 			case 'integrations':
-				return html`<gl-settings-integrations .actions=${this.actions}></gl-settings-integrations>`;
-
 			case 'ai':
-				return html`<gl-settings-ai .actions=${this.actions}></gl-settings-ai>`;
-
 			case 'agents':
-				return html`<gl-settings-agents .actions=${this.actions}></gl-settings-agents>`;
-
 			case 'setup':
-				return html`<gl-settings-setup .actions=${this.actions}></gl-settings-setup>`;
-
-			// The account panel is rendered full-bleed by settings-detail (it replaces the
-			// category header); it never reaches a per-control render, so nothing here.
 			case 'account':
 				return nothing;
 

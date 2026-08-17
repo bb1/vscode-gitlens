@@ -26,21 +26,9 @@ import type { PullRequestShape } from '@gitlens/git/models/pullRequest.js';
 import type { GitCommitSearchContext } from '@gitlens/git/models/search.js';
 import type { Autolink } from '../../../autolinks/models/autolinks.js';
 import type { CommitDetails, CommitSignatureShape, Preferences } from '../../commitDetails/protocol.js';
-import type { AiModelInfo } from '../../rpc/services/types.js';
 import type { NavigationState } from '../shared/controllers/navigationStack.js';
 import type { HostStorage } from '../shared/host/storage.js';
-import { createRemoteSignalBridge } from '../shared/state/remoteSignal.js';
 import { createStateGroup } from '../shared/state/signals.js';
-
-// ============================================================
-// Explain/Generate State (for AI features)
-// ============================================================
-
-export interface ExplainState {
-	cancelled?: boolean;
-	error?: { message: string };
-	result?: { summary: string; body: string };
-}
 
 /**
  * Creates a new Commit Details state instance with all signals initialized to defaults.
@@ -76,15 +64,6 @@ export function createCommitDetailsState(storage?: HostStorage) {
 	const currentCommit = signal<CommitDetails | undefined>(undefined);
 	const searchContext = signal<GitCommitSearchContext | undefined>(undefined);
 	const preferences = signal<Preferences | undefined>(undefined);
-
-	/** Currently selected AI model — populated live from the AI service (for the Explain input chip). */
-	const aiModel = signal<AiModelInfo | undefined>(undefined);
-
-	/** Organization settings — connected to remote signal once RPC connects. Single `.get()`. */
-	const orgSettings = createRemoteSignalBridge({ ai: false, drafts: false });
-
-	/** Whether the user has a GitKraken account — connected to remote signal once RPC connects. Single `.get()`. */
-	const hasAccount = createRemoteSignalBridge(false);
 
 	const capabilities = signalObject({ hasIntegrationsConnected: false, autolinksEnabled: false });
 
@@ -127,9 +106,6 @@ export function createCommitDetailsState(storage?: HostStorage) {
 		currentCommit: currentCommit,
 		searchContext: searchContext,
 		preferences: preferences,
-		aiModel: aiModel,
-		orgSettings: orgSettings,
-		hasAccount: hasAccount,
 		capabilities: capabilities,
 
 		// Repository context

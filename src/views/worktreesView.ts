@@ -2,14 +2,13 @@ import type { CancellationToken, ConfigurationChangeEvent, Disposable } from 'vs
 import { ProgressLocation, TreeItem, TreeItemCollapsibleState, window } from 'vscode';
 import type { GitWorktree } from '@gitlens/git/models/worktree.js';
 import type { ViewBranchesLayout, ViewFilesLayout, WorktreesViewConfig } from '../config.js';
-import { proBadge } from '../constants.js';
 import type { Container } from '../container.js';
 import { GitUri } from '../git/gitUri.js';
 import type { RepositoryChangeEvent } from '../git/models/repository.js';
-import { ensurePlusFeaturesEnabled } from '../plus/gk/utils/-webview/plus.utils.js';
 import { executeCommand } from '../system/-webview/command.js';
 import { configuration } from '../system/-webview/configuration.js';
 import { gate } from '../system/decorators/gate.js';
+import { getWorktreesDisplay } from '../system/worktrees.js';
 import { RepositoriesSubscribeableNode } from './nodes/abstract/repositoriesSubscribeableNode.js';
 import { RepositoryFolderNode } from './nodes/abstract/repositoryFolderNode.js';
 import type { ViewNode } from './nodes/abstract/viewNode.js';
@@ -43,9 +42,6 @@ export class WorktreesViewNode extends RepositoriesSubscribeableNode<WorktreesVi
 		this.view.message = undefined;
 
 		if (this.children == null) {
-			const access = await this.view.container.git.access('worktrees');
-			if (access.allowed === false) return [];
-
 			if (this.view.container.git.isDiscoveringRepositories) {
 				await this.view.container.git.isDiscoveringRepositories;
 			}
@@ -95,12 +91,7 @@ export class WorktreesView extends ViewBase<'worktrees', WorktreesViewNode, Work
 	protected readonly configKey = 'worktrees';
 
 	constructor(container: Container, grouped?: GroupedViewContext) {
-		super(container, 'worktrees', 'Worktrees', 'worktreesView', grouped);
-	}
-
-	override getViewDescription(count?: number): string {
-		const description = super.getViewDescription(count);
-		return description ? `${description} \u00a0\u2022\u00a0 ${proBadge}` : proBadge;
+		super(container, 'worktrees', getWorktreesDisplay().title, 'worktreesView', grouped);
 	}
 
 	override get canReveal(): boolean {
@@ -109,11 +100,6 @@ export class WorktreesView extends ViewBase<'worktrees', WorktreesViewNode, Work
 
 	override get canSelectMany(): boolean {
 		return configuration.get('views.multiselect');
-	}
-
-	override async show(options?: { preserveFocus?: boolean | undefined }): Promise<void> {
-		if (!(await ensurePlusFeaturesEnabled())) return;
-		return super.show(options);
 	}
 
 	protected getRoot(): WorktreesViewNode {

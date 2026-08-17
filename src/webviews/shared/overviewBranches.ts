@@ -8,8 +8,6 @@ import type { RemoteProviderSupportedFeatures } from '@gitlens/git/models/remote
 import type { GitWorktree } from '@gitlens/git/models/worktree.js';
 import type { GitBranchMergedStatus } from '@gitlens/git/providers/branches.js';
 import { getReferenceFromBranch } from '../../git/utils/-webview/reference.utils.js';
-import type { LaunchpadItem } from '../../plus/launchpad/launchpadProvider.js';
-import type { LaunchpadGroup } from '../../plus/launchpad/models/launchpad.js';
 
 export type OverviewRecentThreshold = 'OneDay' | 'OneWeek' | 'OneMonth';
 export type OverviewStaleThreshold = 'OneYear';
@@ -136,8 +134,6 @@ export type GetOverviewEnrichmentResponse = Record<string, OverviewBranchEnrichm
 export interface OverviewBranchEnrichment {
 	remote?: OverviewBranchRemote;
 	pr?: OverviewBranchPullRequest;
-	/** Resolved launchpad data for IPC serialization (Promises don't survive postMessage). */
-	resolvedLaunchpad?: OverviewBranchLaunchpadItem;
 	autolinks?: OverviewBranchIssue[];
 	issues?: OverviewBranchIssue[];
 	contributors?: OverviewBranchContributor[];
@@ -175,32 +171,6 @@ export interface OverviewBranchPullRequest {
 	/** Stack membership, when this pull request is one layer of a stack. `position` is 1-based from the
 	 *  stack's base. */
 	stack?: { number: number; position: number; size: number };
-	launchpad?: Promise<OverviewBranchLaunchpadItem | undefined>;
-}
-
-export interface OverviewBranchLaunchpadItem {
-	uuid: string;
-	category: LaunchpadItem['actionableCategory'];
-	groups: LaunchpadGroup[];
-	suggestedActions: LaunchpadItem['suggestedActions'];
-
-	failingCI: boolean;
-	hasConflicts: boolean;
-
-	author: LaunchpadItem['author'];
-	createdDate: LaunchpadItem['createdDate'];
-
-	review: {
-		decision: LaunchpadItem['reviewDecision'];
-		reviews: NonNullable<LaunchpadItem['reviews']>;
-		counts: {
-			approval: number;
-			changeRequest: number;
-			comment: number;
-		};
-	};
-
-	viewer: LaunchpadItem['viewer'];
 }
 
 export interface OverviewBranchIssue {

@@ -233,11 +233,6 @@ export const PickCommitToggleQuickInputButton = class extends ToggleQuickInputBu
 	}
 };
 
-export const LearnAboutProQuickInputButton: QuickInputButton = {
-	iconPath: new ThemeIcon('info'),
-	tooltip: 'Learn about GitLens Pro',
-};
-
 export const MergeQuickInputButton: QuickInputButton = {
 	iconPath: new ThemeIcon('merge'),
 	tooltip: 'Merge...',
@@ -275,12 +270,7 @@ export const OpenOnBitbucketQuickInputButton: QuickInputButton = {
 
 export const OpenOnWebQuickInputButton: QuickInputButton = {
 	iconPath: new ThemeIcon('globe'),
-	tooltip: 'Open on gitkraken.dev',
-};
-
-export const LaunchpadSettingsQuickInputButton: QuickInputButton = {
-	iconPath: new ThemeIcon('gear'),
-	tooltip: 'Launchpad Settings',
+	tooltip: 'Open in browser',
 };
 
 export const PinQuickInputButton: QuickInputButton = {

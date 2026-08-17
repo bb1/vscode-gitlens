@@ -13,8 +13,6 @@ import { isUri } from '@gitlens/utils/uri.js';
 import type { GlCommands, GlCommandsDeprecated } from '../constants.commands.js';
 import type { StoredNamedRef } from '../constants.storage.js';
 import { GlRepository } from '../git/models/repository.js';
-import { CloudWorkspace } from '../plus/workspaces/models/cloudWorkspace.js';
-import { LocalWorkspace } from '../plus/workspaces/models/localWorkspace.js';
 import { isScm, isScmResourceGroup, isScmResourceState } from '../system/-webview/scm.js';
 import { isGitTimelineItem } from '../system/-webview/timeline.js';
 import { ViewNode } from '../views/nodes/abstract/viewNode.js';
@@ -155,15 +153,6 @@ export function isCommandContextViewNodeHasTag(
 	if (context.type !== 'viewItem') return false;
 
 	return GitTag.is((context.node as ViewNode & { tag: GitTag }).tag);
-}
-
-export function isCommandContextViewNodeHasWorkspace(
-	context: CommandContext,
-): context is CommandViewNodeContext & { node: ViewNode & { workspace: CloudWorkspace | LocalWorkspace } } {
-	if (context.type !== 'viewItem') return false;
-
-	const workspace = (context.node as ViewNode & { workspace?: CloudWorkspace | LocalWorkspace }).workspace;
-	return workspace instanceof CloudWorkspace || workspace instanceof LocalWorkspace;
 }
 
 export interface CommandContextParsingOptions {

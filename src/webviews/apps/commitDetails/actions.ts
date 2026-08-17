@@ -32,7 +32,7 @@ import { getSettledValue } from '@gitlens/utils/promise.js';
 import type { Autolink } from '../../../autolinks/models/autolinks.js';
 import type { ViewFilesLayout } from '../../../config.js';
 import type { GlExtensionCommands } from '../../../constants.commands.js';
-import type { InspectWebviewTelemetryContext, TelemetryEvents } from '../../../constants.telemetry.js';
+import type { InspectWebviewTelemetryContext } from '../../../constants.telemetry.js';
 import type { CommitDetailsServices, InitialContext } from '../../commitDetails/commitDetailsService.js';
 import type { CommitDetails, CommitSignatureShape, FileShowOptions } from '../../commitDetails/protocol.js';
 import { defaultViewFilesConfig } from '../../commitDetails/protocol.js';
@@ -55,7 +55,7 @@ import {
 } from '../shared/actions/rpc.js';
 import { NavigationStack } from '../shared/controllers/navigationStack.js';
 import type { Resource } from '../shared/state/resource.js';
-import type { CommitDetailsState, ExplainState } from './state.js';
+import type { CommitDetailsState } from './state.js';
 
 // ============================================================
 // Resolved Services Type (resolve-once pattern)
@@ -73,16 +73,12 @@ type ResolvedSubService<K extends keyof CommitDetailsServices> = Awaited<Remote<
  */
 export interface ResolvedServices {
 	readonly inspect: ResolvedSubService<'inspect'>;
-	readonly drafts: ResolvedSubService<'drafts'>;
 	readonly repositories: ResolvedSubService<'repositories'>;
 	readonly repository: ResolvedSubService<'repository'>;
 	readonly commands: ResolvedSubService<'commands'>;
 	readonly config: ResolvedSubService<'config'>;
 	readonly storage: ResolvedSubService<'storage'>;
-	readonly ai: ResolvedSubService<'ai'>;
 	readonly autolinks: ResolvedSubService<'autolinks'>;
-	readonly subscription: ResolvedSubService<'subscription'>;
-	readonly integrations: ResolvedSubService<'integrations'>;
 	readonly files: ResolvedSubService<'files'>;
 	readonly pullRequests: ResolvedSubService<'pullRequests'>;
 	readonly telemetry: ResolvedSubService<'telemetry'>;
@@ -94,7 +90,6 @@ export interface ResolvedServices {
 export interface CommitDetailsResources {
 	readonly commit: Resource<CommitDetails | undefined, [string, string]>;
 	readonly reachability: Resource<GitCommitReachability | undefined>;
-	readonly explain: Resource<ExplainState | undefined, [string | undefined]>;
 }
 
 interface FetchCommitOptions {
@@ -178,7 +173,6 @@ export class CommitDetailsActions {
 	cancelPendingRequests(): void {
 		this.resources.commit.cancel();
 		this.resources.reachability.cancel();
-		this.resources.explain.cancel();
 	}
 
 	// ============================================================
@@ -189,10 +183,7 @@ export class CommitDetailsActions {
 		fireAndForget(this.services.telemetry.updateContext(context));
 	}
 
-	sendTelemetryEvent(
-		name: keyof TelemetryEvents,
-		data?: Record<string, string | number | boolean | undefined>,
-	): void {
+	sendTelemetryEvent(name: string, data?: Record<string, string | number | boolean | undefined>): void {
 		fireAndForget(this.services.telemetry.sendEvent(name, data));
 	}
 
@@ -357,14 +348,6 @@ export class CommitDetailsActions {
 		fileActions.openMultipleChanges(this.services.files, args);
 	}
 
-	/**
-	 * Copy a commit's (or stash's) full diff to the system clipboard.
-	 * `to` is the commit sha, `from` the parent (undefined for a root commit).
-	 */
-	copyCommitPatchToClipboard(repoPath: string, to: string, from?: string): void {
-		fireAndForget(this.services.drafts.copyCommitPatchToClipboard(repoPath, to, from), 'copy commit patch');
-	}
-
 	// ============================================================
 	// Commit Actions
 	// ============================================================
@@ -448,21 +431,6 @@ export class CommitDetailsActions {
 	}
 
 	// ============================================================
-	// AI Actions (via resources)
-	// ============================================================
-
-	/**
-	 * Generate an AI explanation of the current commit.
-	 * Resource handles cancel-previous and staleness.
-	 */
-	async explainCommit(prompt?: string): Promise<void> {
-		const commit = this.state.currentCommit.get();
-		if (!commit) return;
-
-		await this.resources.explain.fetch(prompt);
-	}
-
-	// ============================================================
 	// Reachability Actions (via resource)
 	// ============================================================
 
@@ -525,13 +493,6 @@ export class CommitDetailsActions {
 			void this.services.config
 				.get('views.commitDetails.autolinks.enabled')
 				.then(a => (this.state.capabilities.autolinksEnabled = a), noop);
-			// Note: hasAccount and orgSettings use RemoteSignalBridge (connected in commitDetails.ts)
-			void this.services.integrations
-				.getIntegrationStates()
-				.then(s => (this.state.capabilities.hasIntegrationsConnected = s.some(i => i.connected)), noop);
-			// Fetch the selected AI model for the Explain input's model chip; refreshed live via onModelChanged.
-			void this.services.ai.getModel().then(m => this.state.aiModel.set(m), noop);
-
 			// Fetch the initial commit — the only thing worth blocking on.
 			// Use persisted commitRef as fallback when host has no initial commit.
 			const initialCommit = context.initialCommit ?? persistedCommitRef;
@@ -568,7 +529,6 @@ export class CommitDetailsActions {
 
 		this.state.error.set(undefined);
 		this.resources.reachability.cancel();
-		this.resources.explain.cancel();
 
 		// Abort any prior in-flight enrichment so a slow autolinks / PR / signature lookup from
 		// the previous selection can't overwrite the new selection's state. Host-side methods
@@ -719,7 +679,6 @@ export class CommitDetailsActions {
 				searchBoxFilterResult,
 				configResult,
 				coreConfigResult,
-				aiEnabledResult,
 			] = await Promise.allSettled([
 				this.services.storage.getWorkspace('views:commitDetails:pullRequestExpanded'),
 				this.services.storage.getWorkspace('views:commitDetails:showSearchBox'),
@@ -740,7 +699,6 @@ export class CommitDetailsActions {
 					'git.enableSmartCommit',
 					'scm.defaultViewSortKey',
 				),
-				this.services.ai.isEnabled(),
 			]);
 
 			const pullRequestExpanded = getSettledValue(pullRequestExpandedResult);
@@ -758,7 +716,6 @@ export class CommitDetailsActions {
 			] = getSettledValue(configResult) ?? [];
 			const [indentGuides, indent, enableSmartCommit, workingFilesOrderBy] =
 				getSettledValue(coreConfigResult) ?? [];
-			const aiEnabled = getSettledValue(aiEnabledResult);
 
 			this.state.preferences.set({
 				currentUserNameStyle: currentUserNameStyle ?? 'you',
@@ -771,7 +728,7 @@ export class CommitDetailsActions {
 				indent: indent,
 				workingFilesOrderBy: workingFilesOrderBy ?? 'path',
 				workingChangesSortBy: workingChangesSortBy ?? 'stage',
-				aiEnabled: aiEnabled ?? false,
+				aiEnabled: false,
 				enableSmartCommit: enableSmartCommit ?? false,
 				showSignatureBadges: showSignatureBadges ?? false,
 				showSearchBox: showSearchBox ?? true,
@@ -782,18 +739,6 @@ export class CommitDetailsActions {
 			}
 		} catch (ex) {
 			Logger.error(ex, 'Failed to fetch preferences');
-		}
-	}
-
-	/**
-	 * Check integrations status.
-	 */
-	async checkIntegrations(): Promise<void> {
-		try {
-			const states = await this.services.integrations.getIntegrationStates();
-			this.state.capabilities.hasIntegrationsConnected = states.some(i => i.connected);
-		} catch (ex) {
-			Logger.error(ex, 'Failed to check integrations status');
 		}
 	}
 }

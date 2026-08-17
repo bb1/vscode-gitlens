@@ -8,6 +8,7 @@
 .codex
 .DS_Store
 .work/
+.worktrees/
 .stylelintcache
 .superpowers
 .tasks
@@ -20,7 +21,7 @@ out
 node_modules
 images/settings
 custom-elements.json
-gitlens-*.vsix
+*.vsix
 product.json
 tsconfig*.tsbuildinfo
 *.code-workspace

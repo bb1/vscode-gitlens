@@ -62,7 +62,7 @@ suite('Test PR number parsing from a url: getPullRequestNumberFromUrl()', () => 
 		t('github', 'https://github.com/eamodio/vscode-gitlens/pull/16', '16');
 		t('gitlab', 'https://gitlab.com/gitlab-org/gitlab/-/merge_requests/16', '16');
 		t('bitbucket', 'https://bitbucket.org/eamodio/gitlens/pull-requests/16', '16');
-		t('azure', 'https://dev.azure.com/gitkraken/gitlens/_git/gitlens/pullrequest/16', '16');
+		t('azure', 'https://dev.azure.com/example-org/example/_git/example/pullrequest/16', '16');
 		t('github enterprise', 'https://github.acme.com/eamodio/vscode-gitlens/pull/16', '16');
 	});
 

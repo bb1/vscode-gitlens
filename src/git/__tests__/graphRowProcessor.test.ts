@@ -1,20 +1,9 @@
 import * as assert from 'assert';
 import type { GitBranch } from '@gitlens/git/models/branch.js';
-import type {
-	GitGraphRow,
-	GitGraphRowHead,
-	GitGraphRowRemoteHead,
-	GitGraphRowTag,
-	GraphContext,
-} from '@gitlens/git/models/graph.js';
+import type { GitGraphRow, GitGraphRowHead, GitGraphRowRemoteHead, GraphContext } from '@gitlens/git/models/graph.js';
 import { GitGraphRowContextFlags } from '@gitlens/git/models/graph.js';
 import type { GitRemote } from '@gitlens/git/models/remote.js';
 import type { Container } from '../../container.js';
-import {
-	serializeBranchRefContext,
-	serializeRemoteBranchRefContext,
-	serializeTagRefContext,
-} from '../../webviews/apps/plus/graph/utils/refContext.utils.js';
 import { GlGraphRowProcessor } from '../graphRowProcessor.js';
 
 function createMockContainer(): Container {
@@ -212,10 +201,6 @@ suite('GlGraphRowProcessor', () => {
 		});
 	});
 
-	// The host ships `+rewriteable` as the `RewriteableFromHead` bit in `contexts.flags`; the webview
-	// turns the bit into the `+rewriteable` webview-item token (`buildRowCommitContext`) that gates the
-	// history-rewriting commands (squash/drop/reword/modify). A commit is rewriteable when it's on the
-	// first-parent chain from HEAD up to (excluding) the first merge — i.e. present in `rewriteableFromHEAD`.
 	suite('RewriteableFromHead flag on commit rows', () => {
 		test('sets the RewriteableFromHead bit when the commit is in rewriteableFromHEAD', () => {
 			const processor = new GlGraphRowProcessor(createMockContainer(), uri => uri);

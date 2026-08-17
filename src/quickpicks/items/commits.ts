@@ -19,7 +19,6 @@ import {
 	applyChanges,
 	copyIdToClipboard,
 	copyMessageToClipboard,
-	explainCommit,
 	openChanges,
 	openChangesInDiffTool,
 	openChangesWithWorking,
@@ -319,16 +318,6 @@ export class CommitOpenInGraphCommandQuickPickItem extends CommandQuickPickItem 
 			preserveFocus: options?.preserveFocus,
 			source: { source: 'quick-wizard' },
 		});
-	}
-}
-
-export class CommitExplainCommandQuickPickItem extends CommandQuickPickItem {
-	constructor(private readonly commit: GitCommit) {
-		super('Explain Changes', new ThemeIcon('sparkle'));
-	}
-
-	override execute(_options: { preserveFocus?: boolean; preview?: boolean }): Promise<void> {
-		return explainCommit(this.commit, { source: { source: 'quick-wizard' } });
 	}
 }
 

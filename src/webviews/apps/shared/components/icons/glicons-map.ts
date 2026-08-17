@@ -62,8 +62,6 @@ export const iconMap = Object.freeze({
 	'stashes-view-filled': '\\f13c',
 	'tags-view-filled': '\\f13d',
 	'worktrees-view-filled': '\\f13e',
-	'launchpad-view': '\\f13f',
-	'launchpad-view-filled': '\\f140',
 	'merge-target': '\\f141',
 	'history-view-filled': '\\f142',
 	'repository': '\\f143',

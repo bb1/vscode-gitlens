@@ -10,7 +10,6 @@ import { getSettledValue, pauseOnCancelOrTimeout } from '@gitlens/utils/promise.
 import type { EnrichedAutolink } from '../../../autolinks/models/autolinks.js';
 import type { Container } from '../../../container.js';
 import type { GitRepositoryService } from '../../gitRepositoryService.js';
-import { getBestRemoteWithIntegration, getRemoteIntegration } from './remote.utils.js';
 
 const maxDefaultBranchWeight = 100;
 const weightedDefaultBranches = new Map<string, number>([
@@ -200,19 +199,7 @@ export async function getDefaultBranchName(
 	const name = await container.git
 		.getRepositoryService(repoPath)
 		.branches.getDefaultBranchName(remoteName, undefined, options?.cancellation);
-	return name ?? getDefaultBranchNameFromIntegration(repoPath, options);
-}
-
-export async function getDefaultBranchNameFromIntegration(
-	repoPath: string,
-	options?: { cancellation?: AbortSignal },
-): Promise<string | undefined> {
-	const remote = await getBestRemoteWithIntegration(repoPath, undefined, options?.cancellation);
-	if (remote == null) return undefined;
-
-	const integration = await getRemoteIntegration(remote);
-	const defaultBranch = await integration?.getDefaultBranch?.(remote.provider.repoDesc);
-	return defaultBranch && `${remote.name}/${defaultBranch?.name}`;
+	return name;
 }
 
 export function getStarredBranches(branches: Iterable<GitBranch>): Set<string> {
@@ -243,35 +230,7 @@ export async function getBranchAssociatedPullRequest(
 		cached?: boolean;
 	},
 ): Promise<PullRequest | undefined> {
-	const remote = await getBranchRemote(container, branch);
-	if (remote?.provider == null) return undefined;
-
-	const integration = await getRemoteIntegration(remote);
-
-	if (options?.cached) {
-		if (branch.upstream?.missing) {
-			if (!branch.sha) return undefined;
-			return container.cache.peekPullRequestForSha(branch.sha, remote.provider.repoDesc, integration);
-		}
-		return container.cache.peekPullRequestForBranch(
-			branch.trackingWithoutRemote ?? branch.nameWithoutRemote,
-			remote.provider.repoDesc,
-			integration,
-		);
-	}
-
-	if (integration == null) return undefined;
-
-	if (branch.upstream?.missing) {
-		if (!branch.sha) return undefined;
-		return integration.getPullRequestForCommit(remote.provider.repoDesc, branch.sha);
-	}
-
-	return integration.getPullRequestForBranch(
-		remote.provider.repoDesc,
-		branch.trackingWithoutRemote ?? branch.nameWithoutRemote,
-		options,
-	);
+	return undefined;
 }
 
 export async function getBranchEnrichedAutolinks(

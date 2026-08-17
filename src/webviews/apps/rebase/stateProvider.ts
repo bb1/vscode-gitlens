@@ -9,7 +9,6 @@ import {
 	DidChangeAvatarsNotification,
 	DidChangeCommitsNotification,
 	DidChangeNotification,
-	DidChangeSubscriptionNotification,
 	GetMissingAvatarsCommand,
 	GetMissingCommitsCommand,
 	isCommitEntry,
@@ -136,23 +135,11 @@ export class RebaseStateProvider extends StateProviderBase<State['webviewId'], S
 				break;
 
 			case DidChangeCommitsNotification.is(msg):
-				this.updateCommits(msg.params.commits, msg.params.authors, msg.params.isInPlace);
+				this.updateCommits(msg.params.commits, msg.params.authors);
 				// Clear requested SHAs so they can be requested again if needed
 				for (const sha of Object.keys(msg.params.commits)) {
 					this._requestedCommitShas.delete(sha);
 				}
-				break;
-
-			case DidChangeSubscriptionNotification.is(msg):
-				// Subscription change can unlock previously-failed avatar/commit lookups
-				// (e.g., Pro upgrade enables integration-backed avatars). Clear blocklists
-				// so the next render is allowed to re-ask.
-				this._requestedAvatarEmails.clear();
-				this._requestedCommitShas.clear();
-				this._state = { ...this._state, subscription: msg.params.subscription, timestamp: Date.now() };
-				this.provider.setValue(this._state, true);
-				// Request update to re-render with new subscription state
-				this.host.requestUpdate();
 				break;
 		}
 	}
@@ -245,17 +232,10 @@ export class RebaseStateProvider extends StateProviderBase<State['webviewId'], S
 	private updateCommits(
 		commits: Record<string, IpcSerialized<Commit>>,
 		authors: Record<string, IpcSerialized<_State>['authors'][string]>,
-		isInPlace?: boolean,
 	): void {
 		if (!this._state) return;
 
 		let hasChanges = false;
-
-		// Update isInPlace if provided
-		if (isInPlace != null && this._state.isInPlace !== isInPlace) {
-			this._state.isInPlace = isInPlace;
-			hasChanges = true;
-		}
 
 		// Enrich base commit (onto)
 		if (this._state.onto && !this._state.onto.commit) {

@@ -7,7 +7,6 @@ import { getCachedAvatarUri } from '../avatars.js';
 import type { Container } from '../container.js';
 import { emojify } from '../emojis.js';
 import { serializeWebviewItemContext } from '../system/webview.js';
-import type { GraphItemRefContext, GraphItemRefGroupContext } from '../webviews/plus/graph/protocol.js';
 import { formatCurrentUserDisplayName } from './utils/-webview/commit.utils.js';
 import { getRemoteIconUri } from './utils/-webview/icons.js';
 
@@ -93,7 +92,7 @@ export class GlGraphRowProcessor implements GraphRowProcessor {
 					((group.local != null && group.remotes.length > 0) || group.remotes.length > 1)
 				) {
 					contexts.refGroups ??= {};
-					contexts.refGroups[groupName] = serializeWebviewItemContext<GraphItemRefGroupContext>({
+					contexts.refGroups[groupName] = serializeWebviewItemContext({
 						webviewItemGroup: `gitlens:refGroup${group.head ? '+current' : ''}`,
 						webviewItemGroupValue: {
 							type: 'refGroup',
@@ -108,7 +107,7 @@ export class GlGraphRowProcessor implements GraphRowProcessor {
 		if (row.kind === 'stash') {
 			const stash = context.stashes?.get(row.sha);
 			if (stash != null) {
-				contexts.row = serializeWebviewItemContext<GraphItemRefContext>({
+				contexts.row = serializeWebviewItemContext({
 					webviewItem: 'gitlens:stash',
 					webviewItemValue: {
 						type: 'stash',

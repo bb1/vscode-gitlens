@@ -5,13 +5,10 @@ import { customElement, property } from 'lit/decorators.js';
 import type { AutolinkConfig } from '../../../../config.js';
 import { focusOutlineButton, srOnly } from '../../shared/components/styles/lit/a11y.css.js';
 import { boxSizingBase, linkBase } from '../../shared/components/styles/lit/base.css.js';
-import type { SubscriptionContextState } from '../../shared/contexts/subscription.js';
-import { subscriptionContext } from '../../shared/contexts/subscription.js';
 import type { CheckDescriptor, SettingsCategory, SettingsGroup, SettingsSearchMatch } from '../model.js';
 import type { SettingsState } from '../state.js';
 import { settingsStateContext } from '../state.js';
 import '../../shared/components/code-icon.js';
-import '../../shared/components/feature-badge.js';
 
 declare global {
 	interface HTMLElementTagNameMap {
@@ -151,10 +148,6 @@ export class GlSettingsNav extends SignalWatcher(LitElement) {
 	@consume({ context: settingsStateContext })
 	private _state!: SettingsState;
 
-	/** Feeds the Account item's avatar (host-bridged in settings.ts), matching the account chip's photo. */
-	@consume({ context: subscriptionContext, subscribe: true })
-	private _subscription!: SubscriptionContextState;
-
 	@property({ attribute: false })
 	onSelect?: (id: string) => void;
 
@@ -215,33 +208,6 @@ export class GlSettingsNav extends SignalWatcher(LitElement) {
 		on: boolean | undefined;
 		count?: { label: string; aria: string };
 	} {
-		// Signed-in cue for the Account section — placeholder pip until the subscription resolves
-		if (category.controls.some(c => c.kind === 'account')) {
-			if (this._subscription.subscription.get() === undefined) return { on: undefined };
-			return { on: this._subscription.hasAccount.get() };
-		}
-
-		if (category.controls.some(c => c.kind === 'integrations')) {
-			const integrations = this._state.cloudIntegrations.get();
-			// Still loading — placeholder pip, no count
-			if (integrations == null) return { on: undefined };
-
-			const connected = integrations.filter(i => i.connected).length;
-			return {
-				on: connected > 0,
-				count: {
-					label: `${connected}/${integrations.length}`,
-					aria: `${connected} of ${integrations.length} connected`,
-				},
-			};
-		}
-
-		// Org-disabled AI is forced off regardless of local config — the pip must
-		// agree with the panel's "disabled by your admin" note
-		if (category.controls.some(c => c.kind === 'ai') && this._state.aiState.get()?.orgEnabled === false) {
-			return { on: false };
-		}
-
 		if (category.controls.some(c => c.kind === 'autolinks')) {
 			const count = this._state.getSettingValue<AutolinkConfig[]>('autolinks')?.length ?? 0;
 			return {
@@ -405,14 +371,6 @@ export class GlSettingsNav extends SignalWatcher(LitElement) {
 			${this.renderItemIcon(category)}
 			<span class="item__name">${category.name}</span>
 			${
-				category.pro
-					? html`<gl-feature-badge
-							.source=${{ source: 'settings', detail: 'nav' } as const}
-							.subscription=${this._state.subscription.get()}
-						></gl-feature-badge>`
-					: nothing
-			}
-			${
 				count
 					? html`<span class="item__count" aria-label=${count.aria}>${count.label}</span>`
 					: on !== undefined
@@ -422,15 +380,7 @@ export class GlSettingsNav extends SignalWatcher(LitElement) {
 		</button>`;
 	}
 
-	/** The Account item leads with the signed-in user's avatar when one is available; every other item (and
-	 *  a signed-out account) uses its codicon. Mirrors the account chip so the same photo reads in both places. */
 	private renderItemIcon(category: SettingsCategory) {
-		if (category.controls.some(c => c.kind === 'account')) {
-			const avatar = this._subscription.avatar.get();
-			if (avatar) {
-				return html`<img class="item__avatar" src=${avatar} alt="" aria-hidden="true" />`;
-			}
-		}
 		return html`<code-icon icon=${category.icon} aria-hidden="true"></code-icon>`;
 	}
 }

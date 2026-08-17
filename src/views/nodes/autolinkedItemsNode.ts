@@ -1,9 +1,7 @@
-import { Disposable, TreeItem, TreeItemCollapsibleState } from 'vscode';
+import { TreeItem, TreeItemCollapsibleState } from 'vscode';
 import type { GitLog } from '@gitlens/git/models/log.js';
 import { PullRequest } from '@gitlens/git/models/pullRequest.js';
-import { debounce } from '@gitlens/utils/debounce.js';
 import { trace } from '@gitlens/utils/decorators/log.js';
-import { weakEvent } from '@gitlens/utils/event.js';
 import { getSettledValue, pauseOnCancelOrTimeoutMapTuple } from '@gitlens/utils/promise.js';
 import { GitUri } from '../../git/gitUri.js';
 import type { ViewsWithCommits } from '../viewBase.js';
@@ -36,18 +34,8 @@ export class AutolinkedItemsNode extends SubscribeableViewNode<'autolinks', View
 	}
 
 	@trace()
-	protected override subscribe(): Disposable | Promise<Disposable | undefined> | undefined {
-		return Disposable.from(
-			weakEvent(
-				this.view.container.integrations.onDidChangeConnectionState,
-				debounce(this.onIntegrationsChanged, 500),
-				this,
-			),
-		);
-	}
-
-	private onIntegrationsChanged() {
-		this.view.triggerNodeChange(this.parent);
+	protected override subscribe(): undefined {
+		return undefined;
 	}
 
 	async getChildren(): Promise<ViewNode[]> {

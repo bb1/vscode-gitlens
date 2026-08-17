@@ -99,7 +99,7 @@ export class OnboardingService implements Disposable {
 	}
 
 	private onStorageChanged(e: StorageChangeEvent): void {
-		if (e.type === 'scoped' || !e.keys.includes('onboarding:state')) return;
+		if (!e.keys.includes('onboarding:state')) return;
 
 		const previousItems = this._lastSeen[e.type];
 		const currentState = this.getOnboarding(e.type);
@@ -167,8 +167,6 @@ export class OnboardingService implements Disposable {
 				return this.storage.get('home:walkthrough:dismissed') ?? false;
 			case 'home:integrationBanner':
 				return this.storage.get('home:sections:collapsed')?.includes('integrationBanner') ?? false;
-			case 'composer:onboarding':
-				return this.storage.get('composer:onboarding:dismissed') != null;
 			default:
 				return false;
 		}
@@ -314,7 +312,7 @@ export class OnboardingService implements Disposable {
 			}
 		}
 
-		// Batch 2 (17.9.0): home:sections:collapsed + composer onboarding
+		// Batch 2 (17.9.0): home:sections:collapsed
 		if (!migratedVersion || compare(migratedVersion, currentMigrationVersion) < 0) {
 			ranBatch = true;
 
@@ -330,24 +328,6 @@ export class OnboardingService implements Disposable {
 					}
 				}
 				await this.storage.delete('home:sections:collapsed');
-			}
-
-			// Intentionally reading/deleting deprecated keys during migration
-			// oxlint-disable-next-line typescript/no-deprecated
-			const composerDismissed = this.storage.get('composer:onboarding:dismissed');
-			// oxlint-disable-next-line typescript/no-deprecated
-			const composerStepReached = this.storage.get('composer:onboarding:stepReached');
-			if (composerDismissed != null || composerStepReached != null) {
-				if (composerDismissed != null && !this.isDismissed('composer:onboarding', true)) {
-					await this.dismiss('composer:onboarding');
-				}
-				if (composerStepReached != null) {
-					await this.setItemState('composer:onboarding', {
-						stepReached: composerStepReached,
-					});
-				}
-				await this.storage.delete('composer:onboarding:dismissed');
-				await this.storage.delete('composer:onboarding:stepReached');
 			}
 		}
 

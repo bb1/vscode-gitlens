@@ -286,6 +286,7 @@ export class GitFixture {
 		options?: { rebaseMerges?: boolean; updateRefs?: boolean },
 	): {
 		rebasePromise: Promise<string>;
+		waitForRebaseEnd: () => Promise<void>;
 		waitForTodoFile: () => Promise<string>;
 		signalEditorDone: () => Promise<void>;
 		signalEditorAbort: () => Promise<void>;
@@ -311,6 +312,7 @@ export class GitFixture {
 		let todoFilePath: string | undefined;
 
 		const rebasePromise = this.git('rebase', { configs: configs }, ...args);
+		void rebasePromise.catch(() => {});
 
 		const waitForTodoFile = async (): Promise<string> => {
 			// Poll for the .ready file which contains the todo file path
@@ -334,7 +336,11 @@ export class GitFixture {
 
 		const signalEditorDone = async (): Promise<void> => {
 			const doneFile = `${todoFilePath ?? expectedTodoPath}.done`;
-			await fs.writeFile(doneFile, 'done');
+			try {
+				await fs.writeFile(doneFile, 'done');
+			} catch (ex) {
+				if ((ex as NodeJS.ErrnoException).code !== 'ENOENT') throw ex;
+			}
 		};
 
 		const signalEditorAbort = async (): Promise<void> => {
@@ -342,8 +348,25 @@ export class GitFixture {
 			await fs.writeFile(abortFile, 'abort');
 		};
 
+		const waitForRebaseEnd = async (): Promise<void> => {
+			const rebaseDir = path.dirname(todoFilePath ?? expectedTodoPath);
+			const maxWait = 10000;
+			const start = Date.now();
+			while (Date.now() - start < maxWait) {
+				try {
+					await fs.access(rebaseDir);
+				} catch {
+					return;
+				}
+
+				await new Promise(resolve => setTimeout(resolve, 100));
+			}
+			throw new Error('Timeout waiting for rebase to end');
+		};
+
 		return {
 			rebasePromise: rebasePromise,
+			waitForRebaseEnd: waitForRebaseEnd,
 			waitForTodoFile: waitForTodoFile,
 			signalEditorDone: signalEditorDone,
 			signalEditorAbort: signalEditorAbort,

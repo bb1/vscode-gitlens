@@ -38,7 +38,6 @@ const descriptor: CustomEditorDescriptor = {
 	contextKeyPrefix: 'gitlens:webview:rebase',
 	trackingFeature: 'rebaseEditor',
 	type: 'rebase',
-	plusFeature: false,
 	webviewOptions: { enableCommandUris: true, enableScripts: true },
 	webviewHostOptions: { enableFindWidget: true, retainContextWhenHidden: true },
 };
@@ -129,18 +128,6 @@ export class RebaseEditorProvider implements CustomTextEditorProvider, Disposabl
 	private async onRebaseChanged(repoPath: string): Promise<void> {
 		const openOnPausedRebase = configuration.get('rebaseEditor.openOnPausedRebase');
 		if (!openOnPausedRebase || !isRebaseTodoEditorEnabled()) return;
-
-		// While an automatic rebase is running it resolves/continues each pause itself (escalating
-		// when it can't), so auto-opening on the intermediate pauses would fight its UX. Terminal
-		// phases (escalated/failed/…) don't suppress — those pauses are the user's to handle.
-		const autoRebasePhase = this.container.autoRebase.getSession(repoPath)?.phase;
-		switch (autoRebasePhase) {
-			case 'starting':
-			case 'resolving':
-			case 'applying':
-			case 'continuing':
-				return;
-		}
 
 		// Only open if the rebase is actually paused (waiting for user action), not just running
 		const svc = this.container.git.getRepositoryService(repoPath);

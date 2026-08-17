@@ -512,33 +512,24 @@ export const rebaseStyles = css`
 		align-items: center;
 	}
 
-	gl-rebase-conflict-indicator {
-		margin-right: auto;
-		margin-left: var(--gl-space-16);
-	}
-
-	.conflict-loading {
-		display: inline-flex;
-		align-items: center;
-		margin-left: 0.5rem;
-		color: var(--vscode-foreground);
-		opacity: 0.7;
-	}
-
+	.conflict-loading,
 	.conflict-summary {
 		display: inline-flex;
 		gap: var(--gl-space-4);
 		align-items: center;
-		padding: var(--gl-space-2) var(--gl-space-6);
 		margin-left: 0.5rem;
+	}
+
+	.conflict-summary {
+		padding: var(--gl-space-2) var(--gl-space-6);
 		font-size: var(--gl-font-sm);
 		font-weight: 500;
+		border: var(--gl-border-width) solid var(--vscode-inputValidation-warningBorder, #cca700);
 		border-radius: var(--gl-radius-sm);
 
 		&.warning {
 			color: var(--vscode-inputValidation-warningForeground, #cca700);
 			background-color: var(--vscode-inputValidation-warningBackground, rgb(200 140 0 / 20%));
-			border: var(--gl-border-width) solid var(--vscode-inputValidation-warningBorder, #cca700);
 		}
 	}
 

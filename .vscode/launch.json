@@ -17,7 +17,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -40,7 +40,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"
@@ -55,7 +55,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}"
 			},
 			"outFiles": ["${workspaceFolder}/dist/browser/**/*.js"],
@@ -87,7 +87,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -135,7 +135,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -159,7 +159,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"
@@ -174,7 +174,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}"
 			},
 			"outFiles": ["${workspaceFolder}/dist/browser/**/*.js"],
@@ -206,7 +206,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -239,7 +239,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],
@@ -263,7 +263,7 @@
 			"request": "launch",
 			"runtimeExecutable": "${execPath}",
 			"args": [
-				// "--folder-uri=vscode-vfs://github/gitkraken/vscode-gitlens",
+				// "--folder-uri=vscode-vfs://github/bb1/vscode-gitlens",
 				"--profile=Debugging (GitLens)",
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--extensionDevelopmentKind=web"
@@ -278,7 +278,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}"
 			},
 			"outFiles": ["${workspaceFolder}/dist/browser/**/*.js"],
@@ -310,7 +310,7 @@
 				"sourceMapRenames": true,
 				"sourceMaps": true,
 				"trace": true,
-				"urlFilter": "*eamodio.gitlens*",
+				"urlFilter": "*bb1.offline-gitlense*",
 				"webRoot": "${workspaceFolder}/src/webviews/apps"
 			},
 			"outFiles": ["${workspaceFolder}/dist/**/*.js"],

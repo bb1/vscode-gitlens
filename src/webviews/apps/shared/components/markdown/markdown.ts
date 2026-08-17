@@ -5,7 +5,6 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import type { RendererObject, RendererThis, Tokens } from 'marked';
 import { Marked } from 'marked';
 import type { ThemeIcon } from 'vscode';
-import { ruleStyles } from '../../../plus/shared/components/vscode.css.js';
 import { applyCspSafeStyles, rewriteInlineStylesToData } from './css-inline-styles.js';
 
 let inlineMarked: Marked | undefined;
@@ -14,7 +13,6 @@ let blockMarked: Marked | undefined;
 @customElement('gl-markdown')
 export class GlMarkdown extends LitElement {
 	static override styles = [
-		ruleStyles,
 		css`
 			:host {
 				display: contents;

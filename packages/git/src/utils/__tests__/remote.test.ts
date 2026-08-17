@@ -4,19 +4,19 @@ import { parseGitRemoteUrl } from '../remote.utils.js';
 suite('Remote URL Parser Test Suite', () => {
 	suite('parseGitRemoteUrl', () => {
 		test('parses https url', () => {
-			const url = 'https://github.com/gitkraken/vscode-gitlens.git';
+			const url = 'https://github.com/example-org/example-repo.git';
 			const [scheme, domain, path] = parseGitRemoteUrl(url);
 			assert.strictEqual(scheme, 'https://');
 			assert.strictEqual(domain, 'github.com');
-			assert.strictEqual(path, 'gitkraken/vscode-gitlens');
+			assert.strictEqual(path, 'example-org/example-repo');
 		});
 
 		test('parses ssh url', () => {
-			const url = 'git@github.com:gitkraken/vscode-gitlens.git';
+			const url = 'git@github.com:example-org/example-repo.git';
 			const [_scheme, domain, path] = parseGitRemoteUrl(url);
 			// The regex structure might return empty scheme for some formats or specific capture groups
 			// Based on regex: (git@)(.*):
-			// match[8] = github.com, match[9] = gitkraken/vscode-gitlens.git
+			// match[8] = github.com, match[9] = example-org/example-repo.git
 			// scheme comes from match[1]||match[3]||match[6] which are schemes.
 			// For git@... the scheme part is undefined in the regex (no protocol prefix like ssh://)
 			// effectively it returns empty string for scheme in the current implementation?
@@ -47,15 +47,15 @@ suite('Remote URL Parser Test Suite', () => {
 			// Let's verify what `undefined` becomes.
 
 			assert.strictEqual(domain, 'github.com');
-			assert.strictEqual(path, 'gitkraken/vscode-gitlens');
+			assert.strictEqual(path, 'example-org/example-repo');
 		});
 
 		test('parses ssh:// url', () => {
-			const url = 'ssh://git@github.com/gitkraken/vscode-gitlens.git';
+			const url = 'ssh://git@github.com/example-org/example-repo.git';
 			const [scheme, domain, path] = parseGitRemoteUrl(url);
 			assert.strictEqual(scheme, 'ssh://');
 			assert.strictEqual(domain, 'github.com');
-			assert.strictEqual(path, 'gitkraken/vscode-gitlens');
+			assert.strictEqual(path, 'example-org/example-repo');
 		});
 	});
 });

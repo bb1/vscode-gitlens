@@ -46,13 +46,10 @@ const pkgMgr = useNpm ? 'npm' : 'pnpm';
 function getLibraryAliases() {
 	return {
 		'@gitlens/utils': path.resolve(__dirname, 'packages', 'utils', 'src'),
-		'@gitlens/ipc': path.resolve(__dirname, 'packages', 'ipc', 'src'),
 		'@gitlens/git': path.resolve(__dirname, 'packages', 'git', 'src'),
 		'@gitlens/git-cli': path.resolve(__dirname, 'packages', 'git-cli', 'src'),
-		'@gitlens/git-github': path.resolve(__dirname, 'packages', 'plus', 'git-github', 'src'),
-		'@gitlens/integrations': path.resolve(__dirname, 'packages', 'plus', 'integrations', 'src'),
-		'@gitlens/ai': path.resolve(__dirname, 'packages', 'plus', 'ai', 'src'),
-		'@gitlens/agents': path.resolve(__dirname, 'packages', 'plus', 'agents', 'src'),
+		'@gitlens/hosting-integrations': path.resolve(__dirname, 'packages', 'integrations', 'src'),
+		'@gitlens/hosting-github': path.resolve(__dirname, 'packages', 'git-github', 'src'),
 	};
 }
 
@@ -169,10 +166,6 @@ function getCommonConfig(mode, env) {
 	 * @type WebpackConfig['plugins'] | any
 	 */
 	const plugins = [];
-	if (!env.quick && mode !== 'production') {
-		plugins.push(new DocsPlugin());
-	}
-
 	if (!env.quick || mode === 'production') {
 		plugins.push(
 			new LicensesPlugin(),
@@ -292,13 +285,22 @@ function getExtensionConfig(target, mode, env) {
 		entry:
 			target === 'webworker'
 				? { extension: './src/extension.ts' }
-				: { extension: './src/extension.ts', rebaseTodoEditor: './src/git/utils/rebaseTodoEditor.ts' },
+				: {
+						extension: './src/extension.ts',
+						mcpServer: './packages/mcp-server/src/server.ts',
+						rebaseTodoEditor: './src/git/utils/rebaseTodoEditor.ts',
+					},
 		mode: mode,
 		target: target,
 		devtool: mode === 'production' && !env.analyzeBundle ? false : 'cheap-module-source-map',
 		output: {
 			chunkFilename: '[name].js',
-			filename: pathData => (pathData.chunk?.name === 'extension' ? 'gitlens.js' : '[name].js'),
+			filename: pathData => {
+				if (pathData.chunk?.name === 'extension') return 'gitlens.js';
+				if (pathData.chunk?.name === 'mcpServer') return 'mcp-server/server.js';
+
+				return '[name].js';
+			},
 			libraryTarget: 'commonjs2',
 			path: target === 'webworker' ? path.join(__dirname, 'dist', 'browser') : path.join(__dirname, 'dist'),
 			// Clean output directory, but preserve other build targets' output directories
@@ -351,19 +353,6 @@ function getExtensionConfig(target, mode, env) {
 								// `defaultVendors` (minChunks 1) extracts every async dep into numeric vendor chunks.
 								default: false,
 								defaultVendors: false,
-								// zod + compose-tools (+ all first-party compose code: the webview compose
-								// integrations, the coretools compose backend, and the env-node composer
-								// factory) are the AI/compose feature family, lazily imported by both the
-								// composer and graph controllers. Emit one shared chunk instead of duplicating
-								// it (and a per-controller wrapper) across them.
-								compose: {
-									test: /([\\/]node_modules[\\/](zod|@gitkraken[\\/](compose-tools|shared-tools))[\\/]|[\\/]src[\\/](webviews[\\/].*[\\/]compose[\\/]|plus[\\/]coretools[\\/]compose[\\/]|env[\\/]node[\\/]coretools[\\/]composer))/,
-									name: 'compose',
-									minChunks: 2,
-									priority: 20,
-									reuseExistingChunk: true,
-									enforce: true,
-								},
 								// The webview RPC service layer + shared webview infra are copied into every
 								// webview controller (commitDetails, timeline, graph, home, …); emit them once.
 								webviewShared: {
@@ -404,8 +393,6 @@ function getExtensionConfig(target, mode, env) {
 				'signal-polyfill': path.resolve(__dirname, 'node_modules', 'signal-polyfill'),
 				...getLibraryAliases(),
 				...getUtilsEnvAliases(target),
-				// Stupid dependency that is used by `http[s]-proxy-agent` (via @gitkraken/provider-apis)
-				debug: path.resolve(__dirname, 'patches', 'debug.js'),
 				// This dependency is very large, and isn't needed for our use-case
 				tr46: path.resolve(__dirname, 'patches', 'tr46.js'),
 				// This dependency is unnecessary for our use-case
@@ -431,8 +418,6 @@ function getExtensionConfig(target, mode, env) {
 		ignoreWarnings: [
 			// Ignore dynamic require warning for platform-agnostic async_hooks detection
 			{ module: /packages[\\/]utils[\\/]src[\\/]logScope\.ts/, message: /Critical dependency/ },
-			// Ignore dynamic require warning from protobufjs's optional-peer resolver (used by @opentelemetry/otlp-transformer)
-			{ module: /[\\/]@protobufjs[\\/]inquire[\\/]/, message: /Critical dependency/ },
 		],
 		plugins: plugins,
 		infrastructureLogging: mode === 'production' ? undefined : { level: 'log' }, // enables logging required for problem matchers
@@ -479,13 +464,9 @@ function getWebviewsConfigs(mode, env) {
 	let webviews = {
 		allowedSigners: { entry: './allowedSigners/allowedSigners.ts' },
 		commitDetails: { entry: './commitDetails/commitDetails.ts' },
-		graph: { entry: './plus/graph/graph.ts', plus: true },
-		home: { entry: './home/home.ts' },
+		graph: { entry: './graph/graph.ts' },
 		rebase: { entry: './rebase/rebase.ts' },
 		settings: { entry: './settings/settings.ts' },
-		timeline: { entry: './plus/timeline/timeline.ts', plus: true },
-		patchDetails: { entry: './plus/patchDetails/patchDetails.ts', plus: true },
-		welcome: { entry: './welcome/welcome.ts' },
 	};
 
 	if (env.webviews) {
@@ -1079,21 +1060,6 @@ class ExtractContributionsPlugin extends FileGeneratorPlugin {
 			strings: {
 				starting: 'Extracting',
 				completed: 'Extracted',
-			},
-		});
-	}
-}
-
-class DocsPlugin extends FileGeneratorPlugin {
-	constructor() {
-		super({
-			pluginName: 'docs',
-			pathsToWatch: [path.join(__dirname, 'src', 'constants.telemetry.ts')],
-			outputs: [path.join(__dirname, 'docs', 'telemetry-events.md')],
-			command: {
-				name: 'docs',
-				command: pkgMgr,
-				args: ['run', 'generate:docs:telemetry'],
 			},
 		});
 	}

@@ -11,15 +11,8 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getCataloguedNames, readWorkspace } from './catalog.mjs';
-import { mergeBundledDependencies } from './workspace.mjs';
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)));
-
-// packages/core's dependencies are output, not a declaration: its bundle script mirrors the bundled
-// packages' specifiers there, `catalog:` included, so it tracks the catalog rather than pinning a copy
-// that could drift. Exempt from the rules below, but validated separately — the dependency *set* still
-// goes stale when a package gains or drops one.
-const generatedManifests = new Set(['packages/core']);
 
 const dependencyFields = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'];
 
@@ -41,7 +34,7 @@ const nonVersionProtocols = [
 async function main() {
 	const workspace = await readWorkspace();
 	const catalogued = await getCataloguedNames();
-	const members = (await expandMembers(workspace.packages ?? [])).filter(m => !generatedManifests.has(m));
+	const members = await expandMembers(workspace.packages ?? []);
 
 	/** @type {Map<string, Array<{ member: string; field: string; version: string }>>} */
 	const literals = new Map();
@@ -82,8 +75,6 @@ async function main() {
 		);
 	}
 
-	await checkGeneratedCoreManifest(errors);
-
 	if (errors.length) {
 		console.error(`[check-deps] ${errors.length} problem(s):\n`);
 		for (const error of errors) {
@@ -96,45 +87,6 @@ async function main() {
 	}
 
 	console.log(`[check-deps] ${members.length} manifests, ${catalogued.size} catalogued dependencies — no drift`);
-}
-
-/**
- * `packages/core/package.json` is committed but generated, and nothing regenerates it when a bundled
- * package gains or drops a dependency. Recompute what its bundle script would write and require a match.
- *
- * @param {string[]} errors
- */
-async function checkGeneratedCoreManifest(errors) {
-	const manifestPath = join(repoRoot, 'packages', 'core', 'package.json');
-	let manifest;
-	try {
-		manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
-	} catch (ex) {
-		errors.push(`packages/core/package.json could not be read: ${ex.message}`);
-		return;
-	}
-
-	const expected = await mergeBundledDependencies();
-	const actual = manifest.dependencies ?? {};
-	const stale = [];
-
-	for (const [name, spec] of Object.entries(expected)) {
-		const declared = Object.hasOwn(actual, name) ? actual[name] : undefined;
-		if (declared !== spec) {
-			stale.push(`${name} is ${declared ?? '<missing>'}, expected ${spec}`);
-		}
-	}
-	for (const name of Object.keys(actual)) {
-		if (!Object.hasOwn(expected, name)) {
-			stale.push(`${name} is no longer a dependency of any bundled package`);
-		}
-	}
-
-	if (stale.length) {
-		errors.push(
-			`packages/core/package.json is stale — run \`pnpm run build:core\` to regenerate it. ${stale.join('; ')}.`,
-		);
-	}
 }
 
 // Expands the `packages:` globs from pnpm-workspace.yaml so this stays in step with the real

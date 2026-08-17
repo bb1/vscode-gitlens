@@ -6,7 +6,7 @@ suite('Remote Parser Test Suite', () => {
 	suite('parseGitRemotes', () => {
 		test('parses single remote with fetch and push URLs', () => {
 			const data =
-				'origin\thttps://github.com/gitkraken/vscode-gitlens.git (fetch)\norigin\thttps://github.com/gitkraken/vscode-gitlens.git (push)\n';
+				'origin\thttps://github.com/example-org/example-repo.git (fetch)\norigin\thttps://github.com/example-org/example-repo.git (push)\n';
 			const remotes = parseGitRemotes(data, '/repo/path', undefined);
 
 			assert.strictEqual(remotes.length, 1);
@@ -14,15 +14,15 @@ suite('Remote Parser Test Suite', () => {
 			assert.strictEqual(remote.name, 'origin');
 			assert.strictEqual(remote.scheme, 'https://');
 			assert.strictEqual(remote.domain, 'github.com');
-			assert.strictEqual(remote.path, 'gitkraken/vscode-gitlens');
+			assert.strictEqual(remote.path, 'example-org/example-repo');
 			assert.strictEqual(remote.urls.length, 2);
 			assert.strictEqual(remote.urls[0].type, 'fetch');
 			assert.strictEqual(remote.urls[1].type, 'push');
 		});
 
 		test('parses multiple remotes', () => {
-			const data = `origin\tgit@github.com:gitkraken/vscode-gitlens.git (fetch)
-origin\tgit@github.com:gitkraken/vscode-gitlens.git (push)
+			const data = `origin\tgit@github.com:example-org/example-repo.git (fetch)
+origin\tgit@github.com:example-org/example-repo.git (push)
 upstream\thttps://github.com/eamodio/vscode-gitlens.git (fetch)
 upstream\thttps://github.com/eamodio/vscode-gitlens.git (push)
 `;

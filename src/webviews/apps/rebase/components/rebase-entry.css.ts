@@ -171,7 +171,6 @@ export const entryStyles = css`
 			}
 		}
 
-		/* Conflict entry - commit that will cause conflicts */
 		&.entry--conflict {
 			--fg-intensity: 100%;
 			--conflict-color: var(
@@ -193,7 +192,6 @@ export const entryStyles = css`
 		}
 	}
 
-	/* Conflict indicator - hidden by default, shown on conflict entries */
 	.entry-conflict-indicator {
 		display: none;
 		flex: 0 0 auto;

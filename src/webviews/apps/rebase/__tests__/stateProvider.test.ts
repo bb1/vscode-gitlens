@@ -102,4 +102,17 @@ suite('rebase/stateProvider helpers', () => {
 			assert.strictEqual(enforceOldestPickable(entries), entries);
 		});
 	});
+
+	test('does not require subscription state to represent a local rebase', () => {
+		const state: Pick<import('../../../rebase/protocol.js').State, 'branch' | 'entries' | 'repoPath'> = {
+			branch: 'main',
+			entries: [commitEntry('a', 'pick')],
+			repoPath: '/repo',
+		};
+
+		assert.deepStrictEqual(
+			state.entries.map(entry => entry.id),
+			['a'],
+		);
+	});
 });

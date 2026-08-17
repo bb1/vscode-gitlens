@@ -22,7 +22,7 @@ export const DefaultTimeout = 2000;
 export const ShortTimeout = 500;
 
 /** GitLens extension identifier (publisher.name) */
-const gitlensExtensionId = 'eamodio.gitlens';
+const gitlensExtensionId = 'bb1.offline-gitlense';
 
 /**
  * Waits for the GitLens extension host to activate, polling `extensions.getExtension().isActive`.
@@ -233,21 +233,6 @@ const defaultUserSettings: Record<string, unknown> = {
 	'gitlens.telemetry.enabled': false,
 	// Skip onboarding/welcome screens — ephemeral test environments shouldn't show welcome views
 	'gitlens.advanced.skipOnboarding': true,
-
-	// Load-bearing for the whole MCP suite, not a preference. GitLens registers its CLI/MCP IPC
-	// handlers — and publishes the discovery file the `mcpClient` fixture matches on — inside
-	// `gkCliService.startIpc`, which only runs while AI features are enabled. With this off the
-	// fixture finds no discovery file and every `gitlens_*` call answers `-32603 "server not found"`,
-	// so a change to the packaged default would read as an unrelated MCP outage. Pinned explicitly.
-	'gitlens.ai.enabled': true,
-
-	// Pinned off for the same class of reason. `isInsidersCLIEnabled` falls back to
-	// pre-release-or-debugging when this is unset, and pre-release builds are date-versioned, so on
-	// one of those every instance would install the GK CLI's PRE-RELEASE proxy and core — the whole
-	// MCP suite would silently assert a moving release candidate's surface, and
-	// `mcpCliChannel.test.ts` (which overrides this to `true`) would go vacuously green with the
-	// setting doing nothing. Pinning it makes that override mean something everywhere.
-	'gitlens.gitkraken.cli.insiders.enabled': false,
 
 	// Quiet VS Code's built-in Git extension. These tests drive git through the CLI + GitLens (never
 	// the built-in SCM UI), but the built-in extension watches `.git` and periodically refreshes/

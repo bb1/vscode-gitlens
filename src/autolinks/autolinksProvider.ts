@@ -2,24 +2,13 @@ import type { ConfigurationChangeEvent } from 'vscode';
 import { Disposable } from 'vscode';
 import type { DynamicAutolinkReference } from '@gitlens/git/models/autolink.js';
 import type { GitRemote } from '@gitlens/git/models/remote.js';
-import type { RemoteProvider, RemoteProviderId } from '@gitlens/git/models/remoteProvider.js';
-import type { ConfiguredIntegrationsChangeEvent } from '@gitlens/integrations/authentication/configuredIntegrationService.js';
-import type { IntegrationIds } from '@gitlens/integrations/constants.js';
-import type { GitHostIntegration } from '@gitlens/integrations/models/gitHostIntegration.js';
-import type { Integration } from '@gitlens/integrations/models/integration.js';
-import { IntegrationBase } from '@gitlens/integrations/models/integration.js';
-import type { IssuesIntegration } from '@gitlens/integrations/models/issuesIntegration.js';
-import {
-	convertRemoteProviderIdToIntegrationId,
-	getIntegrationIdForRemote,
-} from '@gitlens/integrations/utils/integration.utils.js';
 import { fromNow } from '@gitlens/utils/date.js';
 import { trace } from '@gitlens/utils/decorators/log.js';
 import { encodeUrl } from '@gitlens/utils/encoding.js';
 import { join, map } from '@gitlens/utils/iterable.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import { escapeMarkdown, unescapeMarkdown } from '@gitlens/utils/markdown.js';
-import { getSettledValue, isPromise } from '@gitlens/utils/promise.js';
+import { getSettledValue } from '@gitlens/utils/promise.js';
 import { PromiseCache, PromiseMap } from '@gitlens/utils/promiseCache.js';
 import { capitalize, encodeHtmlWeak, getSuperscript } from '@gitlens/utils/string.js';
 import type { OpenIssueActionContext } from '../api/gitlens.d.js';
@@ -28,7 +17,6 @@ import { GlyphChars } from '../constants.js';
 import type { Source } from '../constants.telemetry.js';
 import type { Container } from '../container.js';
 import { getIssueOrPullRequestHtmlIcon, getIssueOrPullRequestMarkdownIcon } from '../git/utils/-webview/icons.js';
-import { getRemoteIntegration, isRemoteMaybeIntegrationConnected } from '../git/utils/-webview/remote.utils.js';
 import { configuration } from '../system/-webview/configuration.js';
 import type {
 	Autolink,
@@ -44,7 +32,6 @@ import {
 	getBranchAutolinks,
 	isDynamic,
 	numRegex,
-	supportedAutolinkIntegrations,
 } from './utils/-webview/autolinks.utils.js';
 
 const emptyAutolinkMap = Object.freeze(new Map<string, Autolink>());
@@ -58,10 +45,7 @@ export class AutolinksProvider implements Disposable {
 	private _inflightEnrichmentCache = new PromiseMap<string, Map<string, EnrichedAutolink> | undefined>();
 
 	constructor(private readonly container: Container) {
-		this._disposable = Disposable.from(
-			configuration.onDidChange(this.onConfigurationChanged, this),
-			container.integrations.onDidChange(this.onIntegrationsChanged, this),
-		);
+		this._disposable = Disposable.from(configuration.onDidChange(this.onConfigurationChanged, this));
 
 		this.setAutolinksFromConfig();
 	}
@@ -79,11 +63,6 @@ export class AutolinksProvider implements Disposable {
 		}
 	}
 
-	private onIntegrationsChanged(_e: ConfiguredIntegrationsChangeEvent) {
-		this._refsetCache.clear();
-		this._inflightEnrichmentCache.clear();
-	}
-
 	private setAutolinksFromConfig() {
 		const autolinks = configuration.get('autolinks');
 		// Since VS Code's configuration objects are live we need to copy them to avoid writing back to the configuration
@@ -97,43 +76,6 @@ export class AutolinksProvider implements Disposable {
 					ignoreCase: a.ignoreCase ?? false,
 					title: a.title ?? undefined,
 				})) ?? [];
-	}
-
-	/** Collects connected integration autolink references into @param refsets */
-	private async collectIntegrationAutolinks(remote: GitRemote | undefined, refsets: RefSet[]): Promise<void> {
-		const integrationPromises: Promise<GitHostIntegration | IssuesIntegration | undefined>[] =
-			supportedAutolinkIntegrations.map(async id => this.container.integrations.get(id));
-		if (remote?.provider != null) {
-			integrationPromises.push(getRemoteIntegration(remote));
-		}
-
-		const integrations = new Set<GitHostIntegration | IssuesIntegration>();
-		const promises: Promise<void>[] = [];
-
-		// Filter out disconnected or duplicate integrations
-		for (const result of await Promise.allSettled(integrationPromises)) {
-			const integration = getSettledValue(result);
-			if (integration != null && integration.maybeConnected !== false && !integrations.has(integration)) {
-				integrations.add(integration);
-
-				const autoLinkRefs = integration.autolinks();
-				if (isPromise(autoLinkRefs)) {
-					promises.push(
-						autoLinkRefs.then(autoLinks => {
-							if (autoLinks.length) {
-								refsets.push([integration, autoLinks]);
-							}
-						}),
-					);
-				} else if (autoLinkRefs.length) {
-					refsets.push([integration, autoLinkRefs]);
-				}
-			}
-		}
-
-		if (!promises.length) return;
-
-		await Promise.allSettled(promises);
 	}
 
 	/** Collects remote provider autolink references into @param refsets */
@@ -158,7 +100,6 @@ export class AutolinksProvider implements Disposable {
 		return this._refsetCache.getOrCreate(`${remote?.remoteKey}${forBranch ? ':branch' : ''}`, async () => {
 			const refsets: RefSet[] = [];
 
-			await this.collectIntegrationAutolinks(forBranch ? undefined : remote, refsets);
 			this.collectRemoteAutolinks(remote, refsets, forBranch);
 			this.collectCustomAutolinks(refsets);
 
@@ -230,64 +171,9 @@ export class AutolinksProvider implements Disposable {
 		}
 		if (!messageOrAutolinks.size) return undefined;
 
-		let integration = remote != null ? await getRemoteIntegration(remote) : undefined;
-		if (integration != null) {
-			const connected = integration.maybeConnected ?? (await integration.isConnected());
-			if (!connected || !(await integration.access())) {
-				integration = undefined;
-			}
-		}
-
 		const enrichedAutolinks = new Map<string, EnrichedAutolink>();
 		for (const [id, link] of messageOrAutolinks) {
-			let integrationId: IntegrationIds | undefined;
-			let linkIntegration: Integration | undefined;
-			if (link.provider != null) {
-				// Try to make a smart choice
-				integrationId =
-					link.provider instanceof IntegrationBase
-						? link.provider.id
-						: // TODO: Tighten the typing on ProviderReference to be specific to a remote provider, and then have a separate "integration" property (on autolinks and elsewhere)
-							// that is of a new type IntegrationReference specific to integrations. Otherwise, make remote provider ids line up directly with integration ids.
-							// Either way, this converting/casting hackery needs to go away.
-							(getIntegrationIdForRemote(link.provider as RemoteProvider) ??
-							convertRemoteProviderIdToIntegrationId(link.provider.id as RemoteProviderId));
-				// Fall back to the old logic assuming that integration id might be saved as provider id.
-				// TODO: it should be removed when we put providers and integrations in order. Conversation: https://github.com/gitkraken/vscode-gitlens/pull/3996#discussion_r1936422826
-				integrationId ??= link.provider.id as IntegrationIds;
-				try {
-					linkIntegration = await this.container.integrations.get(integrationId);
-				} catch (e) {
-					Logger.error(e, `Failed to get integration for ${link.provider.id}`);
-					linkIntegration = undefined;
-				}
-			}
-			if (linkIntegration != null) {
-				const connected = linkIntegration.maybeConnected ?? (await linkIntegration.isConnected());
-				if (!connected || !(await linkIntegration.access())) {
-					linkIntegration = undefined;
-				}
-			}
-			const issueOrPullRequestPromise =
-				remote?.provider != null &&
-				integration != null &&
-				integrationId === integration.id &&
-				link.provider?.domain === integration.domain
-					? integration.getLinkedIssueOrPullRequest(
-							link.descriptor ?? remote.provider.repoDesc,
-							this.getAutolinkEnrichableId(link),
-							{ type: link.type },
-						)
-					: link.descriptor != null
-						? linkIntegration?.getLinkedIssueOrPullRequest(
-								link.descriptor,
-								this.getAutolinkEnrichableId(link),
-								{
-									type: link.type,
-								},
-							)
-						: undefined;
-			enrichedAutolinks.set(id, [issueOrPullRequestPromise, link]);
+			enrichedAutolinks.set(id, [undefined, link]);
 		}
 
 		return enrichedAutolinks;
@@ -350,11 +236,6 @@ export class AutolinksProvider implements Disposable {
 			}
 
 			if (remotes?.length) {
-				remotes = remotes.toSorted((a, b) => {
-					const aConnected = isRemoteMaybeIntegrationConnected(a);
-					const bConnected = isRemoteMaybeIntegrationConnected(b);
-					return aConnected !== bConnected ? (aConnected ? -1 : bConnected ? 1 : 0) : 0;
-				});
 				for (const r of remotes) {
 					if (r.provider == null) continue;
 

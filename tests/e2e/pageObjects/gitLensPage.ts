@@ -1,5 +1,4 @@
 import type { FrameLocator, Locator } from '@playwright/test';
-import type { SimulationState } from '../../../src/plus/gk/__debug__accountDebug.js';
 import { MaxTimeout, ShortTimeout } from '../baseTest.js';
 import { VSCodePage } from './vscodePage.js';
 
@@ -10,37 +9,6 @@ import { VSCodePage } from './vscodePage.js';
 export class GitLensPage extends VSCodePage {
 	async isActivated(): Promise<boolean> {
 		return this.gitlensTab.isVisible();
-	}
-
-	/**
-	 * Simulate a subscription state for testing Pro features.
-	 * This allows tests to access Pro-gated features like worktrees.
-	 *
-	 * The debug module is loaded asynchronously after extension activation,
-	 * so we retry the command until it succeeds.
-	 *
-	 * @param state - Subscription state
-	 */
-	async startSubscriptionSimulation(
-		state: SimulationState = { state: 6 /*SubscriptionState.Paid*/, planId: 'pro' },
-	): Promise<{ success: boolean } & Disposable> {
-		if (!(await this.waitForCommand('gitlens.plus.simulate.subscription'))) {
-			throw new Error('gitlens.plus.simulate.subscription command not found');
-		}
-
-		const success = await this.executeCommand<boolean>('gitlens.plus.simulate.subscription', state);
-		// Wait for the subscription change event to propagate through the system
-		await this.page.waitForTimeout(ShortTimeout);
-		return {
-			success: success,
-			[Symbol.dispose]: async () => {
-				await this.stopSubscriptionSimulation();
-			},
-		};
-	}
-
-	async stopSubscriptionSimulation(): Promise<void> {
-		await this.executeCommand('gitlens.plus.simulate.subscription', { state: null });
 	}
 
 	/**
@@ -92,34 +60,6 @@ export class GitLensPage extends VSCodePage {
 	// GitLens Sidebar Views
 	// ============================================================================
 
-	/** Home section in GitLens sidebar */
-	get homeViewSection(): Locator {
-		return this.sidebar.getSection(/Home Section/i);
-	}
-
-	/** Home webview in GitLens sidebar */
-	get homeViewWebview(): Promise<FrameLocator | null> {
-		return this.getGitLensWebview('Home', 'webviewView');
-	}
-
-	async showHomeView(): Promise<void> {
-		await this.executeCommand('gitlens.showHomeView');
-	}
-
-	/** Launchpad section in GitLens sidebar */
-	get launchpadViewSection(): Locator {
-		return this.sidebar.getSection(/Launchpad.*Section/i);
-	}
-
-	/** Launchpad tree in GitLens sidebar */
-	get launchpadViewTreeView(): Locator {
-		return this.sidebar.getTree(/^Launchpad/i);
-	}
-
-	async showLaunchpadView(): Promise<void> {
-		await this.executeCommand('gitlens.showLaunchpad');
-	}
-
 	// ============================================================================
 	// GitLens Inspect Views
 	// ============================================================================
@@ -160,20 +100,6 @@ export class GitLensPage extends VSCodePage {
 
 	async showFileHistoryView(): Promise<void> {
 		await this.executeCommand('gitlens.showFileHistoryView');
-	}
-
-	/** Visual History section in GitLens Inspect sidebar */
-	get visualHistoryViewSection(): Locator {
-		return this.sidebar.getSection(/^Visual File History/i);
-	}
-
-	/** Visual History webview in GitLens Inspect sidebar */
-	get visualHistoryViewWebview(): Promise<FrameLocator | null> {
-		return this.getGitLensWebview('Visual File History', 'webviewView');
-	}
-
-	async showVisualFileHistoryView(): Promise<void> {
-		await this.executeCommand('gitlens.showTimelineView');
 	}
 
 	/** Search & Compare section in GitLens Inspect sidebar */
@@ -218,6 +144,20 @@ export class GitLensPage extends VSCodePage {
 		await this.executeCommand('gitlens.showGraphView');
 	}
 
+	async getCommitGraphWebview(timeout = MaxTimeout / 2): Promise<FrameLocator> {
+		const graph = await this.getGitLensWebview('Graph', 'webviewView', timeout);
+		if (graph == null) throw new Error('Commit Graph webview was not found');
+
+		return graph;
+	}
+
+	async getCommitGraphPanel(timeout = MaxTimeout / 2): Promise<FrameLocator> {
+		const graph = await this.getGitLensWebview('Commit Graph', 'webviewPanel', timeout);
+		if (graph == null) throw new Error('Commit Graph panel was not found');
+
+		return graph;
+	}
+
 	// ============================================================================
 	// GitLens Status Bar Items
 	// ============================================================================
@@ -225,11 +165,6 @@ export class GitLensPage extends VSCodePage {
 	/** The "Show Commit Graph" status bar button */
 	get commitGraphStatusBarItem(): Locator {
 		return this.statusBar.getItem(/Show the GitLens Commit Graph/i);
-	}
-
-	/** The Launchpad status bar item */
-	get launchpadStatusBarItem(): Locator {
-		return this.statusBar.getItem(/GitLens Launchpad/i);
 	}
 
 	// ============================================================================
@@ -357,7 +292,7 @@ export class GitLensPage extends VSCodePage {
 	 * Find a GitLens webview by its title.
 	 * VS Code renders webviews outside their logical containers, so we search all webviews
 	 * and identify the correct one by:
-	 * 1. The outer iframe src containing extensionId=eamodio.gitlens and purpose=webviewView/webviewPanel
+	 * 1. The outer iframe src containing extensionId=bb1.offline-gitlense and purpose=webviewView/webviewPanel
 	 * 2. The inner iframe#active-frame having the specified title attribute
 	 *
 	 * @param title - The title of the webview (e.g., "Graph", "Graph Details", "Home")
@@ -378,8 +313,8 @@ export class GitLensPage extends VSCodePage {
 			// Find GitLens webview iframes
 			const iframes = this.page.locator(
 				usePurpose && purpose === 'webviewView'
-					? `iframe.webview[src*="extensionId=eamodio.gitlens"][src*="purpose=${purpose}"]`
-					: `iframe.webview[src*="extensionId=eamodio.gitlens"]`,
+					? `iframe.webview[src*="extensionId=bb1.offline-gitlense"][src*="purpose=${purpose}"]`
+					: `iframe.webview[src*="extensionId=bb1.offline-gitlense"]`,
 			);
 
 			iterations++;

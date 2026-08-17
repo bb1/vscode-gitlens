@@ -14,7 +14,6 @@ import type { Container } from '../../container.js';
 import { showPausedOperationStatus, skipPausedOperation } from '../../git/actions/pausedOperation.js';
 import type { GlRepository } from '../../git/models/repository.js';
 import { showGitErrorMessage } from '../../messages.js';
-import { isSubscriptionTrialOrPaidFromState } from '../../plus/gk/utils/subscription.utils.js';
 import { createQuickPickSeparator } from '../../quickpicks/items/common.js';
 import type { DirectiveQuickPickItem } from '../../quickpicks/items/directive.js';
 import { createDirectiveQuickPickItem, Directive } from '../../quickpicks/items/directive.js';
@@ -350,19 +349,15 @@ export class CherryPickGitCommand extends QuickCommand<State> {
 			}),
 		];
 
-		let potentialConflict: Promise<ConflictDetectionResult | undefined> | undefined;
-		const subscription = await this.container.subscription.getSubscription();
-		if (isSubscriptionTrialOrPaidFromState(subscription?.state)) {
-			// Reverse the commits since they're typically in newest-to-oldest order (from git log),
-			// but conflict detection needs oldest-to-newest order to properly simulate cherry-pick
-			potentialConflict = state.repo.git.branches.getPotentialApplyConflicts?.(
-				context.destination.name,
-				ensureArray(state.references)
-					.map(r => r.ref)
-					.reverse(),
-				{ stopOnFirstConflict: true },
-			);
-		}
+		// Reverse the commits since they're typically in newest-to-oldest order (from git log),
+		// but conflict detection needs oldest-to-newest order to properly simulate cherry-pick.
+		const potentialConflict = state.repo.git.branches.getPotentialApplyConflicts?.(
+			context.destination.name,
+			ensureArray(state.references)
+				.map(r => r.ref)
+				.reverse(),
+			{ stopOnFirstConflict: true },
+		);
 
 		let step: QuickPickStep<DirectiveQuickPickItem | FlagsQuickPickItem<Flags>>;
 

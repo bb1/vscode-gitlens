@@ -1,14 +1,13 @@
 import type { PropertyValues } from 'lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import type { AgentSessionPhase } from '@gitlens/agents/types.js';
 import type { GitCommitStats } from '@gitlens/git/models/commit.js';
 import type { GitCommitSearchContext } from '@gitlens/git/models/search.js';
 import { getFileDiffPathspecs, isConflictStatus } from '@gitlens/git/utils/fileStatus.utils.js';
 import type { Preferences } from '../../../../commitDetails/protocol.js';
 import type { CopyWipPatchEventDetail, OpenMultipleChangesArgs, WipScope } from '../../actions/file.js';
 import { renderCommitStatsIcons } from '../commit/commit-stats.js';
-import type { TreeItemAction, TreeItemBase } from './base.js';
+import type { AgentSessionPhase, TreeItemAction, TreeItemBase } from './base.js';
 import type { FileGroup } from './file-tree-utils.js';
 import { renderOpenChangesAction, selectFilesByPath, selectRowsByPath } from './file-tree-utils.js';
 import type { FileChangeListItemDetail, FileItem } from './gl-file-tree-pane.js';

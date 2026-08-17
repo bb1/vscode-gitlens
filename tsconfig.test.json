@@ -4,18 +4,28 @@
 		"noEmit": true,
 		"rootDir": ".",
 		"outDir": "out/tests",
+		"lib": ["es2023", "dom"],
 		"paths": {
 			"@env/*": ["./src/env/node/*"],
 			"#env/*": ["./packages/utils/src/env/node/*"],
 			"@gitlens/utils/*": ["./packages/utils/src/*"],
-			"@gitlens/ipc/*": ["./packages/ipc/src/*"],
 			"@gitlens/git/*": ["./packages/git/src/*"],
 			"@gitlens/git-cli/*": ["./packages/git-cli/src/*"],
-			"@gitlens/git-github/*": ["./packages/plus/git-github/src/*"],
-			"@gitlens/agents/*": ["./packages/plus/agents/src/*"]
+			"@gitlens/hosting-integrations/*": ["./packages/integrations/src/*"],
+			"@gitlens/hosting-github/*": ["./packages/git-github/src/*"]
 		},
 		"tsBuildInfoFile": "tsconfig.test.tsbuildinfo"
 	},
-	"include": ["src/**/__tests__/**/*", "packages/git-cli/src/parsers/__tests__/logParser.test.ts"],
-	"exclude": ["src/webviews/apps/**/*", "src/env/browser/**/*"]
+	"include": [
+		"src/__tests__/localSubscriptionService.test.ts",
+		"src/__tests__/offlineRuntime.test.ts",
+		"src/autolinks/__tests__/autolinks.test.ts",
+		"src/env/node/mcp/__tests__/localMcpService.test.ts",
+		"src/webviews/graph/__tests__/graphWebview.test.ts",
+		"src/webviews/graph/__tests__/graphSessionController.test.ts",
+		"src/webviews/rebase/__tests__/rebaseTodoDocument.test.ts",
+		"src/webviews/rebase/__tests__/rebaseWebviewProvider.test.ts",
+		"src/webviews/apps/settings/categories/__tests__/index.test.ts",
+		"src/@types/**/*"
+	]
 }

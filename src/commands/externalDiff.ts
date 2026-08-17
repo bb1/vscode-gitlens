@@ -1,5 +1,5 @@
-import type { SourceControlResourceState } from 'vscode';
-import { env, Uri, window } from 'vscode';
+import type { SourceControlResourceState, Uri } from 'vscode';
+import { window } from 'vscode';
 import { GitCommit } from '@gitlens/git/models/commit.js';
 import { isUncommitted, isUncommittedStaged } from '@gitlens/git/utils/revision.utils.js';
 import { filterMap } from '@gitlens/utils/array.js';
@@ -12,6 +12,7 @@ import { showGenericErrorMessage } from '../messages.js';
 import { getRepositoryOrShowPicker } from '../quickpicks/repositoryPicker.js';
 import { command } from '../system/-webview/command.js';
 import { configuration } from '../system/-webview/configuration.js';
+import { openUrl } from '../system/-webview/vscode/uris.js';
 import { GlCommandBase } from './commandBase.js';
 import type { CommandContext } from './commandContext.js';
 import {
@@ -177,9 +178,7 @@ export class ExternalDiffCommand extends GlCommandBase {
 					viewDocs,
 				);
 				if (result === viewDocs) {
-					void env.openExternal(
-						Uri.parse('https://git-scm.com/docs/git-config#Documentation/git-config.txt-difftool'),
-					);
+					void openUrl('https://git-scm.com/docs/git-config#Documentation/git-config.txt-difftool');
 				}
 
 				return;

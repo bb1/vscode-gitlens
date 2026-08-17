@@ -10,7 +10,6 @@ import type { Source } from '../constants.telemetry.js';
 import type { WebviewPanelIds, WebviewViewIds } from '../constants.views.js';
 import type { Container } from '../container.js';
 import { executeCoreCommand, registerCommand } from '../system/-webview/command.js';
-import { addToContextDelimitedString, getContext } from '../system/-webview/context.js';
 import { getViewFocusCommand } from '../system/-webview/vscode/views.js';
 import type { WebviewCommandRegistrar } from './webviewCommandRegistrar.js';
 import { WebviewController } from './webviewController.js';
@@ -224,10 +223,6 @@ export class WebviewsController implements Disposable {
 
 				if (onBeforeShow != null) {
 					await onBeforeShow?.(...args);
-				}
-
-				if (descriptor.plusFeature && getContext('gitlens:plus:disabled') === true) {
-					await addToContextDelimitedString('gitlens:plus:disabled:view:overrides', [descriptor.id]);
 				}
 
 				return void executeCoreCommand(getViewFocusCommand(descriptor.id), options);

@@ -3,7 +3,6 @@ import type { RepositoryVisibility } from '@gitlens/git/providers/types.js';
 import type { GitProviderService, RepositoriesVisibility } from './gitProviderService.js';
 
 export interface VisibilityDebugFacade {
-	clearAccessCache: () => void;
 	invalidateReposVisibilityCache: () => void;
 	fireRepositoriesChanged: () => void;
 }
@@ -29,7 +28,6 @@ export function setSimulatedRepoVisibility(visibility: RepositoryVisibility | un
 	if (_override === visibility) return;
 
 	_override = visibility;
-	_facade?.clearAccessCache();
 	_facade?.invalidateReposVisibilityCache();
 	_facade?.fireRepositoriesChanged();
 }

@@ -3,7 +3,6 @@ import { html, LitElement, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
 import { getAltKeySymbol } from '@env/platform.js';
-import type { AgentSessionPhase } from '@gitlens/agents/types.js';
 import type { GitFileChangeShape, GitFileChangeStats } from '@gitlens/git/models/fileChange.js';
 import type { GitFileConflictStatus } from '@gitlens/git/models/fileStatus.js';
 import type { GitCommitSearchContext } from '@gitlens/git/models/search.js';
@@ -21,6 +20,7 @@ import type { FileShowOptions, WorkingFileSorting } from '../../../../commitDeta
 import { ModifierKeysController } from '../../controllers/modifier-keys.js';
 import { elementBase } from '../styles/lit/base.css.js';
 import type {
+	AgentSessionPhase,
 	TreeItemAction,
 	TreeItemActionDetail,
 	TreeItemBase,
@@ -1060,9 +1060,10 @@ export class GlFileTreePane extends LitElement {
 	}
 
 	private onTreeItemSelected(e: CustomEvent<TreeItemSelectionDetail>): void {
-		if (!e.detail.context) return;
+		const file = e.detail.context?.[0];
+		if (file == null || !('repoPath' in file) || !('status' in file)) return;
 
-		this.dispatchFileEvent(this.selectionAction, e.detail.context[0], e.detail);
+		this.dispatchFileEvent(this.selectionAction, file as FileItem, e.detail);
 	}
 
 	private onSelectionChanged(e: CustomEvent<TreeSelectionChangedDetail>): void {

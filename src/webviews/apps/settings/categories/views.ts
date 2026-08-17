@@ -23,8 +23,6 @@ export const viewsCategories: SettingsCategory[] = [
 		group: 'Views',
 		icon: 'gl-graph',
 		hint: 'Adds a [Commit Graph](command:gitlens.showGraph) to visualize, explore, and manage a Git repository',
-		pro: true,
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-plus/#commit-graph',
 		preview: 'graph',
 		controls: [
 			{
@@ -143,18 +141,6 @@ export const viewsCategories: SettingsCategory[] = [
 			},
 			{
 				kind: 'select',
-				key: 'graph.branchesVisibility',
-				label: 'Show branches',
-				options: [
-					{ value: 'all', label: 'all branches (default)' },
-					{ value: 'smart', label: 'only relevant branches' },
-					{ value: 'current', label: 'only the current branch' },
-					{ value: 'favorited', label: 'only favorited branches' },
-					{ value: 'agents', label: 'only branches associated with active agents' },
-				],
-			},
-			{
-				kind: 'select',
 				key: 'graph.commitOrdering',
 				label: 'Order commits',
 				options: [
@@ -234,7 +220,6 @@ export const viewsCategories: SettingsCategory[] = [
 		group: 'Views',
 		icon: 'gl-commits-view',
 		hint: 'Adds a [Commits view](command:gitlens.showCommitsView) to visualize, explore, and manage Git commits',
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/side-bar/#commits-view',
 		controls: [
 			{
 				kind: 'text',
@@ -293,7 +278,6 @@ export const viewsCategories: SettingsCategory[] = [
 		group: 'Views',
 		icon: 'gl-stashes-view',
 		hint: 'Adds a [Stashes view](command:gitlens.showStashesView) to visualize, explore, and manage Git stashes',
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/side-bar/#stashes-view',
 		controls: [
 			{
 				kind: 'text',

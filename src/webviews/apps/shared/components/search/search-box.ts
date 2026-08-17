@@ -7,7 +7,6 @@ import type { Disposable } from 'vscode';
 import { isMac } from '@env/platform.js';
 import type { SearchQuery } from '@gitlens/git/models/search.js';
 import { pluralize } from '@gitlens/utils/string.js';
-import type { AppState } from '../../../plus/graph/context.js';
 import { DOM } from '../../dom.js';
 import { GlElement } from '../element.js';
 import type { GlSearchInput, SearchModeChangeEventDetail, SearchNavigationEventDetail } from './search-input.js';
@@ -191,7 +190,7 @@ export class GlSearchBox extends GlElement {
 	@property({ type: Boolean }) matchRegex = true;
 	@property({ type: Boolean }) matchWholeWord = false;
 	@property({ type: Boolean }) naturalLanguage = false;
-	@property({ type: String }) navigating: AppState['navigating'] = false;
+	@property({ type: String }) navigating = false;
 	@property({ type: Boolean }) resultHidden = false;
 	@property({ type: Boolean }) resultsHasMore = false;
 	@property({ type: String }) resultsLabel = 'result';

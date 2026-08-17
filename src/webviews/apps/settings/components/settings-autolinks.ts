@@ -2,10 +2,7 @@ import { SignalWatcher } from '@lit-labs/signals';
 import { consume } from '@lit/context';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement, property, query, state } from 'lit/decorators.js';
-import { IssuesCloudHostIntegrationId } from '@gitlens/integrations/constants.js';
-import type { ConnectCloudIntegrationsCommandArgs } from '../../../../commands/cloudIntegrations.js';
 import type { AutolinkConfig } from '../../../../config.js';
-import { createCommandLink } from '../../../../system/commands.js';
 import { focusOutline } from '../../shared/components/styles/lit/a11y.css.js';
 import { boxSizingBase, linkBase } from '../../shared/components/styles/lit/base.css.js';
 import type { SettingsActions } from '../actions.js';
@@ -302,48 +299,6 @@ export class GlSettingsAutolinks extends SignalWatcher(LitElement) {
 		});
 	}
 
-	private renderIntegrationsBanner() {
-		// Wait for both services before rendering (like the integrations panel) —
-		// the signed-out copy would flash misleadingly for signed-in users
-		if (this._state.subscription.get() === undefined || this._state.cloudIntegrations.get() === undefined) {
-			return nothing;
-		}
-
-		const hasAccount = this._state.hasAccount.get();
-		const hasConnectedJira = this._state.hasConnectedJira.get();
-		const hasConnectedLinear = this._state.hasConnectedLinear.get();
-
-		if (hasConnectedJira && hasConnectedLinear) {
-			return html`<p class="banner banner--connected">
-				<code-icon icon="check" aria-hidden="true"></code-icon>
-				<span>Jira and Linear are connected — issue keys in commit messages link automatically.</span>
-			</p>`;
-		}
-
-		const connectLink = (integration: IssuesCloudHostIntegrationId, label: string) =>
-			html`<a
-				href=${createCommandLink<ConnectCloudIntegrationsCommandArgs>(
-					'gitlens.plus.cloudIntegrations.connect',
-					{
-						integrationIds: [integration],
-						source: { source: 'settings', detail: { action: 'connect', integration: integration } },
-					},
-				)}
-				>${label}</a
-			>`;
-
-		return html`<p class="banner">
-			<code-icon icon="info" aria-hidden="true"></code-icon>
-			<span>
-				${hasAccount ? 'Connect' : 'Sign up and connect'}
-				${hasConnectedJira ? nothing : connectLink(IssuesCloudHostIntegrationId.Jira, 'Jira')}
-				${!hasConnectedJira && !hasConnectedLinear ? ' or ' : nothing}
-				${hasConnectedLinear ? nothing : connectLink(IssuesCloudHostIntegrationId.Linear, 'Linear')} to
-				automatically link issues in commit messages.
-			</span>
-		</p>`;
-	}
-
 	private renderRule(autolink: AutolinkConfig, index: number) {
 		// Validate against the row as currently rendered (the draft overlay is
 		// already applied by `render()`), so errors track the latest value
@@ -440,8 +395,7 @@ export class GlSettingsAutolinks extends SignalWatcher(LitElement) {
 			rows[Math.min(draftIndex, rows.length)] = this._draft;
 		}
 
-		return html`${this.renderIntegrationsBanner()}
-			<div class="rules">${rows.map((a, i) => this.renderRule(a, i))}</div>
+		return html`<div class="rules">${rows.map((a, i) => this.renderRule(a, i))}</div>
 			<p class="hint">
 				Matches prefixes that are followed by a reference value within commit messages. The URL must contain a
 				<code>&lt;num&gt;</code> for the reference value to be included in the link.

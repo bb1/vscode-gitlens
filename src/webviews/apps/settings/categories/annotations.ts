@@ -16,7 +16,6 @@ export const annotationsCategories: SettingsCategory[] = [
 			addSettingsOff: [['hovers.currentLine.over', 'line']],
 		},
 		command: { label: 'GitLens: Toggle Line Blame Annotations', command: 'gitlens.toggleLineBlame' },
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#current-line-blame',
 		preview: 'blame',
 		controls: [
 			{
@@ -94,7 +93,6 @@ export const annotationsCategories: SettingsCategory[] = [
 			label: 'Git CodeLens',
 		},
 		command: { label: 'GitLens: Toggle Git CodeLens', command: 'gitlens.toggleCodeLens' },
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#git-codelens',
 		preview: 'codelens',
 		controls: [
 			{
@@ -238,7 +236,6 @@ export const annotationsCategories: SettingsCategory[] = [
 			key: 'statusBar.enabled',
 			label: 'Status Bar Blame',
 		},
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#status-bar-blame',
 		preview: 'statusbar',
 		controls: [
 			{
@@ -350,7 +347,6 @@ export const annotationsCategories: SettingsCategory[] = [
 			key: 'hovers.enabled',
 			label: 'Hovers',
 		},
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#hovers',
 		preview: 'hover',
 		controls: [
 			{

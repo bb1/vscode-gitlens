@@ -32,6 +32,8 @@ tests/**
 .gitignore
 .mailmap
 .mcp.json
+.superpowers/**
+.worktree/**
 .oxfmtrc.json
 .vscode-agent.json
 .vscode-test.mjs
@@ -39,6 +41,7 @@ tests/**
 AGENTS.md
 BACKERS.md
 CLAUDE.md
+CHANGELOG.md
 CODE_OF_CONDUCT.md
 CONTRIBUTING.md
 contributions.json

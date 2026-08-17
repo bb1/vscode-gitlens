@@ -13,7 +13,6 @@ import type { GlCommands } from '../../constants.commands.js';
  * unsafe to import outside a running extension host.
  */
 export const settingsPageAnchorCommands: GlCommands[] = [
-	'gitlens.showSettingsPage!account',
 	'gitlens.showSettingsPage!file-annotations',
 	'gitlens.showSettingsPage!branches-view',
 	'gitlens.showSettingsPage!commits-view',
@@ -29,7 +28,4 @@ export const settingsPageAnchorCommands: GlCommands[] = [
 	'gitlens.showSettingsPage!worktrees-view',
 	'gitlens.showSettingsPage!commit-graph',
 	'gitlens.showSettingsPage!autolinks',
-	'gitlens.showSettingsPage!ai',
-	'gitlens.showSettingsPage!agents',
-	'gitlens.showSettingsPage!integrations',
 ];

@@ -1,0 +1,52 @@
+{
+	"name": "@gitlens/hosting-integrations",
+	"description": "GitLens hosting integrations package",
+	"version": "0.0.1",
+	"license": "SEE LICENSE IN LICENSE",
+	"private": true,
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./models.js": {
+			"types": "./dist/models.d.ts",
+			"default": "./dist/models.js"
+		},
+		"./provider.js": {
+			"types": "./dist/provider.d.ts",
+			"default": "./dist/provider.js"
+		},
+		"./providers/azureDevOps.js": {
+			"types": "./dist/providers/azureDevOps.d.ts",
+			"default": "./dist/providers/azureDevOps.js"
+		},
+		"./providers/bitbucket.js": {
+			"types": "./dist/providers/bitbucket.d.ts",
+			"default": "./dist/providers/bitbucket.js"
+		},
+		"./providers/gitlab.js": {
+			"types": "./dist/providers/gitlab.d.ts",
+			"default": "./dist/providers/gitlab.js"
+		},
+		"./providers/shared.js": {
+			"types": "./dist/providers/shared.d.ts",
+			"default": "./dist/providers/shared.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -b",
+		"clean": "pnpx rimraf --glob dist out **/tsconfig*.tsbuildinfo",
+		"clean:all": "pnpm run clean && pnpm run clean:deps",
+		"clean:deps": "pnpx rimraf --glob **/node_modules",
+		"clean:lint": "pnpx rimraf --glob **/tsconfig*.tsbuildinfo",
+		"test": "mocha --require tsx --ui tdd --timeout 30000 'src/**/__tests__/**/*.test.ts'"
+	},
+	"devDependencies": {
+		"@types/mocha": "catalog:",
+		"mocha": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:"
+	}
+}

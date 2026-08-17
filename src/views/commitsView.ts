@@ -159,7 +159,6 @@ export class CommitsViewNode extends RepositoriesSubscribeableNode<CommitsView, 
 		const children = [];
 
 		if (
-			configuration.get('plusFeatures.enabled') &&
 			!this.view.grouped &&
 			this.view.container.usage.get('graphView:shown') == null &&
 			this.view.container.usage.get('graphWebview:shown') == null
@@ -342,7 +341,6 @@ export class CommitsView extends ViewBase<'commits', CommitsViewNode, CommitsVie
 			!configuration.changed(e, 'defaultDateStyle') &&
 			!configuration.changed(e, 'defaultGravatarsStyle') &&
 			!configuration.changed(e, 'defaultTimeFormat') &&
-			!configuration.changed(e, 'plusFeatures.enabled') &&
 			!configuration.changed(e, 'sortRepositoriesBy')
 		) {
 			return false;

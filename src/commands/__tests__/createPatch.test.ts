@@ -1,12 +1,13 @@
 import * as assert from 'assert';
 import * as sinon from 'sinon';
-import type { Uri } from 'vscode';
+import type { TextEditor, Uri } from 'vscode';
+import { window } from 'vscode';
 import { uncommitted, uncommittedStaged } from '@gitlens/git/models/revision.js';
 import type { ScmResource } from '../../@types/vscode.git.resources.d.js';
 import { ScmResourceGroupType, ScmStatus } from '../../@types/vscode.git.resources.enums.js';
 import type { Container } from '../../container.js';
 import type { CommandScmStatesContext } from '../commandContext.js';
-import { getCreatePatchArgsForScmStates } from '../patches.js';
+import { getCreatePatchArgsForScmStates, showLocalPatchDocument } from '../patches.js';
 
 function createMockContainer(): Container {
 	return {
@@ -157,5 +158,20 @@ suite('getCreatePatchArgsForScmStates Test Suite', () => {
 		);
 
 		assert.strictEqual(args.includeUntracked, true);
+	});
+});
+
+suite('local patch viewing', () => {
+	test('shows an active diff without a Cloud Patches dependency', async () => {
+		const document: Pick<TextEditor['document'], 'languageId'> = { languageId: 'diff' };
+		const showTextDocument = sinon.stub(window, 'showTextDocument').resolves();
+
+		try {
+			await showLocalPatchDocument(document as TextEditor['document']);
+
+			assert.ok(showTextDocument.calledOnceWithExactly(sinon.match.same(document)));
+		} finally {
+			showTextDocument.restore();
+		}
 	});
 });

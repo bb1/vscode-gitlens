@@ -18,18 +18,14 @@ import { convertLocationToOpenFlags, revealWorktree } from '../../../git/actions
 import type { GlRepository } from '../../../git/models/repository.js';
 import { getWorktreeForBranch } from '../../../git/utils/-webview/worktree.utils.js';
 import { showGitErrorMessage } from '../../../messages.js';
-import type { StartReviewChatAction, StartWorkChatAction } from '../../../plus/chat/chatActions.js';
-import { storeChatActionDeepLink } from '../../../plus/chat/chatActions.js';
 import { createQuickPickSeparator } from '../../../quickpicks/items/common.js';
 import { Directive } from '../../../quickpicks/items/directive.js';
 import type { FlagsQuickPickItem } from '../../../quickpicks/items/flags.js';
 import { createFlagsQuickPickItem } from '../../../quickpicks/items/flags.js';
-import { executeCommand } from '../../../system/-webview/command.js';
 import { configuration } from '../../../system/-webview/configuration.js';
 import { isDescendant } from '../../../system/-webview/path.js';
 import { revealInFileExplorer } from '../../../system/-webview/vscode.js';
 import { getWorkspaceFriendlyPath } from '../../../system/-webview/vscode/workspaces.js';
-import type { OpenChatActionCommandArgs } from '../../openChatAction.js';
 import type { CustomStep } from '../../quick-wizard/models/steps.custom.js';
 import type {
 	PartialStepState,
@@ -102,7 +98,6 @@ interface State<Repo = string | GlRepository> {
 	worktreeDefaultOpen?: 'new' | 'current' | 'none';
 
 	// Chat action for deeplink storage
-	chatAction?: StartWorkChatAction | StartReviewChatAction;
 }
 export type WorktreeCreateState = State;
 
@@ -364,23 +359,6 @@ export class WorktreeCreateGitCommand extends QuickCommand<State> {
 							: undefined),
 					});
 					state.result?.fulfill(worktree);
-
-					// Wire the chatAction to the new worktree. Two paths:
-					//   - CLI agent: dispatch inline in the current window — terminal opens here
-					//     with `cwd = worktree.uri.fsPath`. No new window, no deep-link bridge.
-					//   - Anything else (IDE chat, Claude extension, legacy): store the deep-link
-					//     so it resumes in the new worktree window (per `worktreeDefaultOpen` /
-					//     `gitlens.worktrees.openAfterCreate`).
-					if (state.chatAction && worktree) {
-						const chatActionWithPath = { ...state.chatAction, worktreePath: worktree.uri.fsPath };
-						if (state.chatAction.agent?.kind === 'cli') {
-							void executeCommand('gitlens.openChatAction', {
-								chatAction: chatActionWithPath,
-							} as OpenChatActionCommandArgs);
-						} else {
-							await storeChatActionDeepLink(this.container, chatActionWithPath, worktree.uri.fsPath);
-						}
-					}
 				} catch (ex) {
 					if (WorktreeCreateError.is(ex, 'alreadyCheckedOut') && !state.flags.includes('--force')) {
 						const createBranch: MessageItem = { title: 'Create New Branch' };

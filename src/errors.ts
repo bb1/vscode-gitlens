@@ -1,56 +1,11 @@
 import type { Uri } from 'vscode';
 import { AuthenticationError } from '@gitlens/git/errors.js';
-import type { RequiredSubscriptionPlanIds, Subscription } from './plus/gk/models/subscription.js';
-import { isSubscriptionPaidPlan } from './plus/gk/utils/subscription.utils.js';
 
 export type { AuthTokenInfo } from '@gitlens/git/errors.js';
 export { AuthenticationError, AuthenticationErrorReason } from '@gitlens/git/errors.js';
 export { RequestClientError, RequestNotFoundError, RequestRateLimitError } from '@gitlens/git/errors.js';
-export {
-	AIError,
-	AIErrorReason,
-	AINoRequestDataError,
-	AuthenticationRequiredError,
-	classifyNetworkError,
-} from '@gitlens/ai/errors.js';
 
-export class AccessDeniedError extends Error {
-	public readonly subscription: Subscription;
-	public readonly required: RequiredSubscriptionPlanIds | undefined;
-
-	constructor(subscription: Subscription, required: RequiredSubscriptionPlanIds | undefined) {
-		let message;
-		if (subscription.account?.verified === false) {
-			message = 'Email verification required';
-		} else if (required != null && isSubscriptionPaidPlan(required)) {
-			message = 'GitLens Pro required';
-		} else {
-			message = 'Plan required';
-		}
-
-		super(message);
-
-		this.subscription = subscription;
-		this.required = required;
-		Error.captureStackTrace?.(this, new.target);
-	}
-}
-
-export class AccountValidationError extends Error {
-	readonly original?: Error;
-	readonly statusCode?: number;
-	readonly statusText?: string;
-
-	constructor(message: string, original?: Error, statusCode?: number, statusText?: string) {
-		message += `; status=${statusCode}: ${statusText}`;
-		super(message);
-
-		this.original = original;
-		this.statusCode = statusCode;
-		this.statusText = statusText;
-		Error.captureStackTrace?.(this, new.target);
-	}
-}
+export class AuthenticationRequiredError extends Error {}
 
 export class ExtensionNotFoundError extends Error {
 	constructor(

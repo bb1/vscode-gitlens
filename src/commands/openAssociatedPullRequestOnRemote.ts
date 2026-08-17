@@ -2,8 +2,6 @@ import type { TextEditor, Uri } from 'vscode';
 import { Logger } from '@gitlens/utils/logger.js';
 import type { Container } from '../container.js';
 import { GitUri } from '../git/gitUri.js';
-import { getBranchAssociatedPullRequest } from '../git/utils/-webview/branch.utils.js';
-import { getBestRemoteWithIntegration } from '../git/utils/-webview/remote.utils.js';
 import { getRepositoryOrShowPicker } from '../quickpicks/repositoryPicker.js';
 import { command, executeCommand } from '../system/-webview/command.js';
 import { ActiveEditorCommand } from './commandBase.js';
@@ -37,27 +35,11 @@ export class OpenAssociatedPullRequestOnRemoteCommand extends ActiveEditorComman
 			}
 		} else {
 			try {
-				const repo = await getRepositoryOrShowPicker(
-					this.container,
-					'Open Associated Pull Request',
-					undefined,
-					undefined,
-					{
-						filter: async r => (await getBestRemoteWithIntegration(r.path)) != null,
-					},
-				);
+				const repo = await getRepositoryOrShowPicker(this.container, 'Open Associated Pull Request');
 				if (repo == null) return;
 
 				const branch = await repo?.git.branches.getBranch();
-				const pr =
-					branch != null
-						? await getBranchAssociatedPullRequest(this.container, branch, { expiryOverride: true })
-						: undefined;
-
-				args =
-					pr != null
-						? { clipboard: false, pr: { url: pr.url } }
-						: { clipboard: false, ref: branch?.name ?? 'HEAD', repoPath: repo.path };
+				args = { clipboard: false, ref: branch?.name ?? 'HEAD', repoPath: repo.path };
 			} catch (ex) {
 				Logger.error(ex, 'OpenAssociatedPullRequestOnRemoteCommand', 'No editor opened');
 				return;

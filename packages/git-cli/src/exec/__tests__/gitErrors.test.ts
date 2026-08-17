@@ -225,7 +225,7 @@ suite('GitErrors Regex Test Suite', () => {
 		test('worktreeLocked matches a locked worktree, with and without a lock reason', () => {
 			assert.ok(
 				GitErrors.worktreeLocked.test(
-					"fatal: cannot remove a locked working tree, lock reason: kepler:task:cb600cca\nuse 'remove -f -f' to override or unlock first",
+					"fatal: cannot remove a locked working tree, lock reason: task:cb600cca\nuse 'remove -f -f' to override or unlock first",
 				),
 			);
 			assert.ok(
@@ -236,7 +236,7 @@ suite('GitErrors Regex Test Suite', () => {
 		});
 
 		test('worktreeLocked does not match a locked worktree that could not be moved', () => {
-			assert.ok(!GitErrors.worktreeLocked.test('fatal: cannot move a locked working tree, lock reason: kepler'));
+			assert.ok(!GitErrors.worktreeLocked.test('fatal: cannot move a locked working tree, lock reason: task'));
 		});
 
 		test('worktreeLocked does not match when the phrase only appears within a worktree path', () => {
@@ -518,7 +518,7 @@ suite('getGitCommandError() Test Suite', () => {
 
 	test('maps worktree-delete stderr to "locked" reason', () => {
 		const ex = makeGitError(
-			"fatal: cannot remove a locked working tree, lock reason: kepler:task:cb600cca\nuse 'remove -f -f' to override or unlock first",
+			"fatal: cannot remove a locked working tree, lock reason: task:cb600cca\nuse 'remove -f -f' to override or unlock first",
 		);
 		assert.strictEqual(captureReason('worktree-delete', ex), 'locked');
 	});

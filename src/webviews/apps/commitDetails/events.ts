@@ -17,10 +17,6 @@
  * - inspect.onCommitSelected (view-specific commit selection)
  * - repositories.onRepositoryChanged (workspace-level repo changes)
  * - config.onConfigChanged
- * - integrations.onIntegrationsChanged
- *
- * Note: subscription events (onSubscriptionChanged, onOrgSettingsChanged) are handled
- * via signal bridges — see commitDetails.ts _onRpcReady.
  */
 import type { Remote } from '@eamodio/supertalk';
 import type { CommitDetailsServices, CommitSelectionEvent } from '../../commitDetails/commitDetailsService.js';
@@ -36,8 +32,6 @@ interface SubscriptionServices {
 	readonly inspect: Awaited<Remote<CommitDetailsServices>['inspect']>;
 	readonly repositories: Awaited<Remote<CommitDetailsServices>['repositories']>;
 	readonly config: Awaited<Remote<CommitDetailsServices>['config']>;
-	readonly integrations: Awaited<Remote<CommitDetailsServices>['integrations']>;
-	readonly ai: Awaited<Remote<CommitDetailsServices>['ai']>;
 }
 
 /**
@@ -60,11 +54,6 @@ export function setupSubscriptions(
 				handleRepositoryChanged(state, event, actions),
 			),
 		() => services.config.onConfigChanged(() => handleConfigChanged(actions)),
-		// Note: onSubscriptionChanged/onOrgSettingsChanged removed — the bridged hasAccount and
-		// orgSettings signals are kept fresh by SubscriptionService's eager listeners (#5513)
-		() =>
-			services.integrations.onIntegrationsChanged(data => handleIntegrationsChanged(state, data.hasAnyConnected)),
-		() => services.ai.onModelChanged(model => state.aiModel.set(model)),
 	]);
 }
 
@@ -119,11 +108,4 @@ function handleRepositoryChanged(
 function handleConfigChanged(actions: CommitDetailsActions): void {
 	// Re-fetch preferences when config changes
 	void actions.fetchPreferences();
-}
-
-/**
- * Handle integrations change event.
- */
-function handleIntegrationsChanged(state: CommitDetailsState, hasConnected: boolean): void {
-	state.capabilities.hasIntegrationsConnected = hasConnected;
 }

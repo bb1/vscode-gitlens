@@ -95,27 +95,6 @@ export const cardStyles = css`
 		);
 	}
 
-	.card.is-mergeable {
-		border-inline-start-color: var(
-			--gl-card-indicator-border,
-			var(var(--vscode-gitlens-launchpadIndicatorMergeableColor))
-		);
-	}
-
-	.card.is-blocked {
-		border-inline-start-color: var(
-			--gl-card-indicator-border,
-			var(--vscode-gitlens-launchpadIndicatorBlockedColor)
-		);
-	}
-
-	.card.is-attention {
-		border-inline-start-color: var(
-			--gl-card-indicator-border,
-			var(--vscode-gitlens-launchpadIndicatorAttentionColor)
-		);
-	}
-
 	.card.is-branch-merged {
 		border-inline-start-color: var(--gl-card-indicator-border, var(--vscode-gitlens-mergedPullRequestIconColor));
 	}

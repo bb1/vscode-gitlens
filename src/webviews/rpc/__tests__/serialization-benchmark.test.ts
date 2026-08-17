@@ -23,7 +23,7 @@ import { Connection } from '@eamodio/supertalk';
 import { rpcHandlers } from '../../../system/rpc/handlers.js';
 
 // ============================================================
-// Synthetic GraphRow shape (mirrors @gitkraken/gitkraken-components)
+// Synthetic GraphRow shape used by the graph components.
 // ============================================================
 
 interface SyntheticHead {

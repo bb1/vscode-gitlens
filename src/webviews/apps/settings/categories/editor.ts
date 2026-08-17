@@ -10,7 +10,6 @@ export const editorCategories: SettingsCategory[] = [
 		icon: 'git-commit',
 		hint: 'Adds on-demand blame annotations for the whole file',
 		command: { label: 'GitLens: Toggle File Blame Annotations', command: 'gitlens.toggleFileBlame' },
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#file-blame',
 		preview: 'fileblame',
 		controls: [
 			{
@@ -102,7 +101,6 @@ export const editorCategories: SettingsCategory[] = [
 		icon: 'git-compare',
 		hint: 'Adds on-demand file changes annotations to highlight any local (unpublished) changes or lines changed by the most recent commit',
 		command: { label: 'GitLens: Toggle File Changes Annotations', command: 'gitlens.toggleFileChanges' },
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#gutter-changes',
 		preview: 'filechanges',
 		controls: [
 			{
@@ -134,7 +132,6 @@ export const editorCategories: SettingsCategory[] = [
 		icon: 'history',
 		hint: 'Adds on-demand heatmap (age) indicators to the file to show how recently lines were changed',
 		command: { label: 'GitLens: Toggle File Heatmap Annotations', command: 'gitlens.toggleFileHeatmap' },
-		learnMoreUrl: 'https://help.gitkraken.com/gitlens/gitlens-features/#gutter-heatmap',
 		preview: 'heatmap',
 		controls: [
 			{

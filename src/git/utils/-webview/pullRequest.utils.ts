@@ -1,7 +1,5 @@
-import type { ProgressOptions } from 'vscode';
-import { ProgressLocation, Uri, window } from 'vscode';
+import { Uri, window } from 'vscode';
 import type { PullRequest, PullRequestComparisonRefs } from '@gitlens/git/models/pullRequest.js';
-import type { CreatePullRequestRemoteResource } from '@gitlens/git/models/remoteResource.js';
 import type { LeftRightCommitCountResult } from '@gitlens/git/providers/commits.js';
 import {
 	getComparisonRefsForPullRequest,
@@ -10,50 +8,8 @@ import {
 import { gitSuffixRegex } from '@gitlens/git/utils/remote.utils.js';
 import { createRevisionRange } from '@gitlens/git/utils/revision.utils.js';
 import { Schemes } from '../../../constants.js';
-import type { Source } from '../../../constants.telemetry.js';
 import type { Container } from '../../../container.js';
-import { AuthenticationRequiredError } from '../../../errors.js';
 import type { GlRepository } from '../../models/repository.js';
-
-export async function describePullRequestWithAI(
-	container: Container,
-	repo: string | GlRepository,
-	{ base, head }: CreatePullRequestRemoteResource,
-	source: Source,
-	options?: { progress?: ProgressOptions },
-): Promise<{ title: string; description: string } | undefined> {
-	if (!base?.remote || !head?.remote || !base?.branch || !head?.branch) {
-		return undefined;
-	}
-
-	if (typeof repo === 'string') {
-		const r = container.git.getRepository(repo);
-		if (r == null) return undefined;
-
-		repo = r;
-	}
-
-	try {
-		const result = await container.ai.actions.generateCreatePullRequest(
-			repo,
-			`${base.remote.name}/${base.branch}`,
-			`${head.remote.name}/${head.branch}`,
-			source,
-			{
-				progress: { location: ProgressLocation.Notification },
-				...options,
-			},
-		);
-		if (result === 'cancelled') return undefined;
-
-		return result?.result ? { title: result.result.summary, description: result.result.body } : undefined;
-	} catch (ex) {
-		if (ex instanceof AuthenticationRequiredError) return undefined;
-
-		void window.showErrorMessage(ex.message);
-		return undefined;
-	}
-}
 
 export async function ensurePullRequestRefs(
 	pr: PullRequest,
@@ -136,11 +92,7 @@ export async function getOrOpenPullRequestRepository(
 	options?: { promptIfNeeded?: boolean; skipVirtual?: boolean },
 ): Promise<GlRepository | undefined> {
 	const identity = getRepositoryIdentityForPullRequest(pr);
-	let repo = await container.repositoryIdentity.getRepository(identity, {
-		openIfNeeded: true,
-		keepOpen: false,
-		prompt: false,
-	});
+	let repo = await getRepositoryForRemoteUrl(container, identity.remote.url);
 
 	if (repo == null && !options?.skipVirtual) {
 		const virtualUri = getVirtualUriForPullRequest(pr);
@@ -151,22 +103,25 @@ export async function getOrOpenPullRequestRepository(
 
 	if (repo == null) {
 		const baseIdentity = getRepositoryIdentityForPullRequest(pr, false);
-		repo = await container.repositoryIdentity.getRepository(baseIdentity, {
-			openIfNeeded: true,
-			keepOpen: false,
-			prompt: false,
-		});
-	}
-
-	if (repo == null && options?.promptIfNeeded) {
-		repo = await container.repositoryIdentity.getRepository(identity, {
-			openIfNeeded: true,
-			keepOpen: false,
-			prompt: true,
-		});
+		repo = await getRepositoryForRemoteUrl(container, baseIdentity.remote.url);
 	}
 
 	return repo;
+}
+
+async function getRepositoryForRemoteUrl(
+	container: Container,
+	remoteUrl: string | undefined,
+): Promise<GlRepository | undefined> {
+	if (remoteUrl == null) return undefined;
+
+	for (const repo of container.git.repositories) {
+		if ((await repo.git.remotes.getRemotes({ filter: remote => remote.matches(remoteUrl) })).length !== 0) {
+			return repo;
+		}
+	}
+
+	return undefined;
 }
 
 export function getVirtualUriForPullRequest(pr: PullRequest): Uri | undefined {

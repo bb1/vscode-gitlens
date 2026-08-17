@@ -1,16 +1,6 @@
 import { computed } from '@lit-labs/signals';
 import { createContext } from '@lit/context';
-import { IssuesCloudHostIntegrationId } from '@gitlens/integrations/constants.js';
 import type { Config } from '../../../config.js';
-import type { Subscription } from '../../../plus/gk/models/subscription.js';
-import type {
-	AgentInfo,
-	AiModelInfo,
-	AIState,
-	IntegrationStateInfo,
-	ScopedAiModelInfo,
-} from '../../rpc/services/types.js';
-import type { WalkthroughProgressPayload } from '../../rpc/walkthroughService.js';
 import type { SettingsScope } from '../../settings/settingsService.js';
 import type { HostStorage } from '../shared/host/storage.js';
 import { createStateGroup } from '../shared/state/signals.js';
@@ -33,7 +23,7 @@ export function createSettingsState(storage?: HostStorage) {
 
 	// Persisted UI — `retainContextWhenHidden` is off, so a tab-away rebuilds the
 	// webview; everything a user would notice resetting mid-session lives here
-	// Defaults to the Get Started launchpad, not the top of the nav rail
+	// Defaults to the first local settings category.
 	const selectedCategoryId = persisted<string>('selectedCategoryId', defaultSettingsCategoryId);
 	/** Nav rail share of the split panel, as a percentage (0–100) — wide enough that
 	 * the longest category names (with a Pro badge + count) don't clip by default */
@@ -47,25 +37,6 @@ export function createSettingsState(storage?: HostStorage) {
 	const customSettings = signal<Record<string, boolean>>({});
 	const version = signal<string>('');
 	const scopes = signal<SettingsScope[]>([['user', 'User']]);
-
-	// Shared-service domain data (subscription/integrations/ai) — `undefined`
-	// means not yet loaded, so panels can show skeletons instead of empty states
-	const subscription = signal<Subscription | undefined>(undefined);
-	const cloudIntegrations = signal<IntegrationStateInfo[] | undefined>(undefined);
-	const aiState = signal<AIState | undefined>(undefined);
-	const aiModel = signal<AiModelInfo | undefined>(undefined);
-	const agents = signal<AgentInfo[] | undefined>(undefined);
-	/** Progress of the two Get Started walkthroughs; non-critical, so its own failure never gates the app. */
-	const walkthrough = signal<WalkthroughProgressPayload | undefined>(undefined);
-	/** The compose/review/resolve scoped overrides, in display order; `undefined` means not yet loaded. */
-	const scopedAiModels = signal<ScopedAiModelInfo[] | undefined>(undefined);
-	/** Shared-service fetch failures, so panels can show an error + retry instead of a forever-skeleton */
-	const serviceErrors = signal<{ subscription: boolean; integrations: boolean; ai: boolean; agents: boolean }>({
-		subscription: false,
-		integrations: false,
-		ai: false,
-		agents: false,
-	});
 
 	// Ephemeral UI
 	/**
@@ -102,15 +73,6 @@ export function createSettingsState(storage?: HostStorage) {
 		return match?.matchedKeys ?? [];
 	});
 
-	const hasAccount = computed<boolean>(() => subscription.get()?.account != null);
-
-	const isIntegrationConnected = (id: IssuesCloudHostIntegrationId) =>
-		cloudIntegrations.get()?.some(i => i.id === id && i.connected) ?? false;
-
-	/** Issue-integration connection cues for the Autolinks banner. */
-	const hasConnectedJira = computed<boolean>(() => isIntegrationConnected(IssuesCloudHostIntegrationId.Jira));
-	const hasConnectedLinear = computed<boolean>(() => isIntegrationConnected(IssuesCloudHostIntegrationId.Linear));
-
 	/**
 	 * Resolves a setting path to its current value — customSettings first
 	 * (only when non-null, so custom keys shadow config paths), then nested config.
@@ -137,16 +99,6 @@ export function createSettingsState(storage?: HostStorage) {
 		version: version,
 		scopes: scopes,
 
-		// Shared services
-		subscription: subscription,
-		cloudIntegrations: cloudIntegrations,
-		aiState: aiState,
-		aiModel: aiModel,
-		agents: agents,
-		walkthrough: walkthrough,
-		scopedAiModels: scopedAiModels,
-		serviceErrors: serviceErrors,
-
 		// Ephemeral UI
 		anchorKey: anchorKey,
 
@@ -158,10 +110,6 @@ export function createSettingsState(storage?: HostStorage) {
 		searchResults: searchResults,
 		selectedCategory: selectedCategory,
 		highlightedKeys: highlightedKeys,
-		hasAccount: hasAccount,
-		hasConnectedJira: hasConnectedJira,
-		hasConnectedLinear: hasConnectedLinear,
-
 		// Helpers
 		getSettingValue: getSettingValue,
 

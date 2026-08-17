@@ -3,13 +3,11 @@ import { CancellationTokenSource, EventEmitter, RelativePattern, workspace } fro
 import type { GitLog } from '@gitlens/git/models/log.js';
 import { Logger } from '@gitlens/utils/logger.js';
 import type { Container } from '../container.js';
-import type {
-	CommitFrequencyData,
-	TreemapConfig,
-	TreemapData,
-	TreemapMode,
-	TreemapNode,
-} from '../webviews/plus/treemap/protocol.js';
+type CommitFrequencyData = unknown;
+type TreemapConfig = unknown;
+type TreemapData = { root: unknown; frequencies: unknown };
+type TreemapMode = 'commits' | 'files';
+type TreemapNode = unknown;
 
 const oneYearMs = 365 * 24 * 60 * 60 * 1000;
 

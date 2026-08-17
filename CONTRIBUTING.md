@@ -8,12 +8,12 @@ Please note the [Code of Conduct](CODE_OF_CONDUCT.md) document, please follow it
 
 ## Your First Code Contribution
 
-Unsure where to begin contributing? You can start by looking through the [`help-wanted`](https://github.com/gitkraken/vscode-gitlens/labels/help-wanted) issues.
+Unsure where to begin contributing? You can start by looking through the [`help-wanted`](https://github.com/bb1/vscode-gitlens/labels/help-wanted) issues.
 
 ### Getting the code
 
 ```
-git clone https://github.com/gitkraken/vscode-gitlens.git
+git clone https://github.com/bb1/vscode-gitlens.git
 ```
 
 **Prerequisites**
@@ -151,12 +151,6 @@ See https://code.visualstudio.com/api/extension-guides/web-extensions#test-your-
 
 Please follow all the instructions in the [PR template](.github/PULL_REQUEST_TEMPLATE.md).
 
-### Contributions to GitLens+ Licensed Files
-
-This repository contains both OSS-licensed and non-OSS-licensed files. All files in or under any directory named "plus" fall under LICENSE.plus. The remaining files fall under LICENSE, the MIT license.
-
-If a pull request is submitted which contains changes to files in or under any directory named "plus", then you agree that GitKraken and/or its licensors (as applicable) retain all right, title and interest in and to all such modifications and/or patches.
-
 ### Update the CHANGELOG
 
 The [Change Log](CHANGELOG.md) is updated manually and an entry should be added for each change. Changes are grouped in lists by `added`, `changed`, `removed`, or `fixed`.
@@ -167,21 +161,21 @@ Entries should be written in future tense:
 
 > Added
 >
-> - Adds awesome feature &mdash; closes [#\<issue\>](https://github.com/gitkraken/vscode-gitlens/issues/<issue>) thanks to [PR #\<pr\>](https://github.com/gitkraken/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
+> - Adds awesome feature &mdash; closes [#\<issue\>](https://github.com/bb1/vscode-gitlens/issues/<issue>) thanks to [PR #\<pr\>](https://github.com/bb1/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
 >
 > Changed
 >
-> - Changes or improves an existing feature &mdash; closes [#\<issue\>](https://github.com/gitkraken/vscode-gitlens/issues/<issue>) thanks to [PR #\<pr\>](https://github.com/gitkraken/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
+> - Changes or improves an existing feature &mdash; closes [#\<issue\>](https://github.com/bb1/vscode-gitlens/issues/<issue>) thanks to [PR #\<pr\>](https://github.com/bb1/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
 >
 > Fixed
 >
-> - Fixes [#\<issue\>](https://github.com/gitkraken/vscode-gitlens/issues/<issue>) a bug or regression &mdash; thanks to [PR #\<pr\>](https://github.com/gitkraken/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
+> - Fixes [#\<issue\>](https://github.com/bb1/vscode-gitlens/issues/<issue>) a bug or regression &mdash; thanks to [PR #\<pr\>](https://github.com/bb1/vscode-gitlens/issues/<pr>) by Your Name ([@\<your-github-username\>](https://github.com/<your-github-username>))
 
 ### Update the README
 
 If this is your first contribution to GitLens, please give yourself credit by adding yourself to the `Contributors` section of the [README](README.md#contributors-) in the following format:
 
-> - `Your Name ([@<your-github-username>](https://github.com/<your-github-username>)) &mdash; [contributions](https://github.com/gitkraken/vscode-gitlens/commits?author=<your-github-username>)`
+> - `Your Name ([@<your-github-username>](https://github.com/<your-github-username>)) &mdash; [contributions](https://github.com/bb1/vscode-gitlens/commits?author=<your-github-username>)`
 
 ## Publishing
 
@@ -213,9 +207,9 @@ Then, use the [prep-release](scripts/prep-release.mjs) script to prepare a new r
 4. Review the `Bumps to v{major}.{minor}.{patch}` commit
 5. Run `git push --follow-tags` to push the commit and tag
 
-Pushing the `v{major}.{minor}.{patch}` tag will trigger the [Publish Stable workflow](.github/workflows/cd-stable.yml) to automatically package the extension, create a [GitHub release](https://github.com/gitkraken/vscode-gitlens/releases/latest), and deploy it to the [VS Marketplace](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens).
+Pushing the `v{major}.{minor}.{patch}` tag will trigger the [Publish Stable workflow](.github/workflows/cd-stable.yml) to package the extension and create a [GitHub release](https://github.com/bb1/vscode-gitlens/releases/latest).
 
-If the action fails and retries are unsuccessful, the VSIX can be built locally with `pnpm run package` and uploaded manually to the marketplace. A GitHub release can also be [created manually](https://github.com/gitkraken/vscode-gitlens/releases/new) using `v{major}.{minor}.{patch}` as the title and the notes from the [CHANGELOG.md](CHANGELOG.md) with the VSIX attached.
+If the action fails and retries are unsuccessful, the VSIX can be built locally with `pnpm run package`. A GitHub release can also be [created manually](https://github.com/bb1/vscode-gitlens/releases/new) using `v{major}.{minor}.{patch}` as the title and the notes from the [CHANGELOG.md](CHANGELOG.md) with the VSIX attached.
 
 #### Preparing a Patch Release
 

@@ -3,7 +3,7 @@ import type { GitCommitStats } from '@gitlens/git/models/commit.js';
 import { GitCommit } from '@gitlens/git/models/commit.js';
 import type { GitFile } from '@gitlens/git/models/file.js';
 import type { GitFileChange } from '@gitlens/git/models/fileChange.js';
-import type { PullRequest } from '@gitlens/git/models/pullRequest.js';
+import { PullRequest } from '@gitlens/git/models/pullRequest.js';
 import type { GitRemote } from '@gitlens/git/models/remote.js';
 import { uncommitted, uncommittedStaged } from '@gitlens/git/models/revision.js';
 import type { CommitSignature } from '@gitlens/git/models/signature.js';
@@ -24,7 +24,7 @@ import { Container } from '../../../container.js';
 import { configuration } from '../../../system/-webview/configuration.js';
 import { GitUri } from '../../gitUri.js';
 import type { GlRepository } from '../../models/repository.js';
-import { getBestRemoteWithIntegration, getRemoteIntegration, remoteSupportsIntegration } from './remote.utils.js';
+import { getHostingProviderDescriptor } from './remote.utils.js';
 
 // #region Current user display name
 
@@ -121,15 +121,35 @@ export async function getCommitAssociatedPullRequest(
 	repoPath: string,
 	sha: string,
 	remote?: GitRemote,
-	options?: { expiryOverride?: boolean | number },
+	_options?: { expiryOverride?: boolean | number },
 ): Promise<PullRequest | undefined> {
 	if (isUncommitted(sha)) return undefined;
 
-	remote ??= await getBestRemoteWithIntegration(repoPath);
-	if (!(remote != null && remoteSupportsIntegration(remote))) return undefined;
+	remote ??= await Container.instance.git.getRepositoryService(repoPath).remotes.getBestRemoteWithProvider();
+	if (remote == null || remote.provider == null) return undefined;
 
-	const integration = await getRemoteIntegration(remote);
-	return integration?.getPullRequestForCommit(remote.provider.repoDesc, sha, options);
+	const descriptor = getHostingProviderDescriptor(remote.provider);
+	if (descriptor == null) return undefined;
+	const remoteProvider = remote.provider;
+
+	const provider = Container.instance.hosting.get(descriptor.id, descriptor.repository.domain);
+	if (provider?.getPullRequestForCommit == null) return undefined;
+
+	const result = await provider.getPullRequestForCommit(descriptor.repository, sha);
+	if (result == null || 'authenticationRequired' in result) return undefined;
+
+	return new PullRequest(
+		remoteProvider,
+		{ id: '', name: '' },
+		result.id,
+		undefined,
+		result.title,
+		result.url,
+		{ owner: descriptor.repository.owner, repo: descriptor.repository.name },
+		result.state === 'open' ? 'opened' : result.state,
+		new Date(0),
+		new Date(0),
+	);
 }
 
 export async function getCommitEnrichedAutolinks(
@@ -138,7 +158,7 @@ export async function getCommitEnrichedAutolinks(
 	summary: string,
 	remote?: GitRemote,
 ): Promise<Map<string, EnrichedAutolink> | undefined> {
-	remote ??= await getBestRemoteWithIntegration(repoPath);
+	remote ??= await Container.instance.git.getRepositoryService(repoPath).remotes.getBestRemoteWithProvider();
 
 	return Container.instance.autolinks.getEnrichedAutolinks(message ?? summary, remote);
 }

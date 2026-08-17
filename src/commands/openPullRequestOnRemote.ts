@@ -1,7 +1,7 @@
 import { env, window } from 'vscode';
 import { shortenRevision } from '@gitlens/git/utils/revision.utils.js';
 import type { Container } from '../container.js';
-import { getBestRemoteWithIntegration, getRemoteIntegration } from '../git/utils/-webview/remote.utils.js';
+import { getHostingProviderDescriptor } from '../git/utils/-webview/remote.utils.js';
 import { command } from '../system/-webview/command.js';
 import { openUrl } from '../system/-webview/vscode/uris.js';
 import { GlCommandBase } from './commandBase.js';
@@ -21,7 +21,7 @@ export class OpenPullRequestOnRemoteCommand extends GlCommandBase {
 	}
 
 	protected override preExecute(context: CommandContext, args?: OpenPullRequestOnRemoteCommandArgs): Promise<void> {
-		if (context.type === 'viewItem' && (context.node.is('pullrequest') || context.node.is('launchpad-item'))) {
+		if (context.type === 'viewItem' && context.node.is('pullrequest')) {
 			args = {
 				...args,
 				pr: context.node.pullRequest != null ? { url: context.node.pullRequest.url } : undefined,
@@ -36,13 +36,33 @@ export class OpenPullRequestOnRemoteCommand extends GlCommandBase {
 		if (args?.pr == null) {
 			if (args?.repoPath == null || args?.ref == null) return;
 
-			const remote = await getBestRemoteWithIntegration(args.repoPath);
-			if (remote == null) return;
+			const remote = await this.container.git
+				.getRepositoryService(args.repoPath)
+				.remotes.getBestRemoteWithProvider();
+			const descriptor = remote?.provider == null ? undefined : getHostingProviderDescriptor(remote.provider);
+			if (descriptor == null) return;
 
-			const integration = await getRemoteIntegration(remote);
-			if (integration == null) return;
+			const provider = this.container.hosting.get(descriptor.id, descriptor.repository.domain);
+			if (provider?.getPullRequestForCommit == null) return;
 
-			const pr = await integration.getPullRequestForCommit(remote.provider.repoDesc, args.ref);
+			let pr = await provider.getPullRequestForCommit(descriptor.repository, args.ref);
+			if (pr != null && 'authenticationRequired' in pr) {
+				const connect = { title: `Connect ${getHostingProviderName(descriptor.id)}` };
+				if (
+					(await window.showInformationMessage(
+						`Connect ${getHostingProviderName(descriptor.id)} to open pull requests for this repository.`,
+						connect,
+					)) !== connect
+				) {
+					return;
+				}
+
+				if ((await this.container.hosting.connect(descriptor.id, descriptor.repository.domain)) == null) return;
+
+				pr = await provider.getPullRequestForCommit(descriptor.repository, args.ref);
+				if (pr != null && 'authenticationRequired' in pr) return;
+			}
+
 			if (pr == null) {
 				void window.showInformationMessage(`No pull request associated with '${shortenRevision(args.ref)}'`);
 				return;
@@ -57,5 +77,18 @@ export class OpenPullRequestOnRemoteCommand extends GlCommandBase {
 		} else {
 			void openUrl(args.pr.url);
 		}
+	}
+}
+
+function getHostingProviderName(provider: 'github' | 'gitlab' | 'bitbucket' | 'azureDevOps'): string {
+	switch (provider) {
+		case 'github':
+			return 'GitHub';
+		case 'gitlab':
+			return 'GitLab';
+		case 'bitbucket':
+			return 'Bitbucket';
+		case 'azureDevOps':
+			return 'Azure DevOps';
 	}
 }

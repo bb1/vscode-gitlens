@@ -314,7 +314,7 @@ export class ConfigGitSubProvider implements GitConfigSubProvider {
 	}
 
 	/**
-	 * Gets the path to the .git/gk/config file for storing GitKraken-specific metadata.
+	 * Gets the path to the .git/gk/config file for repository metadata.
 	 * Uses commonPath for worktrees so all worktrees share the same data.
 	 */
 	private async getGkConfigPath(repoPath: string): Promise<string | undefined> {

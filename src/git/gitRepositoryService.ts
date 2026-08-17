@@ -20,7 +20,7 @@ import { getSettledValue } from '@gitlens/utils/promise.js';
 import { GlyphChars, Schemes } from '../constants.js';
 import type { Source } from '../constants.telemetry.js';
 import type { EventBus } from '../eventBus.js';
-import type { FeatureAccess, Features, PlusFeatures } from '../features.js';
+import type { Features, LocalAccess } from '../features.js';
 import { showGitErrorMessage } from '../messages.js';
 import { configuration } from '../system/-webview/configuration.js';
 import { exists } from '../system/-webview/vscode/uris.js';
@@ -73,8 +73,7 @@ export class GitRepositoryService {
 	 * if the provider doesn't support raw git (virtual GitHub repos, `vscode-vfs://`,
 	 * PRs).
 	 *
-	 * Hand the result to libraries that need to issue raw `git <args>` commands
-	 * (`@gitkraken/compose-tools`, `@gitkraken/shared-tools` undo). Inside GitLens,
+	 * Reserve the result for integrations that cannot use the typed sub-providers. Inside GitLens,
 	 * use the typed sub-providers (`this.branches`, `this.commits`, `this.diff`, …)
 	 * for everything else — those carry cancellation, caching, signing-awareness,
 	 * and decorator behaviors that raw invocation skips.
@@ -326,8 +325,8 @@ export class GitRepositoryService {
 	}
 
 	@debug()
-	access(feature?: PlusFeatures): Promise<FeatureAccess> {
-		return this._svc.access(feature, this.getRepository()?.uri);
+	getAccess(): Promise<LocalAccess> {
+		return this._svc.getAccess();
 	}
 
 	containsUri(uri: Uri): boolean {

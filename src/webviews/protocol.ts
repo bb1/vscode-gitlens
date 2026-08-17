@@ -1,11 +1,11 @@
-import type { TimeInput } from '@opentelemetry/api';
 import type { Config } from '../config.js';
 import type { GlCommands } from '../constants.commands.js';
-import type { Source, WebviewTelemetryEvents } from '../constants.telemetry.js';
+import type { Source, TelemetryEventData } from '../constants.telemetry.js';
 import type { WebviewIds } from '../constants.views.js';
-import type { Promo, PromoLocation, PromoPlans } from '../plus/gk/models/promo.js';
 import type { ConfigPath, ConfigPathValue, Path, PathValue } from '../system/-webview/configuration.js';
 import { IpcCommand, IpcNotification, IpcRequest } from './ipc/models/ipc.js';
+
+type TimeInput = number | Date | [number, number];
 
 // COMMANDS & REQUESTS
 
@@ -34,19 +34,6 @@ export interface ExecuteCommandParams {
 }
 export const ExecuteCommand = new IpcCommand<ExecuteCommandParams>('core', 'command/execute');
 
-export interface ApplicablePromoRequestParams {
-	plan?: PromoPlans;
-	location?: PromoLocation;
-	expiringOnly?: boolean;
-}
-export interface ApplicablePromoResponse {
-	promo: Promo | undefined;
-}
-export const ApplicablePromoRequest = new IpcRequest<ApplicablePromoRequestParams, ApplicablePromoResponse>(
-	'core',
-	'promos/applicable',
-);
-
 export interface UpdateConfigurationParams {
 	changes: {
 		[key in ConfigPath | CustomConfigPath]?: ConfigPathValue<ConfigPath> | CustomConfigPathValue<CustomConfigPath>;
@@ -57,9 +44,9 @@ export interface UpdateConfigurationParams {
 }
 export const UpdateConfigurationCommand = new IpcCommand<UpdateConfigurationParams>('core', 'configuration/update');
 
-export interface TelemetrySendEventParams<T extends keyof WebviewTelemetryEvents = keyof WebviewTelemetryEvents> {
+export interface TelemetrySendEventParams<T extends string = string> {
 	name: T;
-	data: WebviewTelemetryEvents[T];
+	data?: TelemetryEventData;
 	source?: Source;
 	startTime?: TimeInput;
 	endTime?: TimeInput;

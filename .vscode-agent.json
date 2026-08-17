@@ -1,5 +1,5 @@
 {
-	"extensionId": "eamodio.gitlens",
+	"extensionId": "bb1.offline-gitlense",
 	"buildCommand": "pnpm run build:extension",
 	"activationWait": 8000,
 	"settings": {

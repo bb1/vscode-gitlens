@@ -18,13 +18,6 @@ import type {
 	DetailsItemTypedContext,
 } from '../../../commitDetails/protocol.js';
 import { buildFolderContext, messageHeadlineSplitterToken } from '../../../commitDetails/protocol.js';
-import type {
-	GraphCommitContextValue,
-	GraphItemRefContext,
-	GraphStashContextValue,
-} from '../../../plus/graph/protocol.js';
-import type { AiModelInfo } from '../../../rpc/services/types.js';
-import type { RunningOperationExecState } from '../../plus/graph/components/detailsState.js';
 import { renderLearnAboutAutolinks } from '../../shared/components/chips/learn-about-autolinks.js';
 import { renderDetailsMaximizeChip } from '../../shared/components/details-header/details-maximize-chip.js';
 import type { TreeItemAction, TreeItemBase } from '../../shared/components/tree/base.js';
@@ -35,8 +28,6 @@ import { detailsBaseStyles } from './gl-details-base.css.js';
 import type { File } from './gl-details-base.js';
 import { GlDetailsBase } from './gl-details-base.js';
 import { detailsCommitPanelStyles } from './gl-details-commit-panel.css.js';
-import '../../shared/components/ai-input.js';
-import '../../shared/components/gl-ai-model-chip.js';
 import '../../shared/components/branch-name.js';
 import '../../shared/components/button.js';
 import '../../shared/components/chips/action-chip.js';
@@ -61,11 +52,7 @@ import '../../shared/components/rich/issue-pull-request.js';
 import '../../shared/components/split-panel/split-panel.js';
 
 type State = IpcSerialized<_State>;
-interface ExplainState {
-	cancelled?: boolean;
-	error?: { message: string };
-	result?: { summary: string; body: string };
-}
+type RunningOperationExecState = string;
 
 @customElement('gl-details-commit-panel')
 export class GlDetailsCommitPanel extends GlDetailsBase {
@@ -91,12 +78,6 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 		return this.commit?.stashNumber != null;
 	}
 
-	@state()
-	explainBusy = false;
-
-	@property({ type: Object })
-	explain?: ExplainState;
-
 	@property({ type: Object })
 	reachability?: GitCommitReachability;
 
@@ -114,14 +95,6 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 
 	@property({ type: String, attribute: 'branch-name' })
 	branchName?: string;
-
-	// Sub-panel mode support (review/compose body swap)
-	@property({ type: Boolean })
-	aiEnabled = false;
-
-	/** Currently selected AI model — shown in the Explain input's floating footer chip. */
-	@property({ type: Object })
-	aiModel?: AiModelInfo;
 
 	/** Host advertises that it supports compare mode (graph orchestrator does, standalone doesn't). */
 	@property({ type: Boolean, attribute: 'compare-enabled' })
@@ -267,12 +240,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 	}
 
 	override updated(changedProperties: Map<string, any>): void {
-		if (changedProperties.has('explain')) {
-			this.explainBusy = false;
-			this.renderRoot.querySelector('[data-region="commit-explanation"]')?.scrollIntoView();
-		}
 		if (changedProperties.has('commit')) {
-			this.explainBusy = false;
 			this._reachabilityExpanded = false;
 			this.renderRoot.querySelector('[data-region="message"]')?.scrollTo?.(0, 0);
 		}
@@ -336,7 +304,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 										<div slot="start" class="msg-slot">${this.renderEmbeddedMessage()}</div>
 										<div slot="divider" class="split__handle"></div>
 										<div slot="end" class="bottom-section">
-											${this.renderEmbeddedAutolinks()} ${this.renderEmbeddedExplainInput()}
+											${this.renderEmbeddedAutolinks()}
 											<div class="files">
 												<webview-pane-group flexible>
 													${this.renderChangedFiles(fileMode, renderOpts)}
@@ -492,9 +460,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 	}
 
 	private computeCommitModes(): ('review' | 'compose')[] {
-		if (!this.aiEnabled) return [];
-		// Working changes support both Compose and Review; a real commit supports Review only.
-		return this.isUncommitted ? ['compose', 'review'] : ['review'];
+		return [];
 	}
 
 	private renderEmbeddedMetadataBar() {
@@ -672,7 +638,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 				message: commit.message,
 				stashOnRef: commit.stashOnRef,
 			});
-			return serializeWebviewItemContext<GraphItemRefContext<GraphStashContextValue>>({
+			return serializeWebviewItemContext({
 				webviewItem: 'gitlens:stash',
 				webviewItemValue: { type: 'stash', ref: ref },
 			});
@@ -682,7 +648,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 			refType: 'revision',
 			message: commit.message,
 		});
-		return serializeWebviewItemContext<GraphItemRefContext<GraphCommitContextValue>>({
+		return serializeWebviewItemContext({
 			webviewItem: 'gitlens:commit',
 			webviewItemValue: { type: 'commit', ref: ref },
 		});
@@ -843,19 +809,6 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 		return html`<div class="autolinks">${this.renderAutoLinksChips()}</div>`;
 	}
 
-	private renderEmbeddedExplainInput() {
-		if (this.orgSettings?.ai === false) return nothing;
-
-		return html`<gl-ai-input
-			multiline
-			floating-footer
-			.busy=${this.explainBusy}
-			@gl-explain=${this.onExplainChanges}
-		>
-			<gl-ai-model-chip slot="footer" .model=${this.aiModel}></gl-ai-model-chip>
-		</gl-ai-input>`;
-	}
-
 	private onToggleReachability() {
 		// Only allow expansion when there are refs to show
 		if (!this._reachabilityExpanded && !this.reachability?.refs?.length) return;
@@ -886,8 +839,7 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 				<ul class="bulleted">
 					<li>lines in the text editor</li>
 					<li>
-						commits in the <a href="command:gitlens.showGraph">Commit Graph</a>,
-						<a href="command:gitlens.showTimelineView">Visual File History</a>, or
+						commits in the <a href="command:gitlens.showGraph">Commit Graph</a> or
 						<a href="command:gitlens.showCommitsView">Commits view</a>
 					</li>
 					<li>stashes in the <a href="command:gitlens.showStashesView">Stashes view</a></li>
@@ -1241,23 +1193,6 @@ export class GlDetailsCommitPanel extends GlDetailsBase {
 				</div>
 			</div>
 		</gl-popover>`;
-	}
-
-	private onExplainChanges(e: CustomEvent<{ prompt?: string }> | MouseEvent) {
-		if (this.explainBusy) {
-			e.preventDefault();
-			e.stopPropagation();
-			return;
-		}
-
-		e.stopPropagation();
-		this.explainBusy = true;
-
-		const prompt = e instanceof CustomEvent ? e.detail?.prompt : undefined;
-
-		this.dispatchEvent(
-			new CustomEvent('explain-commit', { detail: { prompt: prompt }, bubbles: true, composed: true }),
-		);
 	}
 
 	override getFileActions(file: File, _options?: Partial<TreeItemBase>): TreeItemAction[] {

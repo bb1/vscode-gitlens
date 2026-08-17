@@ -29,7 +29,6 @@ import {
 	getCommitPreviousComparisonUrisForRange,
 	isCommitSigned,
 } from '../git/utils/-webview/commit.utils.js';
-import { isRemoteMaybeIntegrationConnected, remoteSupportsIntegration } from '../git/utils/-webview/remote.utils.js';
 import { toAbortSignal } from '../system/-webview/cancellation.js';
 import { configuration } from '../system/-webview/configuration.js';
 import { editorLineToDiffRange } from '../system/-webview/vscode/range.js';
@@ -39,8 +38,6 @@ const trustedHoverCommands: (GlCommands | `gitlens.action.${string}`)[] = [
 	'gitlens.action.hover.commands' satisfies GlCommands,
 	'gitlens.action.openIssue' satisfies GlCommands,
 	'gitlens.action.openPullRequest' satisfies GlCommands,
-	'gitlens.ai.explainCommit:editor' satisfies GlCommands,
-	'gitlens.ai.explainWip:editor' satisfies GlCommands,
 	'gitlens.connectRemoteProvider' satisfies GlCommands,
 	'gitlens.copyShaToClipboard' satisfies GlCommands,
 	'gitlens.diffWith' satisfies GlCommands,
@@ -258,19 +255,7 @@ export async function detailsMessage(
 		(options?.autolinks || cfg.autolinks.enabled) &&
 		cfg.autolinks.enhanced &&
 		CommitFormatter.has(cfg.detailsMarkdownFormat, 'message');
-	const prs =
-		remote != null &&
-		remoteSupportsIntegration(remote) &&
-		isRemoteMaybeIntegrationConnected(remote) !== false &&
-		(options?.pullRequests || (options?.pullRequests !== false && cfg.pullRequests.enabled)) &&
-		CommitFormatter.has(
-			options.format,
-			'pullRequest',
-			'pullRequestAgo',
-			'pullRequestAgoOrDate',
-			'pullRequestDate',
-			'pullRequestState',
-		);
+	const prs = false;
 
 	const showSignature =
 		configuration.get('signing.showSignatureBadges') &&
@@ -327,7 +312,6 @@ export async function detailsMessage(
 		commit,
 		{ source: options.sourceName },
 		{
-			ai: { allowed: container.ai.allowed },
 			enrichedAutolinks:
 				enrichedResult?.value != null && !enrichedResult.paused ? enrichedResult.value : undefined,
 			dateFormat: options.dateFormat ?? 'MMMM Do, YYYY h:mma',

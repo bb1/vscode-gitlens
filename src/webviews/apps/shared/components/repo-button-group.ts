@@ -6,7 +6,6 @@ import type { ConnectRemoteProviderCommandArgs } from '../../../../commands/remo
 import type { Source } from '../../../../constants.telemetry.js';
 import type { RepositoryShape } from '../../../../git/models/repositoryShape.js';
 import { createCommandLink } from '../../../../system/commands.js';
-import { linkStyles, ruleStyles } from '../../plus/shared/components/vscode.css.js';
 import { GlElement } from './element.js';
 import { pickerIconStyles, refButtonBaseStyles, truncatedButtonStyles } from './ref.css.js';
 import './button.js';
@@ -33,8 +32,6 @@ declare global {
 @customElement('gl-repo-button-group')
 export class GlRepoButtonGroup extends GlElement {
 	static override styles = [
-		linkStyles,
-		ruleStyles,
 		refButtonBaseStyles,
 		truncatedButtonStyles,
 		css`
@@ -540,7 +537,7 @@ export class GlRepoButtonGroup extends GlElement {
 				<span slot="tooltip">
 					Connect to ${provider.name}
 					<hr />
-					View pull requests and issues in Home, Commit Graph, Launchpad, autolinks, and more
+					View pull requests and issues in Commit Graph, autolinks, and more
 				</span>
 			</gl-button>
 		`;

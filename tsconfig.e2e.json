@@ -5,5 +5,5 @@
 		"rootDir": ".",
 		"lib": ["es2023", "dom", "dom.iterable"]
 	},
-	"include": ["tests/e2e/**/*.ts", "src/constants.subscription.ts", "src/plus/gk/__debug__accountDebug.ts"]
+	"include": ["tests/e2e/specs/blame.test.ts", "tests/e2e/specs/graph.test.ts", "tests/e2e/specs/rebase.test.ts"]
 }

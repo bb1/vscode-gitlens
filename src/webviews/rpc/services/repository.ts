@@ -37,7 +37,6 @@ import type { DiffWithCommandArgs } from '../../../commands/diffWith.js';
 import type { Source } from '../../../constants.telemetry.js';
 import type { Container } from '../../../container.js';
 import { ProviderNotSupportedError } from '../../../errors.js';
-import type { FeatureAccess, PlusFeatures } from '../../../features.js';
 import * as BranchActions from '../../../git/actions/branch.js';
 import * as RepoActions from '../../../git/actions/repository.js';
 import * as StashActions from '../../../git/actions/stash.js';
@@ -309,14 +308,6 @@ export class RepositoryService {
 	}
 
 	private readonly _reachableFromOtherWorktreesCache = new LruMap<string, boolean>(100);
-
-	async getFeatureAccess(feature: PlusFeatures, repoUri?: string): Promise<FeatureAccess> {
-		const access =
-			repoUri != null
-				? await this.container.git.access(feature, Uri.parse(repoUri))
-				: await this.container.git.access(feature);
-		return serialize(access);
-	}
 
 	async hasRemotes(repoPath: string): Promise<boolean> {
 		const remotes = await this.container.git.getRepositoryService(repoPath).remotes.getRemotes();

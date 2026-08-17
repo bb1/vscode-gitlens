@@ -1,8 +1,7 @@
 /**
  * RPC Service interface for the Commit Details webview.
  *
- * This interface extends SharedWebviewServices with view-specific
- * sub-services for inspect operations and drafts.
+ * This interface extends SharedWebviewServices with inspect operations.
  *
  * Architecture:
  * - Backend is stateless - it only provides data and forwards events
@@ -14,9 +13,8 @@
  * call methods with a single await.
  *
  * Service Layout:
- * - SharedWebviewServices: repositories, repository, config, storage,
- *   subscription, integrations, ai, autolinks, commands, telemetry, files, pullRequests
- * - inspect: view-specific commit queries, navigation, commit actions, AI ops
+ * - SharedWebviewServices: repositories, repository, config, storage, autolinks, commands, telemetry, files, pullRequests
+ * - inspect: view-specific commit queries, navigation, and commit actions
  */
 import type { GitCommitSearchContext } from '@gitlens/git/models/search.js';
 import type { SharedWebviewServices } from '../rpc/services/common.js';
@@ -56,23 +54,12 @@ export interface InitialContext {
 }
 
 // ============================================================
-// Result Types
-// ============================================================
-
-/**
- * Result type for AI explain operation.
- */
-export type ExplainResult =
-	| { result: { summary: string; body: string }; error?: never }
-	| { error: { message: string } };
-
-// ============================================================
 // View-Specific Sub-Service: Inspect
 // ============================================================
 
 /**
  * Inspect service for Commit Details — the single view-specific sub-service
- * that owns commit queries, navigation, commit actions, and AI operations.
+ * that owns commit queries, navigation, and commit actions.
  *
  * This replaces the old git/actions/navigation/ai sub-services with one
  * cohesive interface. Generic git operations (stage, unstage, fetch, push, pull,
@@ -138,15 +125,6 @@ export interface CommitInspectService {
 	 * Open autolink settings.
 	 */
 	openAutolinkSettings(): Promise<void>;
-
-	// ── AI Operations ──
-
-	/**
-	 * Generate an AI explanation of a commit.
-	 * @param sha - Commit SHA
-	 * @param signal - Optional AbortSignal for cooperative cancellation
-	 */
-	explainCommit(repoPath: string, sha: string, prompt?: string, signal?: AbortSignal): Promise<ExplainResult>;
 }
 
 // ============================================================
@@ -157,9 +135,7 @@ export interface CommitInspectService {
  * RPC service interface for Commit Details webview.
  *
  * Extends SharedWebviewServices with one view-specific sub-service:
- * - `inspect`: commit/WIP queries, navigation, commit actions, AI operations
- *
- * Drafts operations are now on the shared `drafts` service (via SharedWebviewServices).
+ * - `inspect`: commit/WIP queries, navigation, and commit actions
  */
 export interface CommitDetailsServices extends SharedWebviewServices {
 	readonly inspect: CommitInspectService;

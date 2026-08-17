@@ -1,8 +1,8 @@
-import type { GlPlusCommands, GlWebviewCommands } from '../constants.commands.js';
+import type { GlWebviewCommands } from '../constants.commands.js';
 import type { WebviewIds } from '../constants.views.js';
 
 export function createWebviewCommandLink<T>(
-	command: GlWebviewCommands | GlPlusCommands,
+	command: GlWebviewCommands,
 	webviewId: WebviewIds,
 	webviewInstanceId: string | undefined,
 	args?: T,
@@ -38,6 +38,8 @@ export interface WebviewItemContext<TValue = unknown> extends Partial<WebviewCon
 	webviewItemsValues?: { webviewItem: string; webviewItemValue: TValue }[];
 	/** True when this row is part of an active multi-selection (>1). Pairs with {@link webviewItems}/{@link webviewItemsValues}. */
 	listMultiSelection?: boolean;
+	/** True when exactly two rows are selected, for ordered two-ref comparison commands. */
+	listDoubleSelection?: boolean;
 }
 
 export function isWebviewItemContext<TValue = unknown>(

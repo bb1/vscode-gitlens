@@ -1,0 +1,43 @@
+{
+	"name": "@gitlens/hosting-github",
+	"description": "GitLens GitHub hosting provider package",
+	"version": "0.0.1",
+	"license": "SEE LICENSE IN LICENSE",
+	"private": true,
+	"type": "module",
+	"sideEffects": false,
+	"exports": {
+		"./gitDataModels.js": {
+			"types": "./dist/gitDataModels.d.ts",
+			"default": "./dist/gitDataModels.js"
+		},
+		"./githubClient.js": {
+			"types": "./dist/githubClient.d.ts",
+			"default": "./dist/githubClient.js"
+		},
+		"./githubHostingProvider.js": {
+			"types": "./dist/githubHostingProvider.d.ts",
+			"default": "./dist/githubHostingProvider.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc -b",
+		"clean": "pnpx rimraf --glob dist out **/tsconfig*.tsbuildinfo",
+		"clean:all": "pnpm run clean && pnpm run clean:deps",
+		"clean:deps": "pnpx rimraf --glob **/node_modules",
+		"clean:lint": "pnpx rimraf --glob **/tsconfig*.tsbuildinfo",
+		"test": "mocha --require tsx --ui tdd --timeout 30000 'src/**/__tests__/**/*.test.ts'"
+	},
+	"dependencies": {
+		"@gitlens/hosting-integrations": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/mocha": "catalog:",
+		"mocha": "catalog:",
+		"tsx": "catalog:",
+		"typescript": "catalog:"
+	}
+}
